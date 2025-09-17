@@ -1,0 +1,57 @@
+package version
+
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/spf13/cobra"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+
+	"github.com/lburgazzoli/odh-cli/internal/version"
+)
+
+func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
+	var outputFormat string
+
+	cmd := &cobra.Command{
+		Use:   "version",
+		Short: "Show version information",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			switch outputFormat {
+			case "json":
+				encoder := json.NewEncoder(cmd.OutOrStdout())
+				encoder.SetIndent("", "  ")
+
+				err := encoder.Encode(map[string]string{
+					"version": version.GetVersion(),
+					"commit":  version.GetCommit(),
+					"date":    version.GetDate(),
+				})
+
+				if err != nil {
+					return fmt.Errorf("failed to encode version information as JSON: %w", err)
+				}
+				
+				return nil
+			default:
+				_, err := fmt.Fprintf(
+					cmd.OutOrStdout(),
+					"kubectl-odh version %s (commit: %s, built: %s)\n",
+					version.GetVersion(),
+					version.GetCommit(),
+					version.GetDate(),
+				)
+
+				if err != nil {
+					return fmt.Errorf("failed to write version information: %w", err)
+				}
+
+				return nil
+			}
+		},
+	}
+
+	cmd.Flags().StringVarP(&outputFormat, "output", "o", "text", "Output format (text|json)")
+
+	root.AddCommand(cmd)
+}
