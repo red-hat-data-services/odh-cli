@@ -310,31 +310,63 @@ data:
 
 ### Adding a New Command
 
-Commands follow a consistent pattern that makes them easy to add and maintain. To add a new command:
+Commands follow a consistent pattern separating Cobra wrappers from business logic:
 
-1. **Create command directory**: `cmd/<commandname>/`
-2. **Define command**: Create `command.go` with Cobra command definition
-3. **Define options**: Create `options.go` with options struct and `Run()` method
-4. **Implement logic**: Create command-specific logic in `pkg/<commandname>/`
-5. **Register command**: Add to root command in `cmd/main.go`
+1. **Create Cobra wrapper**: `cmd/<commandname>/<commandname>.go` - minimal Cobra command definition
+2. **Create business logic**: `pkg/cmd/<commandname>/<commandname>.go` - Options struct with Complete/Validate/Run
+3. **Add supporting code**: `pkg/<commandname>/` - domain-specific logic and utilities
+4. **Register command**: Add to parent command (e.g., `cmd/main.go`)
 
-**Example Command Structure:**
+#### Directory Structure
+
+```
+cmd/
+└── mycommand/
+    └── mycommand.go          # Cobra wrapper only
+pkg/
+├── cmd/
+│   └── mycommand/
+│       └── mycommand.go      # Options struct + Complete/Validate/Run
+└── mycommand/                # Domain logic (optional)
+    ├── types.go
+    └── utilities.go
+```
+
+#### Pattern: Cobra Wrapper (cmd/)
+
+The Cobra wrapper in `cmd/` should be minimal - only command metadata and flag bindings:
 
 ```go
-// cmd/mycommand/command.go
+// cmd/mycommand/mycommand.go
 package mycommand
 
 import (
+    "os"
     "github.com/spf13/cobra"
     "k8s.io/cli-runtime/pkg/genericclioptions"
+    pkgcmd "github.com/lburgazzoli/odh-cli/pkg/cmd/mycommand"
 )
 
-func NewMyCommandCmd(streams genericclioptions.IOStreams) *cobra.Command {
-    o := NewMyCommandOptions(streams)
-    
+const (
+    cmdName  = "mycommand"
+    cmdShort = "Brief description"
+    cmdLong  = `Detailed description...`
+)
+
+func AddCommand(parent *cobra.Command, flags *genericclioptions.ConfigFlags) {
+    o := pkgcmd.NewMyCommandOptions(
+        genericclioptions.IOStreams{
+            In:     os.Stdin,
+            Out:    os.Stdout,
+            ErrOut: os.Stderr,
+        },
+        flags,
+    )
+
     cmd := &cobra.Command{
-        Use:   "mycommand",
-        Short: "Brief description of what the command does",
+        Use:   cmdName,
+        Short: cmdShort,
+        Long:  cmdLong,
         RunE: func(cmd *cobra.Command, args []string) error {
             if err := o.Complete(cmd, args); err != nil {
                 return err
@@ -345,63 +377,101 @@ func NewMyCommandCmd(streams genericclioptions.IOStreams) *cobra.Command {
             return o.Run()
         },
     }
-    
-    // Add flags
-    cmd.Flags().StringVarP(&o.outputFormat, "output", "o", "table", "Output format (table|json)")
-    
-    return cmd
+
+    // Bind flags to Options struct fields
+    cmd.Flags().StringVarP(&o.OutputFormat, "output", "o", "table", "Output format")
+
+    parent.AddCommand(cmd)
 }
 ```
 
+#### Pattern: Business Logic (pkg/cmd/)
+
+The Options struct in `pkg/cmd/` contains all business logic:
+
 ```go
-// cmd/mycommand/options.go
+// pkg/cmd/mycommand/mycommand.go
 package mycommand
 
 import (
     "context"
+    "fmt"
     "k8s.io/cli-runtime/pkg/genericclioptions"
-    "sigs.k8s.io/controller-runtime/pkg/client"
+    utilclient "github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
 type MyCommandOptions struct {
     configFlags  *genericclioptions.ConfigFlags
-    outputFormat string
     streams      genericclioptions.IOStreams
-    client       client.Client
-    namespace    string
+    
+    // Public fields for flag binding
+    OutputFormat string
+    
+    // Private fields for runtime state
+    client    *utilclient.Client
+    namespace string
 }
 
-func NewMyCommandOptions(streams genericclioptions.IOStreams) *MyCommandOptions {
+func NewMyCommandOptions(
+    streams genericclioptions.IOStreams,
+    configFlags *genericclioptions.ConfigFlags,
+) *MyCommandOptions {
     return &MyCommandOptions{
-        configFlags: genericclioptions.NewConfigFlags(true),
+        configFlags: configFlags,
         streams:     streams,
     }
 }
 
+// Complete initializes runtime state (client, namespace, etc.)
 func (o *MyCommandOptions) Complete(cmd *cobra.Command, args []string) error {
-    // Initialize client, namespace, etc.
+    var err error
+    
+    o.client, err = utilclient.NewClient(o.configFlags)
+    if err != nil {
+        return fmt.Errorf("failed to create client: %w", err)
+    }
+    
+    // Extract namespace if needed
+    if o.configFlags.Namespace != nil && *o.configFlags.Namespace != "" {
+        o.namespace = *o.configFlags.Namespace
+    }
+    
     return nil
 }
 
+// Validate checks that all required options are set correctly
 func (o *MyCommandOptions) Validate() error {
-    // Validate options
-    return nil
+    validFormats := []string{"table", "json", "yaml"}
+    for _, format := range validFormats {
+        if o.OutputFormat == format {
+            return nil
+        }
+    }
+    return fmt.Errorf("unsupported output format: %s", o.OutputFormat)
 }
 
+// Run executes the command business logic
 func (o *MyCommandOptions) Run() error {
     ctx := context.Background()
     
-    // Implement command logic
-    // Use o.client to interact with Kubernetes
-    // Use printer package to format output
+    // Implement command logic using o.client, o.streams, etc.
+    // Call domain-specific functions from pkg/mycommand/
     
     return nil
 }
 ```
 
+#### Benefits of This Pattern
+
+- **Separation of Concerns**: Cobra configuration isolated from business logic
+- **Testability**: Options struct can be tested without Cobra dependencies
+- **Reusability**: Business logic can be called programmatically
+- **Consistency**: All commands follow the same structure
+- **kubectl Compatibility**: Follows patterns used by kubectl and kubectl plugins
+
 ### Command-Specific Logic
 
-Commands can organize their logic in `pkg/<commandname>/`:
+Commands can organize domain-specific logic in `pkg/<commandname>/`:
 
 ```go
 // pkg/mycommand/types.go
@@ -416,7 +486,7 @@ type Result struct {
 // pkg/mycommand/logic.go
 package mycommand
 
-func ProcessData(ctx context.Context, client client.Client, namespace string) ([]Result, error) {
+func ProcessData(ctx context.Context, client *utilclient.Client, namespace string) ([]Result, error) {
     // Command-specific implementation
     return results, nil
 }

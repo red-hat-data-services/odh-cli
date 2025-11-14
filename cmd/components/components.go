@@ -22,9 +22,10 @@ Components are cluster-scoped resources that define ODH/RHOAI platform component
 // AddCommand adds the components subcommand to the root command.
 func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 	cmd := &cobra.Command{
-		Use:   cmdName,
-		Short: cmdShort,
-		Long:  cmdLong,
+		Use:          cmdName,
+		Short:        cmdShort,
+		Long:         cmdLong,
+		SilenceUsage: true,
 	}
 
 	// Add subcommands

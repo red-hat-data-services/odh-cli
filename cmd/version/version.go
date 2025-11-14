@@ -21,8 +21,9 @@ func AddCommand(root *cobra.Command, _ *genericclioptions.ConfigFlags) {
 	var outputFormat string
 
 	cmd := &cobra.Command{
-		Use:   cmdName,
-		Short: cmdShort,
+		Use:          cmdName,
+		Short:        cmdShort,
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			switch outputFormat {
 			case "json":
