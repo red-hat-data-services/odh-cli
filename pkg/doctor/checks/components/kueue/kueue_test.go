@@ -16,6 +16,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 //nolint:gochecknoglobals // Test fixture - shared across test functions
@@ -46,9 +47,11 @@ func TestKueueManagedRemovalCheck_NoDSC(t *testing.T) {
 	result, err := kueueCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("No DataScienceCluster"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  ContainSubstring("No DataScienceCluster"),
+	}))
 }
 
 func TestKueueManagedRemovalCheck_NotConfigured(t *testing.T) {
@@ -91,9 +94,11 @@ func TestKueueManagedRemovalCheck_NotConfigured(t *testing.T) {
 	result, err := kueueCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("not configured"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  ContainSubstring("not configured"),
+	}))
 }
 
 func TestKueueManagedRemovalCheck_ManagedBlocking(t *testing.T) {
@@ -136,14 +141,16 @@ func TestKueueManagedRemovalCheck_ManagedBlocking(t *testing.T) {
 	result, err := kueueCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusFail))
-	g.Expect(result.Severity).ToNot(BeNil())
-	g.Expect(*result.Severity).To(Equal(check.SeverityCritical))
-	g.Expect(result.Message).To(ContainSubstring("managed option is enabled"))
-	g.Expect(result.Message).To(ContainSubstring("removed in RHOAI 3.x"))
-	g.Expect(result.Details).To(HaveKeyWithValue("managementState", "Managed"))
-	g.Expect(result.Details).To(HaveKeyWithValue("component", "kueue"))
-	g.Expect(result.Details).To(HaveKeyWithValue("targetVersion", "3.0.0"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusFail),
+		"Severity": PointTo(Equal(check.SeverityCritical)),
+		"Message":  And(ContainSubstring("managed option is enabled"), ContainSubstring("removed in RHOAI 3.x")),
+		"Details": And(
+			HaveKeyWithValue("managementState", "Managed"),
+			HaveKeyWithValue("component", "kueue"),
+			HaveKeyWithValue("targetVersion", "3.0.0"),
+		),
+	}))
 }
 
 func TestKueueManagedRemovalCheck_UnmanagedAllowed(t *testing.T) {
@@ -186,11 +193,12 @@ func TestKueueManagedRemovalCheck_UnmanagedAllowed(t *testing.T) {
 	result, err := kueueCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("not enabled"))
-	g.Expect(result.Message).To(ContainSubstring("state: Unmanaged"))
-	g.Expect(result.Details).To(HaveKeyWithValue("managementState", "Unmanaged"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  And(ContainSubstring("not enabled"), ContainSubstring("state: Unmanaged")),
+		"Details":  HaveKeyWithValue("managementState", "Unmanaged"),
+	}))
 }
 
 func TestKueueManagedRemovalCheck_RemovedAllowed(t *testing.T) {
@@ -233,11 +241,12 @@ func TestKueueManagedRemovalCheck_RemovedAllowed(t *testing.T) {
 	result, err := kueueCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("not enabled"))
-	g.Expect(result.Message).To(ContainSubstring("ready for RHOAI 3.x upgrade"))
-	g.Expect(result.Details).To(HaveKeyWithValue("managementState", "Removed"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  And(ContainSubstring("not enabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
+		"Details":  HaveKeyWithValue("managementState", "Removed"),
+	}))
 }
 
 func TestKueueManagedRemovalCheck_Metadata(t *testing.T) {

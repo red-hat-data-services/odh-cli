@@ -16,6 +16,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 //nolint:gochecknoglobals // Test fixture - shared across test functions
@@ -46,9 +47,11 @@ func TestKServeServerlessRemovalCheck_NoDSC(t *testing.T) {
 	result, err := kserveCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("No DataScienceCluster"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  ContainSubstring("No DataScienceCluster"),
+	}))
 }
 
 func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
@@ -91,9 +94,11 @@ func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
 	result, err := kserveCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("not configured"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  ContainSubstring("not configured"),
+	}))
 }
 
 func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
@@ -136,10 +141,12 @@ func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
 	result, err := kserveCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("not managed"))
-	g.Expect(result.Details).To(HaveKeyWithValue("kserveManagementState", "Removed"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  ContainSubstring("not managed"),
+		"Details":  HaveKeyWithValue("kserveManagementState", "Removed"),
+	}))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
@@ -183,10 +190,12 @@ func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
 	result, err := kserveCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("serverless mode is not configured"))
-	g.Expect(result.Details).To(HaveKeyWithValue("kserveManagementState", "Managed"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  ContainSubstring("serverless mode is not configured"),
+		"Details":  HaveKeyWithValue("kserveManagementState", "Managed"),
+	}))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
@@ -232,15 +241,17 @@ func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 	result, err := kserveCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusFail))
-	g.Expect(result.Severity).ToNot(BeNil())
-	g.Expect(*result.Severity).To(Equal(check.SeverityCritical))
-	g.Expect(result.Message).To(ContainSubstring("serverless mode is enabled"))
-	g.Expect(result.Message).To(ContainSubstring("removed in RHOAI 3.x"))
-	g.Expect(result.Details).To(HaveKeyWithValue("kserveManagementState", "Managed"))
-	g.Expect(result.Details).To(HaveKeyWithValue("servingManagementState", "Managed"))
-	g.Expect(result.Details).To(HaveKeyWithValue("component", "kserve"))
-	g.Expect(result.Details).To(HaveKeyWithValue("targetVersion", "3.0.0"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusFail),
+		"Severity": PointTo(Equal(check.SeverityCritical)),
+		"Message":  And(ContainSubstring("serverless mode is enabled"), ContainSubstring("removed in RHOAI 3.x")),
+		"Details": And(
+			HaveKeyWithValue("kserveManagementState", "Managed"),
+			HaveKeyWithValue("servingManagementState", "Managed"),
+			HaveKeyWithValue("component", "kserve"),
+			HaveKeyWithValue("targetVersion", "3.0.0"),
+		),
+	}))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) {
@@ -286,11 +297,12 @@ func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) 
 	result, err := kserveCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusFail))
-	g.Expect(result.Severity).ToNot(BeNil())
-	g.Expect(*result.Severity).To(Equal(check.SeverityCritical))
-	g.Expect(result.Message).To(ContainSubstring("state: Unmanaged"))
-	g.Expect(result.Details).To(HaveKeyWithValue("servingManagementState", "Unmanaged"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusFail),
+		"Severity": PointTo(Equal(check.SeverityCritical)),
+		"Message":  ContainSubstring("state: Unmanaged"),
+		"Details":  HaveKeyWithValue("servingManagementState", "Unmanaged"),
+	}))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
@@ -336,12 +348,15 @@ func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 	result, err := kserveCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("serverless mode is disabled"))
-	g.Expect(result.Message).To(ContainSubstring("ready for RHOAI 3.x upgrade"))
-	g.Expect(result.Details).To(HaveKeyWithValue("kserveManagementState", "Managed"))
-	g.Expect(result.Details).To(HaveKeyWithValue("servingManagementState", "Removed"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  And(ContainSubstring("serverless mode is disabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
+		"Details": And(
+			HaveKeyWithValue("kserveManagementState", "Managed"),
+			HaveKeyWithValue("servingManagementState", "Removed"),
+		),
+	}))
 }
 
 func TestKServeServerlessRemovalCheck_Metadata(t *testing.T) {

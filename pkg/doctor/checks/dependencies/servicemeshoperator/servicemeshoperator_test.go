@@ -46,12 +46,15 @@ func TestServiceMeshOperator2Check_NotInstalled(t *testing.T) {
 	result, err := serviceMeshOperator2Check.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("Not installed"))
-	g.Expect(result.Message).To(ContainSubstring("ready for RHOAI 3.x"))
-	g.Expect(result.Details).To(HaveKeyWithValue("installed", false))
-	g.Expect(result.Details).To(HaveKeyWithValue("version", "Not installed"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  And(ContainSubstring("Not installed"), ContainSubstring("ready for RHOAI 3.x")),
+		"Details": And(
+			HaveKeyWithValue("installed", false),
+			HaveKeyWithValue("version", "Not installed"),
+		),
+	}))
 }
 
 func TestServiceMeshOperator2Check_InstalledBlocking(t *testing.T) {
@@ -90,14 +93,16 @@ func TestServiceMeshOperator2Check_InstalledBlocking(t *testing.T) {
 	result, err := serviceMeshOperator2Check.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusFail))
-	g.Expect(result.Severity).ToNot(BeNil())
-	g.Expect(*result.Severity).To(Equal(check.SeverityCritical))
-	g.Expect(result.Message).To(ContainSubstring("not supported in RHOAI 3.x"))
-	g.Expect(result.Message).To(ContainSubstring("servicemeshoperator3"))
-	g.Expect(result.Details).To(HaveKeyWithValue("installed", true))
-	g.Expect(result.Details).To(HaveKeyWithValue("version", "servicemeshoperator.v2.5.0"))
-	g.Expect(result.Details).To(HaveKeyWithValue("targetVersion", "3.0.0"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusFail),
+		"Severity": PointTo(Equal(check.SeverityCritical)),
+		"Message":  And(ContainSubstring("not supported in RHOAI 3.x"), ContainSubstring("servicemeshoperator3")),
+		"Details": And(
+			HaveKeyWithValue("installed", true),
+			HaveKeyWithValue("version", "servicemeshoperator.v2.5.0"),
+			HaveKeyWithValue("targetVersion", "3.0.0"),
+		),
+	}))
 }
 
 func TestServiceMeshOperator2Check_Metadata(t *testing.T) {
