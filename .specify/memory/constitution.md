@@ -23,12 +23,10 @@ Templates Requiring Updates:
   ✅ .specify/templates/agent-file-template.md - Generic template, intentionally not constitution-specific
   ✅ .specify/templates/checklist-template.md - Generic template, intentionally not constitution-specific
 Follow-up TODOs:
-  ⚠ Refactor existing checks to follow package isolation pattern:
-    - Move pkg/doctor/checks/components/dashboard.go to pkg/doctor/checks/components/dashboard/dashboard.go
-    - Move pkg/doctor/checks/components/modelmesh_removal.go to pkg/doctor/checks/components/modelmesh/modelmesh.go
-    - Move pkg/doctor/checks/components/kserve_serverless_removal.go to pkg/doctor/checks/components/kserve/kserve.go
-    - Update all test files accordingly
-    - Update imports across codebase
+  ✅ Refactor existing checks to follow package isolation pattern (Already completed):
+    - All checks in isolated packages (components/{codeflare,kserve,kueue,modelmesh})
+    - All test files co-located with implementations
+    - All imports updated across codebase
   ✅ Move MockCheck from selector_test.go to pkg/util/test/mocks/check.go (2025-12-08)
   ✅ Refactor inline mocks to use testify/mock (2025-12-08)
   ✅ Refactor pkg/cmd/doctor/ structure per Principle XI (2025-12-08)
