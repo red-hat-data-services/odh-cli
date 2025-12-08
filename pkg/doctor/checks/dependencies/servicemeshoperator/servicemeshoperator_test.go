@@ -16,6 +16,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 //nolint:gochecknoglobals

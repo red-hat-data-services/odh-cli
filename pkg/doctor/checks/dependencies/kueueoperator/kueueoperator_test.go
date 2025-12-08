@@ -16,6 +16,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 //nolint:gochecknoglobals
@@ -45,11 +46,15 @@ func TestKueueOperatorCheck_NotInstalled(t *testing.T) {
 	result, err := kueueOperatorCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("Not installed"))
-	g.Expect(result.Details).To(HaveKeyWithValue("installed", false))
-	g.Expect(result.Details).To(HaveKeyWithValue("version", "Not installed"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  ContainSubstring("Not installed"),
+		"Details": And(
+			HaveKeyWithValue("installed", false),
+			HaveKeyWithValue("version", "Not installed"),
+		),
+	}))
 }
 
 func TestKueueOperatorCheck_Installed(t *testing.T) {
@@ -88,11 +93,15 @@ func TestKueueOperatorCheck_Installed(t *testing.T) {
 	result, err := kueueOperatorCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result).To(HaveField("Status", check.StatusPass))
-	g.Expect(result.Severity).To(BeNil())
-	g.Expect(result.Message).To(ContainSubstring("kueue-operator.v0.6.0"))
-	g.Expect(result.Details).To(HaveKeyWithValue("installed", true))
-	g.Expect(result.Details).To(HaveKeyWithValue("version", "kueue-operator.v0.6.0"))
+	g.Expect(*result).To(MatchFields(IgnoreExtras, Fields{
+		"Status":   Equal(check.StatusPass),
+		"Severity": BeNil(),
+		"Message":  ContainSubstring("kueue-operator.v0.6.0"),
+		"Details": And(
+			HaveKeyWithValue("installed", true),
+			HaveKeyWithValue("version", "kueue-operator.v0.6.0"),
+		),
+	}))
 }
 
 func TestKueueOperatorCheck_Metadata(t *testing.T) {
