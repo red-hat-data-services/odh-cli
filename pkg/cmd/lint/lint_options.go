@@ -2,6 +2,8 @@ package lint
 
 import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
+
+	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
 )
 
 // CommandOptions contains configuration for creating a Command using struct-based initialization.
@@ -42,9 +44,7 @@ func WithStreams(streams genericiooptions.IOStreams) CommandOption {
 			c.SharedOptions = NewSharedOptions(streams)
 		} else {
 			// Update existing SharedOptions streams
-			c.IO.In = streams.In
-			c.IO.Out = streams.Out
-			c.IO.ErrOut = streams.ErrOut
+			c.IO = iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut)
 		}
 	}
 }

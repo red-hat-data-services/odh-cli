@@ -9,6 +9,16 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/cmd/lint"
+
+	// Import check packages to trigger init() auto-registration
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/codeflare"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kueue"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/modelmesh"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/certmanager"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/kueueoperator"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/servicemeshoperator"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/services/servicemesh"
 )
 
 const (
@@ -81,23 +91,35 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 	command.ConfigFlags = flags
 
 	cmd := &cobra.Command{
-		Use:     cmdName,
-		Short:   cmdShort,
-		Long:    cmdLong,
-		Example: cmdExample,
+		Use:           cmdName,
+		Short:         cmdShort,
+		Long:          cmdLong,
+		Example:       cmdExample,
+		SilenceUsage:  true,
+		SilenceErrors: true, // We'll handle error output manually based on --quiet flag
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Complete phase
 			if err := command.Complete(); err != nil {
-				return fmt.Errorf("completing lint command: %w", err)
+				if command.Verbose {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+				}
+				return err
 			}
 
 			// Validate phase
 			if err := command.Validate(); err != nil {
-				return fmt.Errorf("validating lint command: %w", err)
+				if command.Verbose {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+				}
+				return err
 			}
 
 			// Run phase
-			return command.Run(cmd.Context())
+			err := command.Run(cmd.Context())
+			if err != nil && command.Verbose {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+			}
+			return err
 		},
 	}
 

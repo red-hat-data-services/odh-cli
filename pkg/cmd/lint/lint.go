@@ -14,6 +14,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/doctor/discovery"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/version"
+	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
 )
 
 // Verify Command implements cmd.Command interface at compile time.
@@ -30,6 +31,9 @@ type Command struct {
 
 	// parsedTargetVersion is the parsed semver version (upgrade mode only)
 	parsedTargetVersion *semver.Version
+
+	// currentClusterVersion stores the detected cluster version (populated during Run)
+	currentClusterVersion string
 }
 
 // NewCommand creates a new Command with defaults.
@@ -76,6 +80,8 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 		"Exit with non-zero code if Critical findings detected")
 	fs.BoolVar(&c.FailOnWarning, "fail-on-warning", false,
 		"Exit with non-zero code if Warning findings detected")
+	fs.BoolVarP(&c.Verbose, "verbose", "v", false,
+		"Show progress messages (default: quiet, only show results)")
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout,
 		"Maximum duration for command execution (e.g., 5m, 10m)")
 }
@@ -85,6 +91,11 @@ func (c *Command) Complete() error {
 	// Complete shared options (creates client)
 	if err := c.SharedOptions.Complete(); err != nil {
 		return fmt.Errorf("completing shared options: %w", err)
+	}
+
+	// Wrap IO with QuietWrapper if NOT in verbose mode (default is quiet)
+	if !c.Verbose {
+		c.IO = iostreams.NewQuietWrapper(c.IO)
 	}
 
 	// Parse target version if provided (upgrade mode)
@@ -122,6 +133,9 @@ func (c *Command) Run(ctx context.Context) error {
 		return fmt.Errorf("detecting cluster version: %w", err)
 	}
 
+	// Store current version for output formatting
+	c.currentClusterVersion = currentVersion.Version
+
 	// Determine mode: upgrade (with --target-version) or lint (without --target-version)
 	if c.TargetVersion != "" {
 		return c.runUpgradeMode(ctx, currentVersion)
@@ -132,29 +146,29 @@ func (c *Command) Run(ctx context.Context) error {
 
 // runLintMode validates current cluster state.
 func (c *Command) runLintMode(ctx context.Context, clusterVersion *version.ClusterVersion) error {
-	c.IO.Fprintf("Detected OpenShift AI version: %s\n", clusterVersion)
+	c.IO.Errorf("Detected OpenShift AI version: %s\n", clusterVersion)
 
 	// Discover components and services
-	c.IO.Fprintf("Discovering OpenShift AI components and services...")
+	c.IO.Errorf("Discovering OpenShift AI components and services...")
 	components, err := discovery.DiscoverComponentsAndServices(ctx, c.Client)
 	if err != nil {
 		return fmt.Errorf("discovering components and services: %w", err)
 	}
-	c.IO.Fprintf("Found %d API groups", len(components))
+	c.IO.Errorf("Found %d API groups", len(components))
 	for _, comp := range components {
-		c.IO.Fprintf("  - %s/%s (%d resources)", comp.APIGroup, comp.Version, len(comp.Resources))
+		c.IO.Errorf("  - %s/%s (%d resources)", comp.APIGroup, comp.Version, len(comp.Resources))
 	}
 	c.IO.Fprintln()
 
 	// Discover workloads
-	c.IO.Fprintf("Discovering workload custom resources...")
+	c.IO.Errorf("Discovering workload custom resources...")
 	workloads, err := discovery.DiscoverWorkloads(ctx, c.Client)
 	if err != nil {
 		return fmt.Errorf("discovering workloads: %w", err)
 	}
-	c.IO.Fprintf("Found %d workload types", len(workloads))
+	c.IO.Errorf("Found %d workload types", len(workloads))
 	for _, gvr := range workloads {
-		c.IO.Fprintf("  - %s/%s %s", gvr.Group, gvr.Version, gvr.Resource)
+		c.IO.Errorf("  - %s/%s %s", gvr.Group, gvr.Version, gvr.Resource)
 	}
 	c.IO.Fprintln()
 
@@ -162,7 +176,7 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *version.Clust
 	registry := check.GetGlobalRegistry()
 
 	// Execute component and service checks (Resource: nil)
-	c.IO.Fprintf("Running component and service checks...")
+	c.IO.Errorf("Running component and service checks...")
 	componentTarget := &check.CheckTarget{
 		Client:         c.Client,
 		CurrentVersion: clusterVersion, // For lint mode, current = target
@@ -197,7 +211,7 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *version.Clust
 	}
 
 	// Execute workload checks for each discovered workload instance
-	c.IO.Fprintf("Running workload checks...")
+	c.IO.Errorf("Running workload checks...")
 	var workloadResults []check.CheckExecution
 
 	for _, gvr := range workloads {
@@ -250,8 +264,8 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *version.Clust
 
 // runUpgradeMode assesses upgrade readiness for a target version.
 func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *version.ClusterVersion) error {
-	c.IO.Fprintf("Current OpenShift AI version: %s", currentVersion)
-	c.IO.Fprintf("Target OpenShift AI version: %s\n", c.TargetVersion)
+	c.IO.Errorf("Current OpenShift AI version: %s", currentVersion)
+	c.IO.Errorf("Target OpenShift AI version: %s\n", c.TargetVersion)
 
 	// Parse current version for comparison
 	currentVer, err := semver.Parse(currentVersion.Version)
@@ -267,13 +281,13 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *version.Cl
 
 	// Check if already at target version
 	if c.parsedTargetVersion.EQ(currentVer) {
-		c.IO.Fprintf("Cluster is already at target version %s", c.TargetVersion)
-		c.IO.Fprintf("No upgrade necessary")
+		c.IO.Errorf("Cluster is already at target version %s", c.TargetVersion)
+		c.IO.Errorf("No upgrade necessary")
 
 		return nil
 	}
 
-	c.IO.Fprintf("Assessing upgrade readiness: %s → %s\n", currentVersion.Version, c.TargetVersion)
+	c.IO.Errorf("Assessing upgrade readiness: %s → %s\n", currentVersion.Version, c.TargetVersion)
 
 	// Get the global check registry
 	registry := check.GetGlobalRegistry()
@@ -287,7 +301,7 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *version.Cl
 	}
 
 	// Execute checks using target version for applicability filtering
-	c.IO.Fprintf("Running upgrade compatibility checks...")
+	c.IO.Errorf("Running upgrade compatibility checks...")
 	executor := check.NewExecutor(registry)
 
 	// Create check target with BOTH current and target versions for upgrade checks
@@ -331,9 +345,9 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *version.Cl
 	}
 
 	if blockingIssues > 0 {
-		c.IO.Fprintf("\n⚠️  Recommendation: Address %d blocking issue(s) before upgrading", blockingIssues)
+		c.IO.Errorf("\n⚠️  Recommendation: Address %d blocking issue(s) before upgrading", blockingIssues)
 	} else {
-		c.IO.Fprintf("\n✅ Cluster is ready for upgrade to %s", c.TargetVersion)
+		c.IO.Errorf("\n✅ Cluster is ready for upgrade to %s", c.TargetVersion)
 	}
 
 	// Determine exit code based on fail-on flags
@@ -375,17 +389,23 @@ func (c *Command) determineExitCode(resultsByCategory map[check.CheckCategory][]
 
 // formatAndOutputResults formats and outputs check results based on the output format.
 func (c *Command) formatAndOutputResults(resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
+	clusterVer := &c.currentClusterVersion
+	var targetVer *string
+	if c.TargetVersion != "" {
+		targetVer = &c.TargetVersion
+	}
+
 	switch c.OutputFormat {
 	case OutputFormatTable:
 		return c.outputTable(resultsByCategory)
 	case OutputFormatJSON:
-		if err := OutputJSON(c.IO.Out, resultsByCategory); err != nil {
+		if err := OutputJSON(c.IO.Out(), resultsByCategory, clusterVer, targetVer); err != nil {
 			return fmt.Errorf("outputting JSON: %w", err)
 		}
 
 		return nil
 	case OutputFormatYAML:
-		if err := OutputYAML(c.IO.Out, resultsByCategory); err != nil {
+		if err := OutputYAML(c.IO.Out(), resultsByCategory, clusterVer, targetVer); err != nil {
 			return fmt.Errorf("outputting YAML: %w", err)
 		}
 
@@ -401,7 +421,7 @@ func (c *Command) outputTable(resultsByCategory map[check.CheckCategory][]check.
 	c.IO.Fprintln("Check Results:")
 	c.IO.Fprintln("==============")
 
-	if err := OutputTable(c.IO.Out, resultsByCategory); err != nil {
+	if err := OutputTable(c.IO.Out(), resultsByCategory); err != nil {
 		return fmt.Errorf("outputting table: %w", err)
 	}
 
@@ -410,17 +430,20 @@ func (c *Command) outputTable(resultsByCategory map[check.CheckCategory][]check.
 
 // formatAndOutputUpgradeResults formats upgrade assessment results.
 func (c *Command) formatAndOutputUpgradeResults(currentVer string, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
+	clusterVer := &c.currentClusterVersion
+	targetVer := &c.TargetVersion
+
 	switch c.OutputFormat {
 	case OutputFormatTable:
 		return c.outputUpgradeTable(currentVer, resultsByCategory)
 	case OutputFormatJSON:
-		if err := OutputJSON(c.IO.Out, resultsByCategory); err != nil {
+		if err := OutputJSON(c.IO.Out(), resultsByCategory, clusterVer, targetVer); err != nil {
 			return fmt.Errorf("outputting JSON: %w", err)
 		}
 
 		return nil
 	case OutputFormatYAML:
-		if err := OutputYAML(c.IO.Out, resultsByCategory); err != nil {
+		if err := OutputYAML(c.IO.Out(), resultsByCategory, clusterVer, targetVer); err != nil {
 			return fmt.Errorf("outputting YAML: %w", err)
 		}
 
@@ -433,11 +456,11 @@ func (c *Command) formatAndOutputUpgradeResults(currentVer string, resultsByCate
 // outputUpgradeTable outputs upgrade results in table format with header.
 func (c *Command) outputUpgradeTable(currentVer string, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
 	c.IO.Fprintln()
-	c.IO.Fprintf("UPGRADE READINESS: %s → %s", currentVer, c.TargetVersion)
-	c.IO.Fprintln("=============================================================")
+	c.IO.Errorf("UPGRADE READINESS: %s → %s", currentVer, c.TargetVersion)
+	c.IO.Errorf("=============================================================")
 
 	// Reuse the lint table output logic
-	if err := OutputTable(c.IO.Out, resultsByCategory); err != nil {
+	if err := OutputTable(c.IO.Out(), resultsByCategory); err != nil {
 		return fmt.Errorf("outputting table: %w", err)
 	}
 

@@ -8,12 +8,16 @@ import (
 	"path"
 	"time"
 
+	"github.com/fatih/color"
+	"github.com/olekukonko/tablewriter"
+	"github.com/olekukonko/tablewriter/tw"
 	"sigs.k8s.io/yaml"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	"github.com/lburgazzoli/odh-cli/pkg/printer/table"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
 )
@@ -89,7 +93,7 @@ func (m MinimumSeverity) ShouldInclude(severity *check.Severity) bool {
 // SharedOptions contains options common to all doctor subcommands.
 type SharedOptions struct {
 	// IO provides structured access to stdin, stdout, stderr with convenience methods
-	IO *iostreams.IOStreams
+	IO iostreams.Interface
 
 	// ConfigFlags provides access to kubeconfig and context
 	ConfigFlags *genericclioptions.ConfigFlags
@@ -109,6 +113,9 @@ type SharedOptions struct {
 	// FailOnWarning exits with non-zero code if warning findings detected
 	FailOnWarning bool
 
+	// Verbose enables progress messages (default: false, quiet by default)
+	Verbose bool
+
 	// Timeout is the maximum duration for command execution
 	Timeout time.Duration
 
@@ -126,11 +133,7 @@ func NewSharedOptions(streams genericiooptions.IOStreams) *SharedOptions {
 		FailOnCritical: true,               // Exit with error on critical findings (default)
 		FailOnWarning:  false,              // Don't exit on warnings by default
 		Timeout:        DefaultTimeout,     // Default timeout to prevent hanging on slow clusters
-		IO: &iostreams.IOStreams{
-			In:     streams.In,
-			Out:    streams.Out,
-			ErrOut: streams.ErrOut,
-		},
+		IO:             iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
 	}
 }
 
@@ -209,13 +212,24 @@ type CheckResultOutput struct {
 	Details     map[string]any `json:"details,omitempty"     yaml:"details,omitempty"`
 }
 
+// CheckResultTableRow represents a single check result row for table output.
+type CheckResultTableRow struct {
+	Status   string
+	Category string
+	Check    string
+	Severity string
+	Message  string
+}
+
 // LintOutput represents the full lint output for JSON/YAML.
 type LintOutput struct {
-	Components   []CheckResultOutput `json:"components"   yaml:"components"`
-	Services     []CheckResultOutput `json:"services"     yaml:"services"`
-	Dependencies []CheckResultOutput `json:"dependencies" yaml:"dependencies"`
-	Workloads    []CheckResultOutput `json:"workloads"    yaml:"workloads"`
-	Summary      struct {
+	ClusterVersion *string             `json:"clusterVersion,omitempty" yaml:"clusterVersion,omitempty"`
+	TargetVersion  *string             `json:"targetVersion,omitempty"  yaml:"targetVersion,omitempty"`
+	Components     []CheckResultOutput `json:"components"               yaml:"components"`
+	Services       []CheckResultOutput `json:"services"                 yaml:"services"`
+	Dependencies   []CheckResultOutput `json:"dependencies"             yaml:"dependencies"`
+	Workloads      []CheckResultOutput `json:"workloads"                yaml:"workloads"`
+	Summary        struct {
 		Total  int `json:"total"  yaml:"total"`
 		Passed int `json:"passed" yaml:"passed"`
 		Failed int `json:"failed" yaml:"failed"`
@@ -261,37 +275,72 @@ func OutputTable(out io.Writer, resultsByCategory map[check.CheckCategory][]chec
 	totalPassed := 0
 	totalFailed := 0
 
+	// Pre-compute color formatters
+	var (
+		statusPass   = color.New(color.FgGreen).Sprint("✓")
+		statusFail   = color.New(color.FgRed).Sprint("✗")
+		severityCrit = color.New(color.FgRed).Sprint(string(check.SeverityCritical))
+		severityWarn = color.New(color.FgYellow).Sprint(string(check.SeverityWarning))
+		severityInfo = color.New(color.FgCyan).Sprint(string(check.SeverityInfo))
+	)
+
+	// Create single table renderer for all results
+	renderer := table.NewRenderer[CheckResultTableRow](
+		table.WithWriter[CheckResultTableRow](out),
+		table.WithHeaders[CheckResultTableRow]("STATUS", "CATEGORY", "CHECK", "SEVERITY", "MESSAGE"),
+		table.WithTableOptions[CheckResultTableRow](tablewriter.WithHeaderAlignment(tw.AlignLeft)),
+	)
+
+	// Append all results to single table
 	for _, category := range categories {
 		results := resultsByCategory[category]
-		if len(results) == 0 {
-			continue
-		}
-
-		_, _ = fmt.Fprintf(out, "\n%s Checks:\n", category)
-		_, _ = fmt.Fprintln(out, "---")
-
 		for _, exec := range results {
 			totalChecks++
 
-			status := "✓"
+			var status string
 			if exec.Result.IsFailing() {
-				status = "✗"
+				status = statusFail
 				totalFailed++
 			} else {
+				status = statusPass
 				totalPassed++
 			}
 
-			severity := ""
+			var severity string
 			if exec.Result.Severity != nil {
-				severity = fmt.Sprintf("[%s] ", *exec.Result.Severity)
+				switch *exec.Result.Severity {
+				case check.SeverityCritical:
+					severity = severityCrit
+				case check.SeverityWarning:
+					severity = severityWarn
+				case check.SeverityInfo:
+					severity = severityInfo
+				default:
+					severity = string(*exec.Result.Severity)
+				}
 			}
 
-			_, _ = fmt.Fprintf(out, "%s %s %s- %s\n", status, exec.Check.Name(), severity, exec.Result.Message)
-
+			message := exec.Result.Message
 			if exec.Result.Remediation != "" && exec.Result.IsFailing() {
-				_, _ = fmt.Fprintf(out, "  Remediation: %s\n", exec.Result.Remediation)
+				message = fmt.Sprintf("%s\n  → %s", exec.Result.Message, exec.Result.Remediation)
+			}
+
+			row := CheckResultTableRow{
+				Status:   status,
+				Category: string(category),
+				Check:    exec.Check.Name(),
+				Severity: severity,
+				Message:  message,
+			}
+
+			if err := renderer.Append(row); err != nil {
+				return fmt.Errorf("appending table row: %w", err)
 			}
 		}
+	}
+
+	if err := renderer.Render(); err != nil {
+		return fmt.Errorf("rendering table: %w", err)
 	}
 
 	_, _ = fmt.Fprintln(out)
@@ -302,8 +351,8 @@ func OutputTable(out io.Writer, resultsByCategory map[check.CheckCategory][]chec
 }
 
 // OutputJSON is a shared function for outputting check results in JSON format.
-func OutputJSON(out io.Writer, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
-	output := ConvertToOutputFormat(resultsByCategory)
+func OutputJSON(out io.Writer, resultsByCategory map[check.CheckCategory][]check.CheckExecution, clusterVersion *string, targetVersion *string) error {
+	output := ConvertToOutputFormat(resultsByCategory, clusterVersion, targetVersion)
 
 	encoder := json.NewEncoder(out)
 	encoder.SetIndent("", "  ")
@@ -316,8 +365,8 @@ func OutputJSON(out io.Writer, resultsByCategory map[check.CheckCategory][]check
 }
 
 // OutputYAML is a shared function for outputting check results in YAML format.
-func OutputYAML(out io.Writer, resultsByCategory map[check.CheckCategory][]check.CheckExecution) error {
-	output := ConvertToOutputFormat(resultsByCategory)
+func OutputYAML(out io.Writer, resultsByCategory map[check.CheckCategory][]check.CheckExecution, clusterVersion *string, targetVersion *string) error {
+	output := ConvertToOutputFormat(resultsByCategory, clusterVersion, targetVersion)
 
 	yamlBytes, err := yaml.Marshal(output)
 	if err != nil {
@@ -330,12 +379,14 @@ func OutputYAML(out io.Writer, resultsByCategory map[check.CheckCategory][]check
 }
 
 // ConvertToOutputFormat converts check executions to output format.
-func ConvertToOutputFormat(resultsByCategory map[check.CheckCategory][]check.CheckExecution) *LintOutput {
+func ConvertToOutputFormat(resultsByCategory map[check.CheckCategory][]check.CheckExecution, clusterVersion *string, targetVersion *string) *LintOutput {
 	output := &LintOutput{
-		Components:   make([]CheckResultOutput, 0),
-		Services:     make([]CheckResultOutput, 0),
-		Dependencies: make([]CheckResultOutput, 0),
-		Workloads:    make([]CheckResultOutput, 0),
+		ClusterVersion: clusterVersion,
+		TargetVersion:  targetVersion,
+		Components:     make([]CheckResultOutput, 0),
+		Services:       make([]CheckResultOutput, 0),
+		Dependencies:   make([]CheckResultOutput, 0),
+		Workloads:      make([]CheckResultOutput, 0),
 	}
 
 	for category, results := range resultsByCategory {
