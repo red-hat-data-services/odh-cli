@@ -60,8 +60,8 @@ func (c *RemovalCheck) CanApply(currentVersion *semver.Version, targetVersion *s
 func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
 	dr := result.New(
 		string(check.GroupComponent),
-		"modelmesh",
-		"removal",
+		check.ComponentModelMesh,
+		check.CheckTypeRemoval,
 		checkDescription,
 	)
 
@@ -69,7 +69,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) 
 	dsc, err := target.Client.GetDataScienceCluster(ctx)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(check.GroupComponent), "modelmesh", "removal", checkDescription), nil
+		return results.DataScienceClusterNotFound(string(check.GroupComponent), check.ComponentModelMesh, check.CheckTypeRemoval, checkDescription), nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
@@ -95,13 +95,13 @@ func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) 
 	}
 
 	// Add management state as annotation
-	dr.Annotations["component.opendatahub.io/management-state"] = managementStateStr
+	dr.Annotations[check.AnnotationComponentManagementState] = managementStateStr
 	if target.Version != nil {
-		dr.Annotations["check.opendatahub.io/target-version"] = target.Version.Version
+		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.Version
 	}
 
 	// Check if modelmesh is enabled (Managed or Unmanaged)
-	if managementStateStr == "Managed" || managementStateStr == "Unmanaged" {
+	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {
 		dr.Status.Conditions = []metav1.Condition{
 			check.NewCondition(
 				check.ConditionTypeCompatible,

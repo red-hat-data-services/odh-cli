@@ -60,8 +60,8 @@ func (c *RemovalCheck) CanApply(currentVersion *semver.Version, targetVersion *s
 func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
 	dr := result.New(
 		string(check.GroupService),
-		"servicemesh",
-		"removal",
+		check.ServiceServiceMesh,
+		check.CheckTypeRemoval,
 		checkDescription,
 	)
 
@@ -69,7 +69,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) 
 	dsci, err := target.Client.GetDSCInitialization(ctx)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DSCInitializationNotFound(string(check.GroupService), "servicemesh", "removal", checkDescription), nil
+		return results.DSCInitializationNotFound(string(check.GroupService), check.ServiceServiceMesh, check.CheckTypeRemoval, checkDescription), nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DSCInitialization: %w", err)
 	}
@@ -95,10 +95,10 @@ func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) 
 	}
 
 	// Add management state as annotation
-	dr.Annotations["service.opendatahub.io/management-state"] = managementStateStr
+	dr.Annotations[check.AnnotationServiceManagementState] = managementStateStr
 
 	// Check if servicemesh is enabled (Managed or Unmanaged)
-	if managementStateStr == "Managed" || managementStateStr == "Unmanaged" {
+	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {
 		dr.Status.Conditions = []metav1.Condition{
 			check.NewCondition(
 				check.ConditionTypeCompatible,

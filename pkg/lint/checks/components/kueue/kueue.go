@@ -60,8 +60,8 @@ func (c *ManagedRemovalCheck) CanApply(currentVersion *semver.Version, targetVer
 func (c *ManagedRemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
 	dr := result.New(
 		string(check.GroupComponent),
-		"kueue",
-		"managed-removal",
+		check.ComponentKueue,
+		check.CheckTypeManagedRemoval,
 		checkDescription,
 	)
 
@@ -69,7 +69,7 @@ func (c *ManagedRemovalCheck) Validate(ctx context.Context, target *check.CheckT
 	dsc, err := target.Client.GetDataScienceCluster(ctx)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(check.GroupComponent), "kueue", "managed-removal", checkDescription), nil
+		return results.DataScienceClusterNotFound(string(check.GroupComponent), check.ComponentKueue, check.CheckTypeManagedRemoval, checkDescription), nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
@@ -95,13 +95,13 @@ func (c *ManagedRemovalCheck) Validate(ctx context.Context, target *check.CheckT
 	}
 
 	// Add management state as annotation
-	dr.Annotations["component.opendatahub.io/management-state"] = managementStateStr
+	dr.Annotations[check.AnnotationComponentManagementState] = managementStateStr
 	if target.Version != nil {
-		dr.Annotations["check.opendatahub.io/target-version"] = target.Version.Version
+		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.Version
 	}
 
 	// Check if kueue is enabled (Managed or Unmanaged)
-	if managementStateStr == "Managed" || managementStateStr == "Unmanaged" {
+	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {
 		dr.Status.Conditions = []metav1.Condition{
 			check.NewCondition(
 				check.ConditionTypeCompatible,

@@ -52,7 +52,7 @@ func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*resul
 	res, err := operators.CheckOperatorPresence(
 		ctx,
 		target.Client,
-		"servicemesh-operator-v2",
+		check.DependencyServiceMeshOperatorV2,
 		operators.WithDescription(checkDescription),
 		operators.WithMatcher(func(subscription *unstructured.Unstructured) bool {
 			// Check if this is servicemeshoperator on v2.x channel

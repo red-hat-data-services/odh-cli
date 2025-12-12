@@ -60,8 +60,8 @@ func (c *ServerlessRemovalCheck) CanApply(currentVersion *semver.Version, target
 func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
 	dr := result.New(
 		string(check.GroupComponent),
-		"kserve",
-		"serverless-removal",
+		check.ComponentKServe,
+		check.CheckTypeServerlessRemoval,
 		checkDescription,
 	)
 
@@ -69,7 +69,7 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.Che
 	dsc, err := target.Client.GetDataScienceCluster(ctx)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(check.GroupComponent), "kserve", "serverless-removal", checkDescription), nil
+		return results.DataScienceClusterNotFound(string(check.GroupComponent), check.ComponentKServe, check.CheckTypeServerlessRemoval, checkDescription), nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
@@ -94,10 +94,10 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.Che
 		return dr, nil
 	}
 
-	dr.Annotations["component.opendatahub.io/kserve-management-state"] = kserveStateStr
+	dr.Annotations[check.AnnotationComponentKServeState] = kserveStateStr
 
 	// Only check serverless if KServe is Managed
-	if kserveStateStr != "Managed" {
+	if kserveStateStr != check.ManagementStateManaged {
 		// KServe not managed - serverless won't be enabled
 		dr.Status.Conditions = []metav1.Condition{
 			check.NewCondition(
@@ -131,13 +131,13 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.Che
 		return dr, nil
 	}
 
-	dr.Annotations["component.opendatahub.io/serving-management-state"] = servingStateStr
+	dr.Annotations[check.AnnotationComponentServingState] = servingStateStr
 	if target.Version != nil {
-		dr.Annotations["check.opendatahub.io/target-version"] = target.Version.Version
+		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.Version
 	}
 
 	// Check if serverless (serving) is enabled (Managed or Unmanaged)
-	if servingStateStr == "Managed" || servingStateStr == "Unmanaged" {
+	if servingStateStr == check.ManagementStateManaged || servingStateStr == check.ManagementStateUnmanaged {
 		dr.Status.Conditions = []metav1.Condition{
 			check.NewCondition(
 				check.ConditionTypeCompatible,
