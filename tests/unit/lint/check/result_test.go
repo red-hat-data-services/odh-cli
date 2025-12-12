@@ -24,11 +24,11 @@ func TestNewDiagnosticResult_ValidCreation(t *testing.T) {
 	)
 
 	g.Expect(dr).ToNot(BeNil())
-	g.Expect(dr.Metadata.Group).To(Equal("components"))
-	g.Expect(dr.Metadata.Kind).To(Equal("kserve"))
-	g.Expect(dr.Metadata.Name).To(Equal("version-compatibility"))
+	g.Expect(dr.Group).To(Equal("components"))
+	g.Expect(dr.Kind).To(Equal("kserve"))
+	g.Expect(dr.Name).To(Equal("version-compatibility"))
 	g.Expect(dr.Spec.Description).To(Equal("Validates KServe version compatibility"))
-	g.Expect(dr.Metadata.Annotations).ToNot(BeNil())
+	g.Expect(dr.Annotations).ToNot(BeNil())
 	g.Expect(dr.Status.Conditions).ToNot(BeNil())
 	g.Expect(dr.Status.Conditions).To(BeEmpty())
 }
@@ -56,12 +56,12 @@ func TestDiagnosticResult_WithAnnotations(t *testing.T) {
 		"Validates KServe version compatibility",
 	)
 
-	dr.Metadata.Annotations["check.opendatahub.io/source-version"] = "2.15"
-	dr.Metadata.Annotations["check.opendatahub.io/target-version"] = "3.0"
+	dr.Annotations["check.opendatahub.io/source-version"] = "2.15"
+	dr.Annotations["check.opendatahub.io/target-version"] = "3.0"
 
-	g.Expect(dr.Metadata.Annotations).To(HaveLen(2))
-	g.Expect(dr.Metadata.Annotations["check.opendatahub.io/source-version"]).To(Equal("2.15"))
-	g.Expect(dr.Metadata.Annotations["check.opendatahub.io/target-version"]).To(Equal("3.0"))
+	g.Expect(dr.Annotations).To(HaveLen(2))
+	g.Expect(dr.Annotations["check.opendatahub.io/source-version"]).To(Equal("2.15"))
+	g.Expect(dr.Annotations["check.opendatahub.io/target-version"]).To(Equal("3.0"))
 }
 
 func TestDiagnosticResult_WithSingleCondition(t *testing.T) {
@@ -170,7 +170,7 @@ func TestDiagnosticResult_Validate_EmptyGroup(t *testing.T) {
 
 	err := dr.Validate()
 	g.Expect(err).To(HaveOccurred())
-	g.Expect(err.Error()).To(ContainSubstring("metadata.group must not be empty"))
+	g.Expect(err.Error()).To(ContainSubstring("group must not be empty"))
 }
 
 func TestDiagnosticResult_Validate_EmptyKind(t *testing.T) {
@@ -193,7 +193,7 @@ func TestDiagnosticResult_Validate_EmptyKind(t *testing.T) {
 
 	err := dr.Validate()
 	g.Expect(err).To(HaveOccurred())
-	g.Expect(err.Error()).To(ContainSubstring("metadata.kind must not be empty"))
+	g.Expect(err.Error()).To(ContainSubstring("kind must not be empty"))
 }
 
 func TestDiagnosticResult_Validate_EmptyName(t *testing.T) {
@@ -216,7 +216,7 @@ func TestDiagnosticResult_Validate_EmptyName(t *testing.T) {
 
 	err := dr.Validate()
 	g.Expect(err).To(HaveOccurred())
-	g.Expect(err.Error()).To(ContainSubstring("metadata.name must not be empty"))
+	g.Expect(err.Error()).To(ContainSubstring("name must not be empty"))
 }
 
 func TestDiagnosticResult_Validate_EmptyConditions(t *testing.T) {
@@ -601,8 +601,8 @@ func TestMultipleConditions_ValidationSucceedsWithMultiple(t *testing.T) {
 	g.Expect(err).ToNot(HaveOccurred())
 }
 
-// T055: Test validation for malformed metadata.
-func TestDiagnosticMetadata_ValidateAnnotationFormat(t *testing.T) {
+// T055: Test validation for annotation format.
+func TestDiagnosticResult_ValidateAnnotationFormat(t *testing.T) {
 	g := NewWithT(t)
 
 	tests := []struct {
@@ -655,14 +655,17 @@ func TestDiagnosticMetadata_ValidateAnnotationFormat(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			metadata := result.DiagnosticMetadata{
-				Group:       "components",
-				Kind:        "kserve",
-				Name:        "version",
-				Annotations: tt.annotations,
-			}
+			dr := result.New("components", "kserve", "version", "Test annotation validation")
+			dr.Annotations = tt.annotations
+			dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+				Type:               check.ConditionTypeValidated,
+				Status:             metav1.ConditionTrue,
+				Reason:             check.ReasonRequirementsMet,
+				Message:            "Test condition",
+				LastTransitionTime: metav1.Now(),
+			})
 
-			err := metadata.Validate()
+			err := dr.Validate()
 			if tt.shouldError {
 				g.Expect(err).To(HaveOccurred())
 				g.Expect(err.Error()).To(ContainSubstring(tt.errorMsg))
@@ -673,47 +676,53 @@ func TestDiagnosticMetadata_ValidateAnnotationFormat(t *testing.T) {
 	}
 }
 
-// T055: Test validation for empty metadata fields.
-func TestDiagnosticMetadata_ValidateRequiredFields(t *testing.T) {
+// T055: Test validation for required fields with annotations present.
+func TestDiagnosticResult_ValidateRequiredFieldsWithAnnotations(t *testing.T) {
 	g := NewWithT(t)
 
 	tests := []struct {
 		name     string
-		metadata result.DiagnosticMetadata
+		group    string
+		kind     string
+		drName   string
 		errorMsg string
 	}{
 		{
-			name: "missing group",
-			metadata: result.DiagnosticMetadata{
-				Group: "",
-				Kind:  "kserve",
-				Name:  "version",
-			},
-			errorMsg: "metadata.group must not be empty",
+			name:     "missing group",
+			group:    "",
+			kind:     "kserve",
+			drName:   "version",
+			errorMsg: "group must not be empty",
 		},
 		{
-			name: "missing kind",
-			metadata: result.DiagnosticMetadata{
-				Group: "components",
-				Kind:  "",
-				Name:  "version",
-			},
-			errorMsg: "metadata.kind must not be empty",
+			name:     "missing kind",
+			group:    "components",
+			kind:     "",
+			drName:   "version",
+			errorMsg: "kind must not be empty",
 		},
 		{
-			name: "missing name",
-			metadata: result.DiagnosticMetadata{
-				Group: "components",
-				Kind:  "kserve",
-				Name:  "",
-			},
-			errorMsg: "metadata.name must not be empty",
+			name:     "missing name",
+			group:    "components",
+			kind:     "kserve",
+			drName:   "",
+			errorMsg: "name must not be empty",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.metadata.Validate()
+			dr := result.New(tt.group, tt.kind, tt.drName, "Test validation")
+			dr.Annotations["valid.domain.io/key"] = "value"
+			dr.Status.Conditions = append(dr.Status.Conditions, metav1.Condition{
+				Type:               check.ConditionTypeValidated,
+				Status:             metav1.ConditionTrue,
+				Reason:             check.ReasonRequirementsMet,
+				Message:            "Test condition",
+				LastTransitionTime: metav1.Now(),
+			})
+
+			err := dr.Validate()
 			g.Expect(err).To(HaveOccurred())
 			g.Expect(err.Error()).To(Equal(tt.errorMsg))
 		})

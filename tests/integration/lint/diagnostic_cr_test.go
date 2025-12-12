@@ -81,11 +81,11 @@ func TestDiagnosticCR_EndToEndExecution(t *testing.T) {
 	dr := results[0].Result
 
 	// Verify Metadata (CR-like structure)
-	g.Expect(dr.Metadata.Group).To(Equal("test"))
-	g.Expect(dr.Metadata.Kind).To(Equal("integration"))
-	g.Expect(dr.Metadata.Name).To(Equal("e2e-test"))
-	g.Expect(dr.Metadata.Annotations).ToNot(BeNil())
-	g.Expect(dr.Metadata.Annotations).To(HaveKeyWithValue("test.opendatahub.io/purpose", "integration-testing"))
+	g.Expect(dr.Group).To(Equal("test"))
+	g.Expect(dr.Kind).To(Equal("integration"))
+	g.Expect(dr.Name).To(Equal("e2e-test"))
+	g.Expect(dr.Annotations).ToNot(BeNil())
+	g.Expect(dr.Annotations).To(HaveKeyWithValue("test.opendatahub.io/purpose", "integration-testing"))
 
 	// Verify Spec
 	g.Expect(dr.Spec.Description).To(ContainSubstring("Integration test"))
@@ -116,7 +116,7 @@ func TestDiagnosticCR_AnnotationValidation(t *testing.T) {
 
 	// Create DiagnosticResult with valid annotations
 	dr := result.New("component", "test", "annotation-test", "Test annotation validation")
-	dr.Metadata.Annotations = map[string]string{
+	dr.Annotations = map[string]string{
 		"opendatahub.io/version":    "2.25.0",
 		"test.example.com/check-id": "test-123",
 	}
@@ -135,12 +135,13 @@ func TestDiagnosticCR_AnnotationValidation(t *testing.T) {
 
 	// Create DiagnosticResult with invalid annotation key
 	drInvalid := result.New("component", "test", "invalid-annotation", "Test invalid annotation")
-	drInvalid.Metadata.Annotations = map[string]string{
+	drInvalid.Annotations = map[string]string{
 		"invalid-key": "value", // Missing domain/key format
 	}
 
-	// Should fail validation with invalid annotation key (no need for conditions)
-	err = drInvalid.Metadata.Validate()
+	// Should fail validation with invalid annotation key
+	// Note: Validation will fail on annotation format before checking conditions
+	err = drInvalid.Validate()
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(err.Error()).To(ContainSubstring("domain/key format"))
 }
@@ -177,7 +178,7 @@ func (c *testDiagnosticCheck) Validate(ctx context.Context, target *check.CheckT
 	)
 
 	// Add test annotations
-	dr.Metadata.Annotations["test.opendatahub.io/purpose"] = "integration-testing"
+	dr.Annotations["test.opendatahub.io/purpose"] = "integration-testing"
 
 	// Add multiple conditions to test multi-condition support
 	dr.Status.Conditions = []metav1.Condition{

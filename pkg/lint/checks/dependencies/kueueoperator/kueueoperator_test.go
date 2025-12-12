@@ -99,7 +99,7 @@ func TestKueueOperatorCheck_Installed(t *testing.T) {
 		"Reason":  Equal(check.ReasonResourceFound),
 		"Message": ContainSubstring("kueue-operator.v0.6.0"),
 	}))
-	g.Expect(result.Metadata.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "kueue-operator.v0.6.0"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "kueue-operator.v0.6.0"))
 }
 
 func TestKueueOperatorCheck_Metadata(t *testing.T) {

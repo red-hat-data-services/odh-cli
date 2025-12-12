@@ -153,7 +153,7 @@ func TestCodeFlareRemovalCheck_ManagedBlocking(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": And(ContainSubstring("enabled"), ContainSubstring("removed in RHOAI 3.x")),
 	}))
-	g.Expect(result.Metadata.Annotations).To(And(
+	g.Expect(result.Annotations).To(And(
 		HaveKeyWithValue("component.opendatahub.io/management-state", "Managed"),
 		HaveKeyWithValue("check.opendatahub.io/target-version", "3.0.0"),
 	))
@@ -206,7 +206,7 @@ func TestCodeFlareRemovalCheck_UnmanagedBlocking(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("state: Unmanaged"),
 	}))
-	g.Expect(result.Metadata.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Unmanaged"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Unmanaged"))
 }
 
 func TestCodeFlareRemovalCheck_RemovedReady(t *testing.T) {
@@ -256,7 +256,7 @@ func TestCodeFlareRemovalCheck_RemovedReady(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": And(ContainSubstring("disabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
 	}))
-	g.Expect(result.Metadata.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Removed"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Removed"))
 }
 
 func TestCodeFlareRemovalCheck_Metadata(t *testing.T) {

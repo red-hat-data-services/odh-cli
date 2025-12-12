@@ -153,7 +153,7 @@ func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
 		"Reason":  Equal("ComponentNotManaged"),
 		"Message": ContainSubstring("not managed"),
 	}))
-	g.Expect(result.Metadata.Annotations).To(HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Removed"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Removed"))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
@@ -204,7 +204,7 @@ func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("serverless mode is not configured"),
 	}))
-	g.Expect(result.Metadata.Annotations).To(HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Managed"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Managed"))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
@@ -257,7 +257,7 @@ func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": And(ContainSubstring("serverless mode is enabled"), ContainSubstring("removed in RHOAI 3.x")),
 	}))
-	g.Expect(result.Metadata.Annotations).To(And(
+	g.Expect(result.Annotations).To(And(
 		HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Managed"),
 		HaveKeyWithValue("component.opendatahub.io/serving-management-state", "Managed"),
 		HaveKeyWithValue("check.opendatahub.io/target-version", "3.0.0"),
@@ -314,7 +314,7 @@ func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) 
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("state: Unmanaged"),
 	}))
-	g.Expect(result.Metadata.Annotations).To(HaveKeyWithValue("component.opendatahub.io/serving-management-state", "Unmanaged"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/serving-management-state", "Unmanaged"))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
@@ -367,7 +367,7 @@ func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": And(ContainSubstring("serverless mode is disabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
 	}))
-	g.Expect(result.Metadata.Annotations).To(And(
+	g.Expect(result.Annotations).To(And(
 		HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Managed"),
 		HaveKeyWithValue("component.opendatahub.io/serving-management-state", "Removed"),
 	))

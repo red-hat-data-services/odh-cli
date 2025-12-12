@@ -96,7 +96,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) 
 	}
 
 	// Add management state as annotation
-	dr.Metadata.Annotations["service.opendatahub.io/management-state"] = managementStateStr
+	dr.Annotations["service.opendatahub.io/management-state"] = managementStateStr
 
 	// Check if servicemesh is enabled (Managed or Unmanaged)
 	if managementStateStr == "Managed" || managementStateStr == "Unmanaged" {

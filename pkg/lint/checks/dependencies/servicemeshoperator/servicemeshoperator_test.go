@@ -102,7 +102,7 @@ func TestServiceMeshOperator2Check_InstalledBlocking(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": And(ContainSubstring("installed but RHOAI 3.x requires v3")),
 	}))
-	g.Expect(result.Metadata.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "servicemeshoperator.v2.5.0"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "servicemeshoperator.v2.5.0"))
 }
 
 func TestServiceMeshOperator2Check_Metadata(t *testing.T) {

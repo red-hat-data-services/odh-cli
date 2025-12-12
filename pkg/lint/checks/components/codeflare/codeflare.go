@@ -96,9 +96,9 @@ func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) 
 	}
 
 	// Add management state as annotation
-	dr.Metadata.Annotations["component.opendatahub.io/management-state"] = managementStateStr
+	dr.Annotations["component.opendatahub.io/management-state"] = managementStateStr
 	if target.Version != nil {
-		dr.Metadata.Annotations["check.opendatahub.io/target-version"] = target.Version.Version
+		dr.Annotations["check.opendatahub.io/target-version"] = target.Version.Version
 	}
 
 	// Check if codeflare is enabled (Managed or Unmanaged)

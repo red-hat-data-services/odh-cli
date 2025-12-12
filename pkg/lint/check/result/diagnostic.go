@@ -10,9 +10,9 @@ import (
 
 const (
 	// Validation error messages.
-	errMsgGroupEmpty              = "metadata.group must not be empty"
-	errMsgKindEmpty               = "metadata.kind must not be empty"
-	errMsgNameEmpty               = "metadata.name must not be empty"
+	errMsgGroupEmpty              = "group must not be empty"
+	errMsgKindEmpty               = "kind must not be empty"
+	errMsgNameEmpty               = "name must not be empty"
 	errMsgConditionsEmpty         = "status.conditions must contain at least one condition"
 	errMsgConditionTypeEmpty      = "condition with empty type found"
 	errMsgConditionReasonEmpty    = "condition %q has empty reason"
@@ -20,8 +20,20 @@ const (
 	errMsgAnnotationInvalidFormat = "annotation key %q must be in domain/key format (e.g., openshiftai.io/version)"
 )
 
-// DiagnosticMetadata contains CR-like metadata identifying the diagnostic target and check.
-type DiagnosticMetadata struct {
+// DiagnosticSpec describes what the check validates.
+type DiagnosticSpec struct {
+	// Description provides a detailed explanation of the check purpose and significance
+	Description string `json:"description" yaml:"description"`
+}
+
+// DiagnosticStatus contains the condition-based validation results.
+type DiagnosticStatus struct {
+	// Conditions is an array of validation conditions ordered by execution sequence
+	Conditions []metav1.Condition `json:"conditions" yaml:"conditions"`
+}
+
+// DiagnosticResult represents a diagnostic check result with flattened metadata fields.
+type DiagnosticResult struct {
 	// Group is the diagnostic target category (e.g., "components", "services", "workloads")
 	Group string `json:"group" yaml:"group"`
 
@@ -33,28 +45,12 @@ type DiagnosticMetadata struct {
 
 	// Annotations contains optional key-value metadata with domain-qualified keys
 	Annotations map[string]string `json:"annotations,omitempty" yaml:"annotations,omitempty"`
-}
 
-// Validate checks if the diagnostic metadata is valid.
-func (m *DiagnosticMetadata) Validate() error {
-	if m.Group == "" {
-		return errors.New(errMsgGroupEmpty)
-	}
-	if m.Kind == "" {
-		return errors.New(errMsgKindEmpty)
-	}
-	if m.Name == "" {
-		return errors.New(errMsgNameEmpty)
-	}
+	// Spec describes what the check validates
+	Spec DiagnosticSpec `json:"spec" yaml:"spec"`
 
-	// Validate annotation keys follow domain/key format
-	for key := range m.Annotations {
-		if !isValidAnnotationKey(key) {
-			return fmt.Errorf(errMsgAnnotationInvalidFormat, key)
-		}
-	}
-
-	return nil
+	// Status contains the condition-based validation results
+	Status DiagnosticStatus `json:"status" yaml:"status"`
 }
 
 // isValidAnnotationKey validates that an annotation key follows the domain/key format.
@@ -82,35 +78,24 @@ func isValidAnnotationKey(key string) bool {
 	return true
 }
 
-// DiagnosticSpec describes what the check validates.
-type DiagnosticSpec struct {
-	// Description provides a detailed explanation of the check purpose and significance
-	Description string `json:"description" yaml:"description"`
-}
-
-// DiagnosticStatus contains the condition-based validation results.
-type DiagnosticStatus struct {
-	// Conditions is an array of validation conditions ordered by execution sequence
-	Conditions []metav1.Condition `json:"conditions" yaml:"conditions"`
-}
-
-// DiagnosticResult represents a diagnostic check result following Kubernetes Custom Resource conventions.
-type DiagnosticResult struct {
-	// Metadata contains CR-like metadata identifying the diagnostic target and check
-	Metadata DiagnosticMetadata `json:"metadata" yaml:"metadata"`
-
-	// Spec describes what the check validates
-	Spec DiagnosticSpec `json:"spec" yaml:"spec"`
-
-	// Status contains the condition-based validation results
-	Status DiagnosticStatus `json:"status" yaml:"status"`
-}
-
 // Validate checks if the diagnostic result is valid.
 func (r *DiagnosticResult) Validate() error {
-	// Validate metadata using dedicated method
-	if err := r.Metadata.Validate(); err != nil {
-		return err
+	// Validate flattened metadata fields
+	if r.Group == "" {
+		return errors.New(errMsgGroupEmpty)
+	}
+	if r.Kind == "" {
+		return errors.New(errMsgKindEmpty)
+	}
+	if r.Name == "" {
+		return errors.New(errMsgNameEmpty)
+	}
+
+	// Validate annotation keys follow domain/key format
+	for key := range r.Annotations {
+		if !isValidAnnotationKey(key) {
+			return fmt.Errorf(errMsgAnnotationInvalidFormat, key)
+		}
 	}
 
 	// Validate conditions array
@@ -146,12 +131,10 @@ func New(
 	description string,
 ) *DiagnosticResult {
 	return &DiagnosticResult{
-		Metadata: DiagnosticMetadata{
-			Group:       group,
-			Kind:        kind,
-			Name:        name,
-			Annotations: make(map[string]string),
-		},
+		Group:       group,
+		Kind:        kind,
+		Name:        name,
+		Annotations: make(map[string]string),
 		Spec: DiagnosticSpec{
 			Description: description,
 		},
@@ -248,27 +231,18 @@ func (r *DiagnosticResult) GetStatusString() string {
 	return "Pass"
 }
 
-// DiagnosticResultListMetadata contains metadata for the list of diagnostic results.
-type DiagnosticResultListMetadata struct {
-	ClusterVersion *string `json:"clusterVersion,omitempty" yaml:"clusterVersion,omitempty"`
-	TargetVersion  *string `json:"targetVersion,omitempty"  yaml:"targetVersion,omitempty"`
-}
-
 // DiagnosticResultList represents a list of diagnostic results.
 type DiagnosticResultList struct {
-	Kind     string                       `json:"kind"     yaml:"kind"`
-	Metadata DiagnosticResultListMetadata `json:"metadata" yaml:"metadata"`
-	Items    []*DiagnosticResult          `json:"items"    yaml:"items"`
+	ClusterVersion *string             `json:"clusterVersion,omitempty" yaml:"clusterVersion,omitempty"`
+	TargetVersion  *string             `json:"targetVersion,omitempty"  yaml:"targetVersion,omitempty"`
+	Results        []*DiagnosticResult `json:"results"                   yaml:"results"`
 }
 
 // NewDiagnosticResultList creates a new list.
 func NewDiagnosticResultList(clusterVersion *string, targetVersion *string) *DiagnosticResultList {
 	return &DiagnosticResultList{
-		Kind: "DiagnosticResultList",
-		Metadata: DiagnosticResultListMetadata{
-			ClusterVersion: clusterVersion,
-			TargetVersion:  targetVersion,
-		},
-		Items: make([]*DiagnosticResult, 0),
+		ClusterVersion: clusterVersion,
+		TargetVersion:  targetVersion,
+		Results:        make([]*DiagnosticResult, 0),
 	}
 }

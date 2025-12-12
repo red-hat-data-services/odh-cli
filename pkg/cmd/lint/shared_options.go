@@ -364,9 +364,9 @@ func OutputTable(out io.Writer, results []check.CheckExecution, verbose bool) er
 
 			row := CheckResultTableRow{
 				Status:      status,
-				Group:       string(exec.Check.Group()),
-				Kind:        exec.Result.Metadata.Kind,
-				Check:       exec.Result.Metadata.Name,
+				Group:       exec.Result.Group,
+				Kind:        exec.Result.Kind,
+				Check:       exec.Result.Name,
 				Severity:    severity,
 				Message:     msg,
 				Description: exec.Result.Spec.Description,
@@ -396,7 +396,7 @@ func OutputJSON(out io.Writer, results []check.CheckExecution, clusterVersion *s
 
 	// Add all results in execution order
 	for _, exec := range results {
-		list.Items = append(list.Items, exec.Result)
+		list.Results = append(list.Results, exec.Result)
 	}
 
 	encoder := json.NewEncoder(out)
@@ -416,7 +416,7 @@ func OutputYAML(out io.Writer, results []check.CheckExecution, clusterVersion *s
 
 	// Add all results in execution order
 	for _, exec := range results {
-		list.Items = append(list.Items, exec.Result)
+		list.Results = append(list.Results, exec.Result)
 	}
 
 	yamlBytes, err := yaml.Marshal(list)

@@ -95,7 +95,7 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.Che
 		return nil, fmt.Errorf("kserve managementState is not a string: %T", kserveState)
 	}
 
-	dr.Metadata.Annotations["component.opendatahub.io/kserve-management-state"] = kserveStateStr
+	dr.Annotations["component.opendatahub.io/kserve-management-state"] = kserveStateStr
 
 	// Only check serverless if KServe is Managed
 	if kserveStateStr != "Managed" {
@@ -133,9 +133,9 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.Che
 		return nil, fmt.Errorf("kserve serving managementState is not a string: %T", servingState)
 	}
 
-	dr.Metadata.Annotations["component.opendatahub.io/serving-management-state"] = servingStateStr
+	dr.Annotations["component.opendatahub.io/serving-management-state"] = servingStateStr
 	if target.Version != nil {
-		dr.Metadata.Annotations["check.opendatahub.io/target-version"] = target.Version.Version
+		dr.Annotations["check.opendatahub.io/target-version"] = target.Version.Version
 	}
 
 	// Check if serverless (serving) is enabled (Managed or Unmanaged)

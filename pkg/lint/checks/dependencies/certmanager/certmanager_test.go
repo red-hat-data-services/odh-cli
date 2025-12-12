@@ -99,7 +99,7 @@ func TestCertManagerCheck_InstalledCertManager(t *testing.T) {
 		"Reason":  Equal(check.ReasonResourceFound),
 		"Message": ContainSubstring("cert-manager.v1.13.0"),
 	}))
-	g.Expect(result.Metadata.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "cert-manager.v1.13.0"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "cert-manager.v1.13.0"))
 }
 
 func TestCertManagerCheck_InstalledOpenShiftCertManager(t *testing.T) {
@@ -145,7 +145,7 @@ func TestCertManagerCheck_InstalledOpenShiftCertManager(t *testing.T) {
 		"Reason":  Equal(check.ReasonResourceFound),
 		"Message": ContainSubstring("cert-manager-operator.v1.12.0"),
 	}))
-	g.Expect(result.Metadata.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "cert-manager-operator.v1.12.0"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "cert-manager-operator.v1.12.0"))
 }
 
 func TestCertManagerCheck_Metadata(t *testing.T) {

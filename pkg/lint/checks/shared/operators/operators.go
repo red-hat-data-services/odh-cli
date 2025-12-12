@@ -192,7 +192,7 @@ func CheckOperatorPresence(
 
 	// Store version in annotations if found
 	if version != "" {
-		dr.Metadata.Annotations["operator.opendatahub.io/installed-version"] = version
+		dr.Annotations["operator.opendatahub.io/installed-version"] = version
 	}
 
 	return dr, nil

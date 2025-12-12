@@ -96,9 +96,9 @@ func (c *ManagedRemovalCheck) Validate(ctx context.Context, target *check.CheckT
 	}
 
 	// Add management state as annotation
-	dr.Metadata.Annotations["component.opendatahub.io/management-state"] = managementStateStr
+	dr.Annotations["component.opendatahub.io/management-state"] = managementStateStr
 	if target.Version != nil {
-		dr.Metadata.Annotations["check.opendatahub.io/target-version"] = target.Version.Version
+		dr.Annotations["check.opendatahub.io/target-version"] = target.Version.Version
 	}
 
 	// Check if kueue is enabled (Managed or Unmanaged)
