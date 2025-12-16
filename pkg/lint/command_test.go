@@ -9,7 +9,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/cmd"
-	"github.com/lburgazzoli/odh-cli/pkg/cmd/lint"
+	"github.com/lburgazzoli/odh-cli/pkg/lint"
 
 	. "github.com/onsi/gomega"
 )

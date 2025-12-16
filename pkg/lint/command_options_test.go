@@ -3,7 +3,7 @@ package lint_test
 import (
 	"testing"
 
-	"github.com/lburgazzoli/odh-cli/pkg/cmd/lint"
+	"github.com/lburgazzoli/odh-cli/pkg/lint"
 
 	. "github.com/onsi/gomega"
 )

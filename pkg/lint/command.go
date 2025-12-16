@@ -11,10 +11,10 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/cmd"
-	"github.com/lburgazzoli/odh-cli/pkg/doctor/discovery"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/version"
 	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
+	"github.com/lburgazzoli/odh-cli/pkg/util/kube/discovery"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 // Verify Command implements cmd.Command interface at compile time.
@@ -48,31 +48,14 @@ func NewCommand(streams genericiooptions.IOStreams) *Command {
 
 // AddFlags registers command-specific flags with the provided FlagSet.
 func (c *Command) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&c.TargetVersion, "target-version", "",
-		"Target version for upgrade assessment (enables upgrade mode)")
-	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable),
-		"Output format (table|json|yaml)")
-	fs.StringVar(&c.CheckSelector, "checks", "*",
-		`Glob pattern to filter checks (check IDs use dots, not slashes).
-Examples:
-  --checks "components"           # All component checks (group shortcut)
-  --checks "components.*"         # All component checks (glob)
-  --checks "components.kserve.*"  # All kserve component checks
-  --checks "*removal*"            # All checks with 'removal' in ID
-  --checks "*"                    # All checks (default)
-
-Note: Check IDs use dots (e.g., components.kserve.serverless-removal).
-Use 'components.*' not 'components/*'`)
-	fs.StringVar((*string)(&c.MinSeverity), "severity", "",
-		"Filter results by minimum severity level (critical|warning|info)")
-	fs.BoolVar(&c.FailOnCritical, "fail-on-critical", true,
-		"Exit with non-zero code if Critical findings detected")
-	fs.BoolVar(&c.FailOnWarning, "fail-on-warning", false,
-		"Exit with non-zero code if Warning findings detected")
-	fs.BoolVarP(&c.Verbose, "verbose", "v", false,
-		"Show progress messages (default: quiet, only show results)")
-	fs.DurationVar(&c.Timeout, "timeout", c.Timeout,
-		"Maximum duration for command execution (e.g., 5m, 10m)")
+	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescTargetVersion)
+	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescOutput)
+	fs.StringVar(&c.CheckSelector, "checks", "*", flagDescChecks)
+	fs.StringVar((*string)(&c.MinSeverity), "severity", "", flagDescSeverity)
+	fs.BoolVar(&c.FailOnCritical, "fail-on-critical", true, flagDescFailCritical)
+	fs.BoolVar(&c.FailOnWarning, "fail-on-warning", false, flagDescFailWarning)
+	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
+	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescTimeout)
 }
 
 // Complete populates Options and performs pre-validation setup.

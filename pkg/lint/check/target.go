@@ -3,8 +3,8 @@ package check
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/lburgazzoli/odh-cli/pkg/lint/version"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 // CheckTarget holds all context needed for executing diagnostic checks, including cluster version and optional resource.

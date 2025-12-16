@@ -13,10 +13,10 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/cmd"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/version"
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action"
 	"github.com/lburgazzoli/odh-cli/pkg/printer/table"
 	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 var _ cmd.Command = (*ListCommand)(nil)
@@ -46,19 +46,15 @@ func NewListCommand(streams genericiooptions.IOStreams) *ListCommand {
 }
 
 func (c *ListCommand) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable),
-		"Output format (table|json|yaml)")
-	fs.BoolVarP(&c.Verbose, "verbose", "v", false,
-		"Show detailed information")
-	fs.StringVar(&c.TargetVersion, "target-version", "",
-		"Target version for migration filtering (required unless --all is specified)")
-	fs.BoolVar(&c.ShowAll, "all", false,
-		"Show all migrations, not just applicable ones")
+	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescListOutput)
+	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescListVerbose)
+	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescListTargetVersion)
+	fs.BoolVar(&c.ShowAll, "all", false, flagDescListAll)
 }
 
 func (c *ListCommand) Complete() error {
 	if err := c.SharedOptions.Complete(); err != nil {
-		return fmt.Errorf(msgCompletingOptions, err)
+		return fmt.Errorf("completing shared options: %w", err)
 	}
 
 	if !c.Verbose {
@@ -68,7 +64,7 @@ func (c *ListCommand) Complete() error {
 	if c.TargetVersion != "" {
 		targetVer, err := semver.Parse(c.TargetVersion)
 		if err != nil {
-			return fmt.Errorf(msgInvalidTargetVersion, c.TargetVersion, err)
+			return fmt.Errorf("invalid target version %q: %w", c.TargetVersion, err)
 		}
 		c.parsedTargetVersion = &targetVer
 	}
@@ -78,15 +74,15 @@ func (c *ListCommand) Complete() error {
 
 func (c *ListCommand) Validate() error {
 	if err := c.SharedOptions.Validate(); err != nil {
-		return fmt.Errorf(msgValidatingOptions, err)
+		return fmt.Errorf("validating shared options: %w", err)
 	}
 
 	if c.ShowAll && c.TargetVersion != "" {
-		return errors.New(msgMutuallyExclusive)
+		return errors.New("--all and --target-version are mutually exclusive")
 	}
 
 	if !c.ShowAll && c.TargetVersion == "" {
-		return errors.New(msgTargetVersionRequired)
+		return errors.New("--target-version flag is required")
 	}
 
 	return nil
@@ -99,7 +95,7 @@ func (c *ListCommand) Run(ctx context.Context) error {
 	if !c.ShowAll {
 		currentVersion, err = version.Detect(ctx, c.Client)
 		if err != nil {
-			return fmt.Errorf(msgDetectingVersion, err)
+			return fmt.Errorf("detecting cluster version: %w", err)
 		}
 	}
 
@@ -145,7 +141,7 @@ func (c *ListCommand) Run(ctx context.Context) error {
 	}
 
 	if len(rows) == 0 {
-		c.IO.Errorf(msgNoApplicableMigrations, c.TargetVersion)
+		c.IO.Errorf("no migrations applicable for version %s", c.TargetVersion)
 
 		return nil
 	}

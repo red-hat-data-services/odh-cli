@@ -8,7 +8,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
-	"github.com/lburgazzoli/odh-cli/pkg/cmd/lint"
+	lintpkg "github.com/lburgazzoli/odh-cli/pkg/lint"
 	// Import check packages to trigger init() auto-registration.
 	// These blank imports are REQUIRED for checks to register with the global registry.
 	// DO NOT REMOVE - they appear unused but are essential for runtime check discovery.
@@ -86,7 +86,7 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 	}
 
 	// Create command using new pattern (FR-014: SharedOptions initialized internally)
-	command := lint.NewCommand(streams)
+	command := lintpkg.NewCommand(streams)
 
 	// Use the ConfigFlags from parent instead of creating new ones
 	command.ConfigFlags = flags

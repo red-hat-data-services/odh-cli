@@ -11,8 +11,8 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/lburgazzoli/odh-cli/pkg/cmd"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/version"
 	"github.com/lburgazzoli/odh-cli/pkg/migrate/action"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 var _ cmd.Command = (*RunCommand)(nil)
@@ -40,28 +40,19 @@ func NewRunCommand(streams genericiooptions.IOStreams) *RunCommand {
 }
 
 func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
-	fs.BoolVarP(&c.Verbose, "verbose", "v", false,
-		"Show detailed progress")
-	fs.DurationVar(&c.Timeout, "timeout", c.Timeout,
-		"Operation timeout (e.g., 10m, 30m)")
-
-	fs.BoolVar(&c.DryRun, "dry-run", false,
-		"Show what would be done without making changes")
-	fs.BoolVar(&c.Prepare, "prepare", false,
-		"Run pre-flight checks and backup resources (does not execute migration)")
-	fs.BoolVarP(&c.Yes, "yes", "y", false,
-		"Skip confirmation prompts")
-	fs.StringVar(&c.BackupPath, "backup-path", c.BackupPath,
-		"Path to store backup files (used with --prepare)")
-	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{},
-		"Migration ID to execute (can be specified multiple times)")
-	fs.StringVar(&c.TargetVersion, "target-version", "",
-		"Target version for migration (required)")
+	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescRunVerbose)
+	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescRunTimeout)
+	fs.BoolVar(&c.DryRun, "dry-run", false, flagDescRunDryRun)
+	fs.BoolVar(&c.Prepare, "prepare", false, flagDescRunPrepare)
+	fs.BoolVarP(&c.Yes, "yes", "y", false, flagDescRunYes)
+	fs.StringVar(&c.BackupPath, "backup-path", c.BackupPath, flagDescRunBackupPath)
+	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescRunMigration)
+	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescRunTargetVersion)
 }
 
 func (c *RunCommand) Complete() error {
 	if err := c.SharedOptions.Complete(); err != nil {
-		return fmt.Errorf(msgCompletingOptions, err)
+		return fmt.Errorf("completing shared options: %w", err)
 	}
 
 	// Always enable verbose for migrate run (both dry-run and actual execution)
@@ -70,7 +61,7 @@ func (c *RunCommand) Complete() error {
 	if c.TargetVersion != "" {
 		targetVer, err := semver.Parse(c.TargetVersion)
 		if err != nil {
-			return fmt.Errorf(msgInvalidTargetVersion, c.TargetVersion, err)
+			return fmt.Errorf("invalid target version %q: %w", c.TargetVersion, err)
 		}
 		c.parsedTargetVersion = &targetVer
 	}
@@ -80,15 +71,15 @@ func (c *RunCommand) Complete() error {
 
 func (c *RunCommand) Validate() error {
 	if err := c.SharedOptions.Validate(); err != nil {
-		return fmt.Errorf(msgValidatingOptions, err)
+		return fmt.Errorf("validating shared options: %w", err)
 	}
 
 	if len(c.MigrationIDs) == 0 {
-		return errors.New(msgMigrationRequired)
+		return errors.New("--migration flag is required")
 	}
 
 	if c.TargetVersion == "" {
-		return errors.New(msgTargetVersionRequired)
+		return errors.New("--target-version flag is required")
 	}
 
 	return nil
@@ -100,7 +91,7 @@ func (c *RunCommand) Run(ctx context.Context) error {
 
 	currentVersion, err := version.Detect(ctx, c.Client)
 	if err != nil {
-		return fmt.Errorf(msgDetectingVersion, err)
+		return fmt.Errorf("detecting cluster version: %w", err)
 	}
 
 	targetVersionInfo := &version.ClusterVersion{
@@ -129,7 +120,7 @@ func (c *RunCommand) runPrepareMode(
 
 		selectedAction, ok := registry.Get(migrationID)
 		if !ok {
-			return fmt.Errorf(msgMigrationNotFound, migrationID)
+			return fmt.Errorf("migration %q not found", migrationID)
 		}
 
 		// Use verbose recorder for real-time streaming output
@@ -149,7 +140,7 @@ func (c *RunCommand) runPrepareMode(
 
 		_, err := selectedAction.Validate(ctx, target)
 		if err != nil {
-			return fmt.Errorf(msgPreFlightFailed, err)
+			return fmt.Errorf("pre-flight validation failed: %w", err)
 		}
 
 		// Output has already been streamed during validation
@@ -177,7 +168,7 @@ func (c *RunCommand) runMigrationMode(
 
 		selectedAction, ok := registry.Get(migrationID)
 		if !ok {
-			return fmt.Errorf(msgMigrationNotFound, migrationID)
+			return fmt.Errorf("migration %q not found", migrationID)
 		}
 
 		// Use verbose recorder for real-time streaming output
@@ -205,7 +196,7 @@ func (c *RunCommand) runMigrationMode(
 
 		actionResult, err := selectedAction.Execute(ctx, target)
 		if err != nil {
-			return fmt.Errorf(msgMigrationFailed, err)
+			return fmt.Errorf("migration failed: %w", err)
 		}
 
 		// Output has already been streamed during execution, no need to render again
@@ -213,7 +204,7 @@ func (c *RunCommand) runMigrationMode(
 		if !actionResult.Status.Completed {
 			c.IO.Errorf("Migration %s incomplete - please review the output above", migrationID)
 
-			return fmt.Errorf(msgMigrationHalted, migrationID)
+			return fmt.Errorf("migration halted: %s", migrationID)
 		}
 		c.IO.Errorf("Migration %s completed successfully!", migrationID)
 	}

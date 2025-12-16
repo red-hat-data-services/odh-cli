@@ -6,7 +6,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
-	"github.com/lburgazzoli/odh-cli/pkg/cmd/migrate"
+	"github.com/lburgazzoli/odh-cli/pkg/migrate"
 )
 
 const (
