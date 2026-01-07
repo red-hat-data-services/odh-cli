@@ -20,6 +20,7 @@ import (
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/kueueoperator"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/servicemeshoperator"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/services/servicemesh"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/kserve"
 )
 
 const (

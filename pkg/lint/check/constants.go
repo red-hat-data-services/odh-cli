@@ -33,6 +33,7 @@ const (
 	CheckTypeInstalled         = "installed"
 	CheckTypeManagedRemoval    = "managed-removal"
 	CheckTypeServerlessRemoval = "serverless-removal"
+	CheckTypeImpactedWorkloads = "impacted-workloads"
 )
 
 // Annotation keys for diagnostic results.
@@ -52,4 +53,7 @@ const (
 
 	// AnnotationOperatorInstalledVersion is the installed operator version.
 	AnnotationOperatorInstalledVersion = "operator.opendatahub.io/installed-version"
+
+	// AnnotationImpactedWorkloadCount is the count of impacted workloads.
+	AnnotationImpactedWorkloadCount = "workload.opendatahub.io/impacted-count"
 )

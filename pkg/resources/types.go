@@ -145,4 +145,20 @@ var (
 		Kind:     "LocalQueue",
 		Resource: "localqueues",
 	}
+
+	// InferenceService is the KServe InferenceService resource.
+	InferenceService = ResourceType{
+		Group:    "serving.kserve.io",
+		Version:  "v1beta1",
+		Kind:     "InferenceService",
+		Resource: "inferenceservices",
+	}
+
+	// ServingRuntime is the KServe ServingRuntime resource.
+	ServingRuntime = ResourceType{
+		Group:    "serving.kserve.io",
+		Version:  "v1alpha1",
+		Kind:     "ServingRuntime",
+		Resource: "servingruntimes",
+	}
 )
