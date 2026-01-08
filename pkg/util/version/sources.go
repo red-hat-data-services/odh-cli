@@ -66,6 +66,11 @@ func DetectFromDSCInitialization(ctx context.Context, c *client.Client) (string,
 // DetectFromOLM attempts to detect version from OLM ClusterServiceVersion
 // Returns version string and true if found, empty string and false otherwise.
 func DetectFromOLM(ctx context.Context, c *client.Client) (string, bool, error) {
+	// Check if OLM client is available
+	if c.OLM == nil {
+		return "", false, nil
+	}
+
 	// List ClusterServiceVersions with label selector for OpenShift AI operator
 	csvList, err := c.OLM.OperatorsV1alpha1().ClusterServiceVersions("").List(ctx, metav1.ListOptions{
 		LabelSelector: "operators.coreos.com/rhods-operator.redhat-ods-operator",

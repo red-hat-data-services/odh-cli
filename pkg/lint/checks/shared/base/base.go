@@ -1,0 +1,115 @@
+package base
+
+import (
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+)
+
+// BaseCheck provides common check metadata and functionality through composition.
+// Embed this struct in check implementations to eliminate boilerplate code.
+//
+// Example usage:
+//
+//	type RemovalCheck struct {
+//	    base.BaseCheck
+//	}
+//
+//	func NewRemovalCheck() *RemovalCheck {
+//	    return &RemovalCheck{
+//	        BaseCheck: base.New(
+//	            check.GroupComponent,
+//	            check.ComponentModelMesh,
+//	            check.CheckTypeRemoval,
+//	            "components.modelmesh.removal",
+//	            "Components :: ModelMesh :: Removal (3.x)",
+//	            "Validates that ModelMesh is disabled before upgrading...",
+//	        ),
+//	    }
+//	}
+//
+//	func (c *RemovalCheck) CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool {
+//	    if currentVersion == nil || targetVersion == nil {
+//	        return false
+//	    }
+//	    return currentVersion.Major == 2 && targetVersion.Major >= 3
+//	}
+//
+//	func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+//	    dr := c.NewResult()
+//	    // ... validation logic
+//	    return dr, nil
+//	}
+//
+// BaseCheck holds common check metadata as public fields.
+// Checks can access these fields directly (e.g., c.Kind, c.CheckType).
+//
+// Example usage:
+//
+//	type RemovalCheck struct {
+//	    base.BaseCheck
+//	}
+//
+//	func NewRemovalCheck() *RemovalCheck {
+//	    return &RemovalCheck{
+//	        BaseCheck: base.BaseCheck{
+//	            CheckGroup:       check.GroupComponent,
+//	            Kind:             check.ComponentModelMesh,
+//	            CheckType:        check.CheckTypeRemoval,
+//	            CheckID:          "components.modelmesh.removal",
+//	            CheckName:        "Components :: ModelMesh :: Removal (3.x)",
+//	            CheckDescription: "Validates that ModelMesh is disabled...",
+//	        },
+//	    }
+//	}
+type BaseCheck struct {
+	CheckGroup       check.CheckGroup
+	Kind             string
+	CheckType        string
+	CheckID          string
+	CheckName        string
+	CheckDescription string
+}
+
+// ID returns the unique identifier for this check.
+// Required by check.Check interface.
+func (b BaseCheck) ID() string {
+	return b.CheckID
+}
+
+// Name returns the human-readable check name.
+// Required by check.Check interface.
+func (b BaseCheck) Name() string {
+	return b.CheckName
+}
+
+// Description returns what this check validates.
+// Required by check.Check interface.
+func (b BaseCheck) Description() string {
+	return b.CheckDescription
+}
+
+// Group returns the check group.
+// Required by check.Check interface.
+func (b BaseCheck) Group() check.CheckGroup {
+	return b.CheckGroup
+}
+
+// NewResult creates a DiagnosticResult initialized with this check's metadata.
+// This is the primary convenience method that eliminates result.New() boilerplate.
+//
+// Example:
+//
+//	func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+//	    dr := c.NewResult()  // Instead of result.New(...)
+//
+//	    // Add conditions...
+//	    return dr, nil
+//	}
+func (b BaseCheck) NewResult() *result.DiagnosticResult {
+	return result.New(
+		string(b.CheckGroup),
+		b.Kind,
+		b.CheckType,
+		b.CheckDescription,
+	)
+}

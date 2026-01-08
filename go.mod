@@ -20,7 +20,10 @@ require (
 	sigs.k8s.io/yaml v1.6.0
 )
 
-require sigs.k8s.io/controller-runtime v0.22.4 // indirect
+require (
+	k8s.io/apiserver v0.34.2 // indirect
+	sigs.k8s.io/controller-runtime v0.22.4 // indirect
+)
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20250102033503-faa5f7b0171c // indirect

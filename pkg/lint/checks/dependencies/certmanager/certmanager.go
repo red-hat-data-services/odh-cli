@@ -9,33 +9,26 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/operators"
-)
-
-const (
-	checkID          = "dependencies.certmanager.installed"
-	checkName        = "Dependencies :: CertManager :: Installed"
-	checkDescription = "Reports the cert-manager operator installation status and version"
 )
 
 // Check validates cert-manager operator installation.
 type Check struct {
+	base.BaseCheck
 }
 
-func (c *Check) ID() string {
-	return checkID
-}
-
-func (c *Check) Name() string {
-	return checkName
-}
-
-func (c *Check) Description() string {
-	return checkDescription
-}
-
-func (c *Check) Group() check.CheckGroup {
-	return check.GroupDependency
+func NewCheck() *Check {
+	return &Check{
+		BaseCheck: base.BaseCheck{
+			CheckGroup:       check.GroupDependency,
+			Kind:             check.DependencyCertManager,
+			CheckType:        check.CheckTypeInstalled,
+			CheckID:          "dependencies.certmanager.installed",
+			CheckName:        "Dependencies :: CertManager :: Installed",
+			CheckDescription: "Reports the cert-manager operator installation status and version",
+		},
+	}
 }
 
 func (c *Check) CanApply(_ *semver.Version, _ *semver.Version) bool {
@@ -47,7 +40,7 @@ func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*resul
 		ctx,
 		target.Client,
 		"cert-manager",
-		operators.WithDescription(checkDescription),
+		operators.WithDescription(c.Description()),
 		operators.WithMatcher(func(subscription *operatorsv1alpha1.Subscription) bool {
 			op := operators.GetOperator(subscription)
 
@@ -63,5 +56,5 @@ func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*resul
 
 //nolint:gochecknoinits
 func init() {
-	check.MustRegisterCheck(&Check{})
+	check.MustRegisterCheck(NewCheck())
 }

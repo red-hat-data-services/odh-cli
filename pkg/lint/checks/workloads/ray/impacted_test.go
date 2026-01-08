@@ -282,7 +282,7 @@ func TestImpactedWorkloadsCheck_MultipleClusters(t *testing.T) {
 func TestImpactedWorkloadsCheck_Metadata(t *testing.T) {
 	g := NewWithT(t)
 
-	impactedCheck := &ray.ImpactedWorkloadsCheck{}
+	impactedCheck := ray.NewImpactedWorkloadsCheck()
 
 	g.Expect(impactedCheck.ID()).To(Equal("workloads.ray.impacted-workloads"))
 	g.Expect(impactedCheck.Name()).To(Equal("Workloads :: Ray :: Impacted Workloads (3.x)"))
@@ -293,7 +293,7 @@ func TestImpactedWorkloadsCheck_Metadata(t *testing.T) {
 func TestImpactedWorkloadsCheck_CanApply(t *testing.T) {
 	g := NewWithT(t)
 
-	impactedCheck := &ray.ImpactedWorkloadsCheck{}
+	impactedCheck := ray.NewImpactedWorkloadsCheck()
 
 	// Should not apply when versions are nil
 	g.Expect(impactedCheck.CanApply(nil, nil)).To(BeFalse())

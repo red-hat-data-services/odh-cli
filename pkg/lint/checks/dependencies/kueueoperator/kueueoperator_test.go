@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	operatorfake "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned/fake"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/kueueoperator"
-	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 
@@ -20,20 +20,17 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 )
 
-//nolint:gochecknoglobals
-var listKinds = map[schema.GroupVersionResource]string{
-	resources.Subscription.GVR(): resources.Subscription.ListKind(),
-}
-
 func TestKueueOperatorCheck_NotInstalled(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)
+	olmClient := operatorfake.NewSimpleClientset()
 
 	c := &client.Client{
 		Dynamic: dynamicClient,
+		OLM:     olmClient,
 	}
 
 	target := &check.CheckTarget{
@@ -60,25 +57,23 @@ func TestKueueOperatorCheck_Installed(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	sub := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": resources.Subscription.APIVersion(),
-			"kind":       resources.Subscription.Kind,
-			"metadata": map[string]any{
-				"name":      "kueue-operator",
-				"namespace": "kueue-system",
-			},
-			"status": map[string]any{
-				"installedCSV": "kueue-operator.v0.6.0",
-			},
+	sub := &operatorsv1alpha1.Subscription{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "kueue-operator",
+			Namespace: "kueue-system",
+		},
+		Status: operatorsv1alpha1.SubscriptionStatus{
+			InstalledCSV: "kueue-operator.v0.6.0",
 		},
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, sub)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)
+	olmClient := operatorfake.NewSimpleClientset(sub)
 
 	c := &client.Client{
 		Dynamic: dynamicClient,
+		OLM:     olmClient,
 	}
 
 	target := &check.CheckTarget{

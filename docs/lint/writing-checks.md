@@ -31,36 +31,59 @@ package dashboard
 
 import (
     "context"
+    "github.com/blang/semver/v4"
     "github.com/lburgazzoli/odh-cli/pkg/lint/check"
-    "github.com/lburgazzoli/odh-cli/pkg/lint/check/registry"
+    "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+    "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 )
 
-const (
-    checkID          = "components.dashboard.status"
-    checkName        = "Dashboard Component Status"
-    checkDescription = "Validates dashboard component configuration and availability"
-)
-
-func init() {
-    registry.Instance().Register(&Check{})
+type Check struct {
+    base.BaseCheck
 }
 
-type Check struct{}
+func NewCheck() *Check {
+    return &Check{
+        BaseCheck: base.BaseCheck{
+            CheckGroup:       check.GroupComponent,
+            Kind:             check.ComponentDashboard,
+            CheckType:        check.CheckTypeInstalled,
+            CheckID:          "components.dashboard.status",
+            CheckName:        "Components :: Dashboard :: Status",
+            CheckDescription: "Validates dashboard component configuration and availability",
+        },
+    }
+}
 
-func (c *Check) ID() string          { return checkID }
-func (c *Check) Name() string        { return checkName }
-func (c *Check) Description() string { return checkDescription }
-func (c *Check) Group() string       { return "components" }
-
-func (c *Check) CanApply(ctx context.Context, target *check.CheckTarget) bool {
+func (c *Check) CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool {
     // Check applies to all versions
     return true
 }
 
-func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) *check.DiagnosticResult {
+func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+    dr := c.NewResult()
     // Implementation
+    return dr, nil
+}
+
+func init() {
+    check.MustRegisterCheck(NewCheck())
 }
 ```
+
+### Using BaseCheck
+
+**BaseCheck** eliminates boilerplate by providing common check metadata through composition:
+
+**Benefits:**
+- No need to define constants for ID, name, description
+- No need to implement `ID()`, `Name()`, `Description()`, `Group()` methods
+- `NewResult()` automatically creates results with check metadata
+- Public fields `Kind` and `CheckType` can be accessed directly
+- ~35% code reduction per check
+
+**When to use:**
+- All new checks should use BaseCheck
+- Access metadata via public fields: `c.Kind`, `c.CheckType`, `c.CheckGroup`, etc.
 
 ## Registration Pattern
 

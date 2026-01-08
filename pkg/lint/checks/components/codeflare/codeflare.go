@@ -10,37 +10,27 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
-const (
-	checkID          = "components.codeflare.removal"
-	checkName        = "Components :: CodeFlare :: Removal (3.x)"
-	checkDescription = "Validates that CodeFlare is disabled before upgrading from RHOAI 2.x to 3.x (component will be removed)"
-)
-
 // RemovalCheck validates that CodeFlare is disabled before upgrading to 3.x.
-type RemovalCheck struct{}
-
-// ID returns the unique identifier for this check.
-func (c *RemovalCheck) ID() string {
-	return checkID
+type RemovalCheck struct {
+	base.BaseCheck
 }
 
-// Name returns the human-readable check name.
-func (c *RemovalCheck) Name() string {
-	return checkName
-}
-
-// Description returns what this check validates.
-func (c *RemovalCheck) Description() string {
-	return checkDescription
-}
-
-// Group returns the check group.
-func (c *RemovalCheck) Group() check.CheckGroup {
-	return check.GroupComponent
+func NewRemovalCheck() *RemovalCheck {
+	return &RemovalCheck{
+		BaseCheck: base.BaseCheck{
+			CheckGroup:       check.GroupComponent,
+			Kind:             check.ComponentCodeFlare,
+			CheckType:        check.CheckTypeRemoval,
+			CheckID:          "components.codeflare.removal",
+			CheckName:        "Components :: CodeFlare :: Removal (3.x)",
+			CheckDescription: "Validates that CodeFlare is disabled before upgrading from RHOAI 2.x to 3.x (component will be removed)",
+		},
+	}
 }
 
 // CanApply returns whether this check should run for the given versions.
@@ -57,18 +47,13 @@ func (c *RemovalCheck) CanApply(currentVersion *semver.Version, targetVersion *s
 
 // Validate executes the check against the provided target.
 func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
-	dr := result.New(
-		string(check.GroupComponent),
-		check.ComponentCodeFlare,
-		check.CheckTypeRemoval,
-		checkDescription,
-	)
+	dr := c.NewResult()
 
 	// Get the DataScienceCluster singleton
 	dsc, err := target.Client.GetDataScienceCluster(ctx)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(check.GroupComponent), check.ComponentCodeFlare, check.CheckTypeRemoval, checkDescription), nil
+		return results.DataScienceClusterNotFound(string(c.Group()), c.Kind, c.CheckType, c.Description()), nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
@@ -109,5 +94,5 @@ func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) 
 //
 //nolint:gochecknoinits // Required for auto-registration pattern
 func init() {
-	check.MustRegisterCheck(&RemovalCheck{})
+	check.MustRegisterCheck(NewRemovalCheck())
 }

@@ -4,6 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/blang/semver/v4"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	operatorfake "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned/fake"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -98,28 +103,26 @@ func TestDetect_FromOLM(t *testing.T) {
 	ctx := context.Background()
 
 	// Create fake ClusterServiceVersion with version (no DSC/DSCI)
-	csv := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": resources.ClusterServiceVersion.APIVersion(),
-			"kind":       resources.ClusterServiceVersion.Kind,
-			"metadata": map[string]any{
-				"name":      "rhods-operator.v2.15.0",
-				"namespace": "redhat-ods-operator",
-				"labels": map[string]any{
-					"operators.coreos.com/rhods-operator.redhat-ods-operator": "",
-				},
-			},
-			"spec": map[string]any{
-				"version": "2.15.0",
+	v := semver.MustParse("2.15.0")
+	csv := &operatorsv1alpha1.ClusterServiceVersion{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "rhods-operator.v2.15.0",
+			Namespace: "redhat-ods-operator",
+			Labels: map[string]string{
+				"operators.coreos.com/rhods-operator.redhat-ods-operator": "",
 			},
 		},
 	}
+	// Manually set the version field using reflection-free approach
+	csv.Spec.Version.Version = v
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, csv)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
+	olmClient := operatorfake.NewSimpleClientset(csv)
 
 	c := &client.Client{
 		Dynamic: dynamicClient,
+		OLM:     olmClient,
 	}
 
 	clusterVersion, err := version.Detect(ctx, c)

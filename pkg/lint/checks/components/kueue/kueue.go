@@ -10,37 +10,27 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
-const (
-	checkID          = "components.kueue.managed-removal"
-	checkName        = "Components :: Kueue :: Managed Removal (3.x)"
-	checkDescription = "Validates that Kueue managed option is not used before upgrading from RHOAI 2.x to 3.x (managed option will be removed)"
-)
-
 // ManagedRemovalCheck validates that Kueue managed option is not used before upgrading to 3.x.
-type ManagedRemovalCheck struct{}
-
-// ID returns the unique identifier for this check.
-func (c *ManagedRemovalCheck) ID() string {
-	return checkID
+type ManagedRemovalCheck struct {
+	base.BaseCheck
 }
 
-// Name returns the human-readable check name.
-func (c *ManagedRemovalCheck) Name() string {
-	return checkName
-}
-
-// Description returns what this check validates.
-func (c *ManagedRemovalCheck) Description() string {
-	return checkDescription
-}
-
-// Group returns the check group.
-func (c *ManagedRemovalCheck) Group() check.CheckGroup {
-	return check.GroupComponent
+func NewManagedRemovalCheck() *ManagedRemovalCheck {
+	return &ManagedRemovalCheck{
+		BaseCheck: base.BaseCheck{
+			CheckGroup:       check.GroupComponent,
+			Kind:             check.ComponentKueue,
+			CheckType:        check.CheckTypeManagedRemoval,
+			CheckID:          "components.kueue.managed-removal",
+			CheckName:        "Components :: Kueue :: Managed Removal (3.x)",
+			CheckDescription: "Validates that Kueue managed option is not used before upgrading from RHOAI 2.x to 3.x (managed option will be removed)",
+		},
+	}
 }
 
 // CanApply returns whether this check should run for the given versions.
@@ -57,18 +47,13 @@ func (c *ManagedRemovalCheck) CanApply(currentVersion *semver.Version, targetVer
 
 // Validate executes the check against the provided target.
 func (c *ManagedRemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
-	dr := result.New(
-		string(check.GroupComponent),
-		check.ComponentKueue,
-		check.CheckTypeManagedRemoval,
-		checkDescription,
-	)
+	dr := c.NewResult()
 
 	// Get the DataScienceCluster singleton
 	dsc, err := target.Client.GetDataScienceCluster(ctx)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(check.GroupComponent), check.ComponentKueue, check.CheckTypeManagedRemoval, checkDescription), nil
+		return results.DataScienceClusterNotFound(string(c.Group()), c.Kind, c.CheckType, c.Description()), nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
@@ -109,5 +94,5 @@ func (c *ManagedRemovalCheck) Validate(ctx context.Context, target *check.CheckT
 //
 //nolint:gochecknoinits // Required for auto-registration pattern
 func init() {
-	check.MustRegisterCheck(&ManagedRemovalCheck{})
+	check.MustRegisterCheck(NewManagedRemovalCheck())
 }

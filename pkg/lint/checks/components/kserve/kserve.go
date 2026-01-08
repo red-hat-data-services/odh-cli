@@ -10,37 +10,27 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
-const (
-	checkID          = "components.kserve.serverless-removal"
-	checkName        = "Components :: KServe :: Serverless Removal (3.x)"
-	checkDescription = "Validates that KServe serverless mode is disabled before upgrading from RHOAI 2.x to 3.x (serverless support will be removed)"
-)
-
 // ServerlessRemovalCheck validates that KServe serverless is disabled before upgrading to 3.x.
-type ServerlessRemovalCheck struct{}
-
-// ID returns the unique identifier for this check.
-func (c *ServerlessRemovalCheck) ID() string {
-	return checkID
+type ServerlessRemovalCheck struct {
+	base.BaseCheck
 }
 
-// Name returns the human-readable check name.
-func (c *ServerlessRemovalCheck) Name() string {
-	return checkName
-}
-
-// Description returns what this check validates.
-func (c *ServerlessRemovalCheck) Description() string {
-	return checkDescription
-}
-
-// Group returns the check group.
-func (c *ServerlessRemovalCheck) Group() check.CheckGroup {
-	return check.GroupComponent
+func NewServerlessRemovalCheck() *ServerlessRemovalCheck {
+	return &ServerlessRemovalCheck{
+		BaseCheck: base.BaseCheck{
+			CheckGroup:       check.GroupComponent,
+			Kind:             check.ComponentKServe,
+			CheckType:        check.CheckTypeServerlessRemoval,
+			CheckID:          "components.kserve.serverless-removal",
+			CheckName:        "Components :: KServe :: Serverless Removal (3.x)",
+			CheckDescription: "Validates that KServe serverless mode is disabled before upgrading from RHOAI 2.x to 3.x (serverless support will be removed)",
+		},
+	}
 }
 
 // CanApply returns whether this check should run for the given versions.
@@ -57,18 +47,13 @@ func (c *ServerlessRemovalCheck) CanApply(currentVersion *semver.Version, target
 
 // Validate executes the check against the provided target.
 func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
-	dr := result.New(
-		string(check.GroupComponent),
-		check.ComponentKServe,
-		check.CheckTypeServerlessRemoval,
-		checkDescription,
-	)
+	dr := c.NewResult()
 
 	// Get the DataScienceCluster singleton
 	dsc, err := target.Client.GetDataScienceCluster(ctx)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(check.GroupComponent), check.ComponentKServe, check.CheckTypeServerlessRemoval, checkDescription), nil
+		return results.DataScienceClusterNotFound(string(c.Group()), c.Kind, c.CheckType, c.Description()), nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
@@ -131,5 +116,5 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.Che
 //
 //nolint:gochecknoinits // Required for auto-registration pattern
 func init() {
-	check.MustRegisterCheck(&ServerlessRemovalCheck{})
+	check.MustRegisterCheck(NewServerlessRemovalCheck())
 }

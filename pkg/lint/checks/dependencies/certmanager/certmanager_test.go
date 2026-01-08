@@ -4,15 +4,15 @@ import (
 	"context"
 	"testing"
 
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	operatorfake "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned/fake"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/certmanager"
-	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 
@@ -20,20 +20,17 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 )
 
-//nolint:gochecknoglobals
-var listKinds = map[schema.GroupVersionResource]string{
-	resources.Subscription.GVR(): resources.Subscription.ListKind(),
-}
-
 func TestCertManagerCheck_NotInstalled(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)
+	olmClient := operatorfake.NewSimpleClientset()
 
 	c := &client.Client{
 		Dynamic: dynamicClient,
+		OLM:     olmClient,
 	}
 
 	target := &check.CheckTarget{
@@ -43,7 +40,7 @@ func TestCertManagerCheck_NotInstalled(t *testing.T) {
 		},
 	}
 
-	certManagerCheck := &certmanager.Check{}
+	certManagerCheck := certmanager.NewCheck()
 	result, err := certManagerCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
@@ -60,25 +57,23 @@ func TestCertManagerCheck_InstalledCertManager(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	sub := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": resources.Subscription.APIVersion(),
-			"kind":       resources.Subscription.Kind,
-			"metadata": map[string]any{
-				"name":      "cert-manager",
-				"namespace": "cert-manager",
-			},
-			"status": map[string]any{
-				"installedCSV": "cert-manager.v1.13.0",
-			},
+	sub := &operatorsv1alpha1.Subscription{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "cert-manager",
+			Namespace: "cert-manager",
+		},
+		Status: operatorsv1alpha1.SubscriptionStatus{
+			InstalledCSV: "cert-manager.v1.13.0",
 		},
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, sub)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)
+	olmClient := operatorfake.NewSimpleClientset(sub)
 
 	c := &client.Client{
 		Dynamic: dynamicClient,
+		OLM:     olmClient,
 	}
 
 	target := &check.CheckTarget{
@@ -88,7 +83,7 @@ func TestCertManagerCheck_InstalledCertManager(t *testing.T) {
 		},
 	}
 
-	certManagerCheck := &certmanager.Check{}
+	certManagerCheck := certmanager.NewCheck()
 	result, err := certManagerCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
@@ -106,25 +101,23 @@ func TestCertManagerCheck_InstalledOpenShiftCertManager(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	sub := &unstructured.Unstructured{
-		Object: map[string]any{
-			"apiVersion": resources.Subscription.APIVersion(),
-			"kind":       resources.Subscription.Kind,
-			"metadata": map[string]any{
-				"name":      "openshift-cert-manager-operator",
-				"namespace": "cert-manager-operator",
-			},
-			"status": map[string]any{
-				"installedCSV": "cert-manager-operator.v1.12.0",
-			},
+	sub := &operatorsv1alpha1.Subscription{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "openshift-cert-manager-operator",
+			Namespace: "cert-manager-operator",
+		},
+		Status: operatorsv1alpha1.SubscriptionStatus{
+			InstalledCSV: "cert-manager-operator.v1.12.0",
 		},
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, sub)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)
+	olmClient := operatorfake.NewSimpleClientset(sub)
 
 	c := &client.Client{
 		Dynamic: dynamicClient,
+		OLM:     olmClient,
 	}
 
 	target := &check.CheckTarget{
@@ -134,7 +127,7 @@ func TestCertManagerCheck_InstalledOpenShiftCertManager(t *testing.T) {
 		},
 	}
 
-	certManagerCheck := &certmanager.Check{}
+	certManagerCheck := certmanager.NewCheck()
 	result, err := certManagerCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
@@ -151,7 +144,7 @@ func TestCertManagerCheck_InstalledOpenShiftCertManager(t *testing.T) {
 func TestCertManagerCheck_Metadata(t *testing.T) {
 	g := NewWithT(t)
 
-	certManagerCheck := &certmanager.Check{}
+	certManagerCheck := certmanager.NewCheck()
 
 	g.Expect(certManagerCheck.ID()).To(Equal("dependencies.certmanager.installed"))
 	g.Expect(certManagerCheck.Name()).To(Equal("Dependencies :: CertManager :: Installed"))

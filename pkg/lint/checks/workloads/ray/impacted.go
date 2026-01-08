@@ -11,15 +11,12 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 )
 
 const (
-	checkID          = "workloads.ray.impacted-workloads"
-	checkName        = "Workloads :: Ray :: Impacted Workloads (3.x)"
-	checkDescription = "Lists RayClusters managed by CodeFlare that will be impacted in RHOAI 3.x (CodeFlare not available)"
-
 	finalizerCodeFlareOAuth = "ray.openshift.ai/oauth-finalizer"
 )
 
@@ -29,26 +26,21 @@ type impactedResource struct {
 }
 
 // ImpactedWorkloadsCheck lists RayClusters managed by CodeFlare.
-type ImpactedWorkloadsCheck struct{}
-
-// ID returns the unique identifier for this check.
-func (c *ImpactedWorkloadsCheck) ID() string {
-	return checkID
+type ImpactedWorkloadsCheck struct {
+	base.BaseCheck
 }
 
-// Name returns the human-readable check name.
-func (c *ImpactedWorkloadsCheck) Name() string {
-	return checkName
-}
-
-// Description returns what this check validates.
-func (c *ImpactedWorkloadsCheck) Description() string {
-	return checkDescription
-}
-
-// Group returns the check group.
-func (c *ImpactedWorkloadsCheck) Group() check.CheckGroup {
-	return check.GroupWorkload
+func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
+	return &ImpactedWorkloadsCheck{
+		BaseCheck: base.BaseCheck{
+			CheckGroup:       check.GroupWorkload,
+			Kind:             check.ComponentRay,
+			CheckType:        check.CheckTypeImpactedWorkloads,
+			CheckID:          "workloads.ray.impacted-workloads",
+			CheckName:        "Workloads :: Ray :: Impacted Workloads (3.x)",
+			CheckDescription: "Lists RayClusters managed by CodeFlare that will be impacted in RHOAI 3.x (CodeFlare not available)",
+		},
+	}
 }
 
 // CanApply returns whether this check should run for the given versions.
@@ -69,12 +61,7 @@ func (c *ImpactedWorkloadsCheck) Validate(
 	ctx context.Context,
 	target *check.CheckTarget,
 ) (*result.DiagnosticResult, error) {
-	dr := result.New(
-		string(check.GroupWorkload),
-		check.ComponentRay,
-		check.CheckTypeImpactedWorkloads,
-		checkDescription,
-	)
+	dr := c.NewResult()
 
 	if target.Version != nil {
 		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.Version
@@ -145,5 +132,5 @@ func (c *ImpactedWorkloadsCheck) buildImpactMessage(
 //
 //nolint:gochecknoinits // Required for auto-registration pattern
 func init() {
-	check.MustRegisterCheck(&ImpactedWorkloadsCheck{})
+	check.MustRegisterCheck(NewImpactedWorkloadsCheck())
 }

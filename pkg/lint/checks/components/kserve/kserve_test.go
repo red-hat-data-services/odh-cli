@@ -376,7 +376,7 @@ func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 func TestKServeServerlessRemovalCheck_Metadata(t *testing.T) {
 	g := NewWithT(t)
 
-	kserveCheck := &kserve.ServerlessRemovalCheck{}
+	kserveCheck := kserve.NewServerlessRemovalCheck()
 
 	g.Expect(kserveCheck.ID()).To(Equal("components.kserve.serverless-removal"))
 	g.Expect(kserveCheck.Name()).To(Equal("Components :: KServe :: Serverless Removal (3.x)"))

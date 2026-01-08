@@ -262,7 +262,7 @@ func TestCodeFlareRemovalCheck_RemovedReady(t *testing.T) {
 func TestCodeFlareRemovalCheck_Metadata(t *testing.T) {
 	g := NewWithT(t)
 
-	codeflareCheck := &codeflare.RemovalCheck{}
+	codeflareCheck := codeflare.NewRemovalCheck()
 
 	g.Expect(codeflareCheck.ID()).To(Equal("components.codeflare.removal"))
 	g.Expect(codeflareCheck.Name()).To(Equal("Components :: CodeFlare :: Removal (3.x)"))

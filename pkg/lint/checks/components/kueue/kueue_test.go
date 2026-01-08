@@ -262,7 +262,7 @@ func TestKueueManagedRemovalCheck_RemovedAllowed(t *testing.T) {
 func TestKueueManagedRemovalCheck_Metadata(t *testing.T) {
 	g := NewWithT(t)
 
-	kueueCheck := &kueue.ManagedRemovalCheck{}
+	kueueCheck := kueue.NewManagedRemovalCheck()
 
 	g.Expect(kueueCheck.ID()).To(Equal("components.kueue.managed-removal"))
 	g.Expect(kueueCheck.Name()).To(Equal("Components :: Kueue :: Managed Removal (3.x)"))

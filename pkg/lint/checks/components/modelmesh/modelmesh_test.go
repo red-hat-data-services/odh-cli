@@ -262,7 +262,7 @@ func TestModelmeshRemovalCheck_RemovedReady(t *testing.T) {
 func TestModelmeshRemovalCheck_Metadata(t *testing.T) {
 	g := NewWithT(t)
 
-	modelmeshCheck := &modelmesh.RemovalCheck{}
+	modelmeshCheck := modelmesh.NewRemovalCheck()
 
 	g.Expect(modelmeshCheck.ID()).To(Equal("components.modelmesh.removal"))
 	g.Expect(modelmeshCheck.Name()).To(Equal("Components :: ModelMesh :: Removal (3.x)"))

@@ -145,6 +145,16 @@ func CheckOperatorPresence(
 	// Create diagnostic result
 	dr := result.New(config.Group, config.Kind, config.Name, config.Description)
 
+	// Check if OLM client is available
+	if k8sClient.OLM == nil {
+		// Use the custom condition builder if provided, otherwise treat as "not found"
+		condition := config.ConditionBuilder(false, "")
+		condition.Message = "OLM client not available"
+		dr.Status.Conditions = []metav1.Condition{condition}
+
+		return dr, nil
+	}
+
 	// List subscriptions
 	subscriptions, err := k8sClient.OLM.OperatorsV1alpha1().Subscriptions("").List(ctx, metav1.ListOptions{})
 	if err != nil {

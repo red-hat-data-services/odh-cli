@@ -1,0 +1,160 @@
+package base_test
+
+import (
+	"context"
+	"testing"
+
+	"github.com/blang/semver/v4"
+
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
+
+	. "github.com/onsi/gomega"
+)
+
+func TestBaseCheck(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should provide all metadata fields", func(t *testing.T) {
+		bc := base.BaseCheck{
+			CheckGroup:       check.GroupComponent,
+			Kind:             "test-component",
+			CheckType:        "test-type",
+			CheckID:          "components.test.check",
+			CheckName:        "Test Check Name",
+			CheckDescription: "Test description",
+		}
+
+		// Interface methods
+		g.Expect(bc.ID()).To(Equal("components.test.check"))
+		g.Expect(bc.Name()).To(Equal("Test Check Name"))
+		g.Expect(bc.Description()).To(Equal("Test description"))
+		g.Expect(bc.Group()).To(Equal(check.GroupComponent))
+
+		// Public fields (can be accessed directly)
+		g.Expect(bc.Kind).To(Equal("test-component"))
+		g.Expect(bc.CheckType).To(Equal("test-type"))
+	})
+
+	t.Run("NewResult should create properly initialized result", func(t *testing.T) {
+		bc := base.BaseCheck{
+			CheckGroup:       check.GroupComponent,
+			Kind:             check.ComponentKServe,
+			CheckType:        check.CheckTypeRemoval,
+			CheckID:          "components.kserve.removal",
+			CheckName:        "KServe Removal",
+			CheckDescription: "Validates KServe removal",
+		}
+
+		dr := bc.NewResult()
+
+		g.Expect(dr.Group).To(Equal("component"))
+		g.Expect(dr.Kind).To(Equal(check.ComponentKServe))
+		g.Expect(dr.Name).To(Equal(check.CheckTypeRemoval))
+		g.Expect(dr.Spec.Description).To(Equal("Validates KServe removal"))
+		g.Expect(dr.Annotations).ToNot(BeNil())
+		g.Expect(dr.Status.Conditions).ToNot(BeNil())
+	})
+
+	t.Run("should satisfy Check interface via composition", func(t *testing.T) {
+		// MockCheck is defined at package level and implements full Check interface
+		tc := &MockCheck{
+			BaseCheck: base.BaseCheck{
+				CheckGroup:       check.GroupComponent,
+				Kind:             "test",
+				CheckType:        "type",
+				CheckID:          "test.id",
+				CheckName:        "Test Name",
+				CheckDescription: "Test description",
+			},
+		}
+
+		var _ check.Check = tc
+
+		g.Expect(tc.ID()).To(Equal("test.id"))
+		g.Expect(tc.Name()).To(Equal("Test Name"))
+		g.Expect(tc.Description()).To(Equal("Test description"))
+		g.Expect(tc.Group()).To(Equal(check.GroupComponent))
+	})
+
+	t.Run("should work with different check groups", func(t *testing.T) {
+		testCases := []struct {
+			name  string
+			group check.CheckGroup
+		}{
+			{"component", check.GroupComponent},
+			{"service", check.GroupService},
+			{"workload", check.GroupWorkload},
+			{"dependency", check.GroupDependency},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				bc := base.BaseCheck{
+					CheckGroup:       tc.group,
+					Kind:             "test",
+					CheckType:        "test",
+					CheckID:          "test.id",
+					CheckName:        "Test",
+					CheckDescription: "Test",
+				}
+
+				g.Expect(bc.Group()).To(Equal(tc.group))
+				dr := bc.NewResult()
+				g.Expect(dr.Group).To(Equal(string(tc.group)))
+			})
+		}
+	})
+}
+
+type MockCheck struct {
+	base.BaseCheck
+}
+
+func (c *MockCheck) CanApply(
+	currentVersion *semver.Version,
+	targetVersion *semver.Version,
+) bool {
+	return true
+}
+
+func (c *MockCheck) Validate(
+	ctx context.Context,
+	target *check.CheckTarget,
+) (*result.DiagnosticResult, error) {
+	return c.NewResult(), nil
+}
+
+func TestBaseCheckIntegration(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("full check implementation with BaseCheck", func(t *testing.T) {
+		mockCheck := &MockCheck{
+			BaseCheck: base.BaseCheck{
+				CheckGroup:       check.GroupComponent,
+				Kind:             check.ComponentModelMesh,
+				CheckType:        check.CheckTypeRemoval,
+				CheckID:          "components.modelmesh.removal",
+				CheckName:        "Components :: ModelMesh :: Removal (3.x)",
+				CheckDescription: "Validates that ModelMesh is disabled",
+			},
+		}
+
+		g.Expect(mockCheck.ID()).To(Equal("components.modelmesh.removal"))
+		g.Expect(mockCheck.Name()).To(Equal("Components :: ModelMesh :: Removal (3.x)"))
+		g.Expect(mockCheck.Description()).To(Equal("Validates that ModelMesh is disabled"))
+		g.Expect(mockCheck.Group()).To(Equal(check.GroupComponent))
+
+		v2, _ := semver.Parse("2.15.0")
+		v3, _ := semver.Parse("3.0.0")
+		g.Expect(mockCheck.CanApply(&v2, &v3)).To(BeTrue())
+
+		dr, err := mockCheck.Validate(context.Background(), &check.CheckTarget{})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(dr).ToNot(BeNil())
+		g.Expect(dr.Group).To(Equal("component"))
+		g.Expect(dr.Kind).To(Equal(check.ComponentModelMesh))
+		g.Expect(dr.Name).To(Equal(check.CheckTypeRemoval))
+	})
+}
