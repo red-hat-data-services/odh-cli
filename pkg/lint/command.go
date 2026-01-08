@@ -72,7 +72,8 @@ func (c *Command) Complete() error {
 
 	// Parse target version if provided (upgrade mode)
 	if c.TargetVersion != "" {
-		targetVer, err := semver.Parse(c.TargetVersion)
+		// Use ParseTolerant to accept partial versions (e.g., "3.0" → "3.0.0")
+		targetVer, err := semver.ParseTolerant(c.TargetVersion)
 		if err != nil {
 			return fmt.Errorf("invalid target version %q: %w", c.TargetVersion, err)
 		}
