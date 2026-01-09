@@ -77,6 +77,12 @@ func (e *Executor) executeChecks(ctx context.Context, target *CheckTarget, check
 	}
 
 	for _, check := range checks {
+		// Check context before executing each check
+		if err := CheckContextError(ctx); err != nil {
+			// Context canceled or timed out - stop executing checks
+			break
+		}
+
 		// Filter by CanApply before executing
 		// This allows checks to consider both current and target versions
 		if !check.CanApply(currentVer, targetVer) {

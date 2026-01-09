@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/onsi/gomega"
-
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	mocks "github.com/lburgazzoli/odh-cli/pkg/util/test/mocks/check"
+
+	. "github.com/onsi/gomega"
 )
 
 // Test 1: Duplicate Registration Error.
@@ -96,7 +96,7 @@ func TestRegistry_ConcurrentRegistration(t *testing.T) {
 	const numGoroutines = 10
 	done := make(chan bool, numGoroutines)
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		go func(index int) {
 			defer func() { done <- true }()
 
@@ -114,7 +114,7 @@ func TestRegistry_ConcurrentRegistration(t *testing.T) {
 	}
 
 	// Wait for all goroutines
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		<-done
 	}
 
