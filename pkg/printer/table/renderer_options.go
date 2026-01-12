@@ -17,6 +17,8 @@ import (
 //nolint:gochecknoglobals // Shared default table options for consistency across commands
 var DefaultTableOptions = []tablewriter.Option{
 	tablewriter.WithHeaderAlignment(tw.AlignLeft),
+	tablewriter.WithRowAutoWrap(tw.WrapNormal), // Enable word-wrapping for row content
+	tablewriter.WithRowMaxWidth(100),           // Limit row cells to 100 characters
 	tablewriter.WithRendition(tw.Rendition{
 		Settings: tw.Settings{
 			Separators: tw.Separators{

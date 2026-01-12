@@ -466,10 +466,6 @@ func OutputTable(out io.Writer, results []check.CheckExecution) error {
 
 			msg := condition.Message
 
-			if len(msg) > 1024 {
-				msg = msg[:1024] + "..."
-			}
-
 			row := CheckResultTableRow{
 				Status:      status,
 				Group:       exec.Result.Group,
