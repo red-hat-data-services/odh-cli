@@ -38,8 +38,8 @@ func (c *Check) Group() check.CheckGroup {
 
 // CanApply returns whether this check should run for the given target.
 // This check only applies when the kueue component is enabled in DataScienceCluster.
-func (c *Check) CanApply(target *check.CheckTarget) bool {
-	if target == nil || target.Client == nil {
+func (c *Check) CanApply(target check.Target) bool {
+	if target.Client == nil {
 		return false
 	}
 
@@ -63,7 +63,7 @@ func (c *Check) CanApply(target *check.CheckTarget) bool {
 		managementState == check.ManagementStateUnmanaged
 }
 
-func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	// kueue-operator check uses all defaults from operators.CheckOperatorPresence
 	// since the subscription name matches the operator kind ("kueue-operator")
 	res, err := operators.CheckOperatorPresence(

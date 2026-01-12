@@ -39,9 +39,9 @@ func TestServiceMeshRemovalCheck_NoDSCI(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}
@@ -83,9 +83,9 @@ func TestServiceMeshRemovalCheck_NotConfigured(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}
@@ -130,9 +130,9 @@ func TestServiceMeshRemovalCheck_ManagedBlocking(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}
@@ -178,9 +178,9 @@ func TestServiceMeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.1.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}
@@ -226,9 +226,9 @@ func TestServiceMeshRemovalCheck_RemovedReady(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	servicemeshCheck := &servicemesh.RemovalCheck{}

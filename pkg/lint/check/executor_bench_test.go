@@ -27,10 +27,10 @@ func BenchmarkExecuteSelective_FullSuite(b *testing.B) {
 	}
 
 	ver := semver.MustParse("2.17.0")
-	target := &check.CheckTarget{
-		Client:   c,
-		Version:  &ver,
-		Resource: nil,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+		Resource:      nil,
 	}
 
 	ctx := context.Background()
@@ -55,10 +55,10 @@ func BenchmarkExecuteSelective_GroupFilter(b *testing.B) {
 	}
 
 	ver := semver.MustParse("2.17.0")
-	target := &check.CheckTarget{
-		Client:   c,
-		Version:  &ver,
-		Resource: nil,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+		Resource:      nil,
 	}
 
 	ctx := context.Background()
@@ -83,10 +83,10 @@ func BenchmarkExecuteSelective_SingleCheck(b *testing.B) {
 	}
 
 	ver := semver.MustParse("2.17.0")
-	target := &check.CheckTarget{
-		Client:   c,
-		Version:  &ver,
-		Resource: nil,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+		Resource:      nil,
 	}
 
 	ctx := context.Background()
@@ -161,11 +161,11 @@ func (c *benchmarkCheck) Group() check.CheckGroup {
 	return c.group
 }
 
-func (c *benchmarkCheck) CanApply(_ *check.CheckTarget) bool {
+func (c *benchmarkCheck) CanApply(target check.Target) bool {
 	return true // Always applicable
 }
 
-func (c *benchmarkCheck) Validate(_ context.Context, _ *check.CheckTarget) (*result.DiagnosticResult, error) {
+func (c *benchmarkCheck) Validate(_ context.Context, _ check.Target) (*result.DiagnosticResult, error) {
 	dr := result.New(
 		string(c.group),
 		"bench"+string(rune('0'+len(c.id))),

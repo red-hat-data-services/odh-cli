@@ -27,14 +27,14 @@ import (
 //	    }
 //	}
 //
-//	func (c *RemovalCheck) CanApply(currentVersion *semver.Version, targetVersion *semver.Version) bool {
+//	func (c *RemovalCheck) CanApply(currentVersion *semver.TargetVersion, targetVersion *semver.TargetVersion) bool {
 //	    if currentVersion == nil || targetVersion == nil {
 //	        return false
 //	    }
 //	    return currentVersion.Major == 2 && targetVersion.Major >= 3
 //	}
 //
-//	func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+//	func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 //	    dr := c.NewResult()
 //	    // ... validation logic
 //	    return dr, nil
@@ -99,7 +99,7 @@ func (b BaseCheck) Group() check.CheckGroup {
 //
 // Example:
 //
-//	func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+//	func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 //	    dr := c.NewResult()  // Instead of result.New(...)
 //
 //	    // Add conditions...

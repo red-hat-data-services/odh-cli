@@ -119,7 +119,7 @@ func (c *RunCommand) runPrepareMode(
 		recorder := action.NewVerboseRootRecorder(c.IO)
 		c.IO.Errorf("\n%s:\n", migrationID)
 
-		target := &action.ActionTarget{
+		target := action.Target{
 			Client:         c.Client,
 			CurrentVersion: currentVersion,
 			TargetVersion:  targetVersion,
@@ -166,7 +166,7 @@ func (c *RunCommand) runMigrationMode(
 		recorder := action.NewVerboseRootRecorder(c.IO)
 		c.IO.Errorf("\n%s:\n", migrationID)
 
-		target := &action.ActionTarget{
+		target := action.Target{
 			Client:         c.Client,
 			CurrentVersion: currentVersion,
 			TargetVersion:  targetVersion,

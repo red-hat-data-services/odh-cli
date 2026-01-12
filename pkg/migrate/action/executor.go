@@ -25,7 +25,7 @@ func NewExecutor(registry *ActionRegistry) *Executor {
 
 func (e *Executor) ExecuteAll(
 	ctx context.Context,
-	target *ActionTarget,
+	target Target,
 ) []ActionExecution {
 	actions := e.registry.ListAll()
 
@@ -34,7 +34,7 @@ func (e *Executor) ExecuteAll(
 
 func (e *Executor) ExecuteSelective(
 	ctx context.Context,
-	target *ActionTarget,
+	target Target,
 	pattern string,
 	group ActionGroup,
 ) ([]ActionExecution, error) {
@@ -48,7 +48,7 @@ func (e *Executor) ExecuteSelective(
 
 func (e *Executor) executeActions(
 	ctx context.Context,
-	target *ActionTarget,
+	target Target,
 	actions []Action,
 ) []ActionExecution {
 	results := make([]ActionExecution, 0, len(actions))
@@ -67,7 +67,7 @@ func (e *Executor) executeActions(
 
 func (e *Executor) executeAction(
 	ctx context.Context,
-	target *ActionTarget,
+	target Target,
 	action Action,
 ) ActionExecution {
 	actionResult, err := action.Execute(ctx, target)

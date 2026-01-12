@@ -39,9 +39,9 @@ func TestKueueManagedRemovalCheck_NoDSC(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kueueCheck := &kueue.ManagedRemovalCheck{}
@@ -87,9 +87,9 @@ func TestKueueManagedRemovalCheck_NotConfigured(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kueueCheck := &kueue.ManagedRemovalCheck{}
@@ -135,9 +135,9 @@ func TestKueueManagedRemovalCheck_ManagedBlocking(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kueueCheck := &kueue.ManagedRemovalCheck{}
@@ -187,9 +187,9 @@ func TestKueueManagedRemovalCheck_UnmanagedAllowed(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.1.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kueueCheck := &kueue.ManagedRemovalCheck{}
@@ -236,9 +236,9 @@ func TestKueueManagedRemovalCheck_RemovedAllowed(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kueueCheck := &kueue.ManagedRemovalCheck{}

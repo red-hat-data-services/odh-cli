@@ -1,4 +1,4 @@
-package modelmesh_test
+package trainingoperator_test
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/modelmesh"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/trainingoperator"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 
@@ -21,16 +21,15 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 )
 
-//nolint:gochecknoglobals // Test fixture - shared across test functions
+//nolint:gochecknoglobals
 var listKinds = map[schema.GroupVersionResource]string{
 	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
-func TestModelmeshRemovalCheck_NoDSC(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_NoDSC(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create empty cluster (no DataScienceCluster)
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
 
@@ -38,14 +37,14 @@ func TestModelmeshRemovalCheck_NoDSC(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
-	ver := semver.MustParse("3.0.0")
+	ver := semver.MustParse("3.3.0")
 	target := check.Target{
 		Client:        c,
 		TargetVersion: &ver,
 	}
 
-	modelmeshCheck := &modelmesh.RemovalCheck{}
-	result, err := modelmeshCheck.Validate(ctx, target)
+	trainingoperatorCheck := &trainingoperator.DeprecationCheck{}
+	result, err := trainingoperatorCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
@@ -57,11 +56,10 @@ func TestModelmeshRemovalCheck_NoDSC(t *testing.T) {
 	}))
 }
 
-func TestModelmeshRemovalCheck_NotConfigured(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_NotConfigured(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create DataScienceCluster without modelmesh component
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.DataScienceCluster.APIVersion(),
@@ -86,14 +84,14 @@ func TestModelmeshRemovalCheck_NotConfigured(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
-	ver := semver.MustParse("3.0.0")
+	ver := semver.MustParse("3.3.0")
 	target := check.Target{
 		Client:        c,
 		TargetVersion: &ver,
 	}
 
-	modelmeshCheck := &modelmesh.RemovalCheck{}
-	result, err := modelmeshCheck.Validate(ctx, target)
+	trainingoperatorCheck := &trainingoperator.DeprecationCheck{}
+	result, err := trainingoperatorCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
@@ -105,11 +103,10 @@ func TestModelmeshRemovalCheck_NotConfigured(t *testing.T) {
 	}))
 }
 
-func TestModelmeshRemovalCheck_ManagedBlocking(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_ManagedDeprecated(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create DataScienceCluster with modelmeshserving Managed (blocking upgrade)
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.DataScienceCluster.APIVersion(),
@@ -119,7 +116,7 @@ func TestModelmeshRemovalCheck_ManagedBlocking(t *testing.T) {
 			},
 			"spec": map[string]any{
 				"components": map[string]any{
-					"modelmeshserving": map[string]any{
+					"trainingoperator": map[string]any{
 						"managementState": "Managed",
 					},
 				},
@@ -134,14 +131,14 @@ func TestModelmeshRemovalCheck_ManagedBlocking(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
-	ver := semver.MustParse("3.0.0")
+	ver := semver.MustParse("3.3.0")
 	target := check.Target{
 		Client:        c,
 		TargetVersion: &ver,
 	}
 
-	modelmeshCheck := &modelmesh.RemovalCheck{}
-	result, err := modelmeshCheck.Validate(ctx, target)
+	trainingoperatorCheck := &trainingoperator.DeprecationCheck{}
+	result, err := trainingoperatorCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
@@ -149,19 +146,18 @@ func TestModelmeshRemovalCheck_ManagedBlocking(t *testing.T) {
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
-		"Message": And(ContainSubstring("enabled"), ContainSubstring("removed in RHOAI 3.x")),
+		"Message": And(ContainSubstring("enabled"), ContainSubstring("deprecated in RHOAI 3.3")),
 	}))
 	g.Expect(result.Annotations).To(And(
 		HaveKeyWithValue("component.opendatahub.io/management-state", "Managed"),
-		HaveKeyWithValue("check.opendatahub.io/target-version", "3.0.0"),
+		HaveKeyWithValue("check.opendatahub.io/target-version", "3.3.0"),
 	))
 }
 
-func TestModelmeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_UnmanagedDeprecated(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create DataScienceCluster with modelmeshserving Unmanaged (also blocking)
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.DataScienceCluster.APIVersion(),
@@ -171,7 +167,7 @@ func TestModelmeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 			},
 			"spec": map[string]any{
 				"components": map[string]any{
-					"modelmeshserving": map[string]any{
+					"trainingoperator": map[string]any{
 						"managementState": "Unmanaged",
 					},
 				},
@@ -186,14 +182,14 @@ func TestModelmeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
-	ver := semver.MustParse("3.1.0")
+	ver := semver.MustParse("3.4.0")
 	target := check.Target{
 		Client:        c,
 		TargetVersion: &ver,
 	}
 
-	modelmeshCheck := &modelmesh.RemovalCheck{}
-	result, err := modelmeshCheck.Validate(ctx, target)
+	trainingoperatorCheck := &trainingoperator.DeprecationCheck{}
+	result, err := trainingoperatorCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
@@ -206,11 +202,10 @@ func TestModelmeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Unmanaged"))
 }
 
-func TestModelmeshRemovalCheck_RemovedReady(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_RemovedReady(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create DataScienceCluster with modelmeshserving Removed (ready for upgrade)
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.DataScienceCluster.APIVersion(),
@@ -220,7 +215,7 @@ func TestModelmeshRemovalCheck_RemovedReady(t *testing.T) {
 			},
 			"spec": map[string]any{
 				"components": map[string]any{
-					"modelmeshserving": map[string]any{
+					"trainingoperator": map[string]any{
 						"managementState": "Removed",
 					},
 				},
@@ -235,14 +230,14 @@ func TestModelmeshRemovalCheck_RemovedReady(t *testing.T) {
 		Dynamic: dynamicClient,
 	}
 
-	ver := semver.MustParse("3.0.0")
+	ver := semver.MustParse("3.3.0")
 	target := check.Target{
 		Client:        c,
 		TargetVersion: &ver,
 	}
 
-	modelmeshCheck := &modelmesh.RemovalCheck{}
-	result, err := modelmeshCheck.Validate(ctx, target)
+	trainingoperatorCheck := &trainingoperator.DeprecationCheck{}
+	result, err := trainingoperatorCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
@@ -250,18 +245,60 @@ func TestModelmeshRemovalCheck_RemovedReady(t *testing.T) {
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": And(ContainSubstring("disabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
+		"Message": And(ContainSubstring("disabled"), ContainSubstring("no action required")),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Removed"))
 }
 
-func TestModelmeshRemovalCheck_Metadata(t *testing.T) {
+func TestTrainingOperatorDeprecationCheck_CanApply_Version32(t *testing.T) {
 	g := NewWithT(t)
 
-	modelmeshCheck := modelmesh.NewRemovalCheck()
+	ver := semver.MustParse("3.2.0")
+	target := check.Target{
+		TargetVersion: &ver,
+	}
 
-	g.Expect(modelmeshCheck.ID()).To(Equal("components.modelmesh.removal"))
-	g.Expect(modelmeshCheck.Name()).To(Equal("Components :: ModelMesh :: Removal (3.x)"))
-	g.Expect(modelmeshCheck.Group()).To(Equal(check.GroupComponent))
-	g.Expect(modelmeshCheck.Description()).ToNot(BeEmpty())
+	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
+	canApply := trainingoperatorCheck.CanApply(target)
+
+	g.Expect(canApply).To(BeFalse())
+}
+
+func TestTrainingOperatorDeprecationCheck_CanApply_Version33(t *testing.T) {
+	g := NewWithT(t)
+
+	ver := semver.MustParse("3.3.0")
+	target := check.Target{
+		TargetVersion: &ver,
+	}
+
+	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
+	canApply := trainingoperatorCheck.CanApply(target)
+
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestTrainingOperatorDeprecationCheck_CanApply_Version34(t *testing.T) {
+	g := NewWithT(t)
+
+	ver := semver.MustParse("3.4.0")
+	target := check.Target{
+		TargetVersion: &ver,
+	}
+
+	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
+	canApply := trainingoperatorCheck.CanApply(target)
+
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestTrainingOperatorDeprecationCheck_Metadata(t *testing.T) {
+	g := NewWithT(t)
+
+	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
+
+	g.Expect(trainingoperatorCheck.ID()).To(Equal("components.trainingoperator.deprecation"))
+	g.Expect(trainingoperatorCheck.Name()).To(Equal("Components :: TrainingOperator :: Deprecation (3.3+)"))
+	g.Expect(trainingoperatorCheck.Group()).To(Equal(check.GroupComponent))
+	g.Expect(trainingoperatorCheck.Description()).ToNot(BeEmpty())
 }

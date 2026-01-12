@@ -26,16 +26,16 @@ type Action interface {
 
 	// CanApply returns whether this action should run for the given target context.
 	// Actions can use target.CurrentVersion, target.TargetVersion, or target.Client for filtering.
-	CanApply(target *ActionTarget) bool
-	Validate(ctx context.Context, target *ActionTarget) (*result.ActionResult, error)
-	Execute(ctx context.Context, target *ActionTarget) (*result.ActionResult, error)
+	CanApply(target Target) bool
+	Validate(ctx context.Context, target Target) (*result.ActionResult, error)
+	Execute(ctx context.Context, target Target) (*result.ActionResult, error)
 }
 
-// ActionTarget holds all context needed for executing migration actions.
-type ActionTarget struct {
+// Target holds all context needed for executing migration actions.
+type Target struct {
 	Client         *client.Client
-	CurrentVersion *semver.Version // Version being migrated FROM
-	TargetVersion  *semver.Version // Version being migrated TO
+	CurrentVersion *semver.Version // TargetVersion being migrated FROM
+	TargetVersion  *semver.Version // TargetVersion being migrated TO
 	DryRun         bool
 	SkipConfirm    bool
 	Recorder       StepRecorder

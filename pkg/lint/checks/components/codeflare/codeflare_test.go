@@ -39,9 +39,9 @@ func TestCodeFlareRemovalCheck_NoDSC(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}
@@ -87,9 +87,9 @@ func TestCodeFlareRemovalCheck_NotConfigured(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}
@@ -135,9 +135,9 @@ func TestCodeFlareRemovalCheck_ManagedBlocking(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}
@@ -187,9 +187,9 @@ func TestCodeFlareRemovalCheck_UnmanagedBlocking(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.1.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}
@@ -236,9 +236,9 @@ func TestCodeFlareRemovalCheck_RemovedReady(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	codeflareCheck := &codeflare.RemovalCheck{}

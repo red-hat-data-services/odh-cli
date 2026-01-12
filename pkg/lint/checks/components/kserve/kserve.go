@@ -11,6 +11,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 // ServerlessRemovalCheck validates that KServe serverless is disabled before upgrading to 3.x.
@@ -33,12 +34,12 @@ func NewServerlessRemovalCheck() *ServerlessRemovalCheck {
 
 // CanApply returns whether this check should run for the given target.
 // This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *ServerlessRemovalCheck) CanApply(target *check.CheckTarget) bool {
-	return check.IsUpgradeFrom2xTo3x(target)
+func (c *ServerlessRemovalCheck) CanApply(target check.Target) bool {
+	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
 // Validate executes the check against the provided target.
-func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	dr := c.NewResult()
 
 	// Get the DataScienceCluster singleton
@@ -87,8 +88,8 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target *check.Che
 	}
 
 	dr.Annotations[check.AnnotationComponentServingState] = servingStateStr
-	if target.Version != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.String()
+	if target.TargetVersion != nil {
+		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
 	}
 
 	// Check if serverless (serving) is enabled (Managed or Unmanaged)

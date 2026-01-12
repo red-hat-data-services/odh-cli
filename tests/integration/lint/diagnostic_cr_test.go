@@ -54,9 +54,9 @@ func TestDiagnosticCR_EndToEndExecution(t *testing.T) {
 	// Create executor and target
 	executor := check.NewExecutor(registry)
 	ver := semver.MustParse("2.25.0")
-	target := &check.CheckTarget{
+	target := check.Target{
 		Client:         k8sClient,
-		Version:        &ver,
+		TargetVersion:  &ver,
 		CurrentVersion: &ver,
 	}
 
@@ -157,11 +157,11 @@ func (c *testDiagnosticCheck) Group() check.CheckGroup {
 	return "test"
 }
 
-func (c *testDiagnosticCheck) CanApply(_ *check.CheckTarget) bool {
+func (c *testDiagnosticCheck) CanApply(_ check.Target) bool {
 	return true // Always apply for testing
 }
 
-func (c *testDiagnosticCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+func (c *testDiagnosticCheck) Validate(_ context.Context, _ check.Target) (*result.DiagnosticResult, error) {
 	dr := result.New(
 		"test",
 		"integration",

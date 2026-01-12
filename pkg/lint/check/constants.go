@@ -9,11 +9,12 @@ const (
 
 // Component names for diagnostic results.
 const (
-	ComponentCodeFlare = "codeflare"
-	ComponentModelMesh = "modelmesh"
-	ComponentKServe    = "kserve"
-	ComponentKueue     = "kueue"
-	ComponentRay       = "ray"
+	ComponentCodeFlare        = "codeflare"
+	ComponentModelMesh        = "modelmesh"
+	ComponentKServe           = "kserve"
+	ComponentKueue            = "kueue"
+	ComponentRay              = "ray"
+	ComponentTrainingOperator = "trainingoperator"
 )
 
 // Service names for diagnostic results.
@@ -35,6 +36,7 @@ const (
 	CheckTypeManagedRemoval    = "managed-removal"
 	CheckTypeServerlessRemoval = "serverless-removal"
 	CheckTypeImpactedWorkloads = "impacted-workloads"
+	CheckTypeDeprecation       = "deprecation"
 )
 
 // Annotation keys for diagnostic results.

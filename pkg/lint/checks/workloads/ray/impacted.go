@@ -12,6 +12,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 const (
@@ -42,19 +43,19 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 
 // CanApply returns whether this check should run for the given target.
 // Only applies when upgrading FROM 2.x TO 3.x since CodeFlare is impacted by the transition.
-func (c *ImpactedWorkloadsCheck) CanApply(target *check.CheckTarget) bool {
-	return check.IsUpgradeFrom2xTo3x(target)
+func (c *ImpactedWorkloadsCheck) CanApply(target check.Target) bool {
+	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
 // Validate executes the check against the provided target.
 func (c *ImpactedWorkloadsCheck) Validate(
 	ctx context.Context,
-	target *check.CheckTarget,
+	target check.Target,
 ) (*result.DiagnosticResult, error) {
 	dr := c.NewResult()
 
-	if target.Version != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.String()
+	if target.TargetVersion != nil {
+		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
 	}
 
 	// Find impacted RayClusters
@@ -81,7 +82,7 @@ func (c *ImpactedWorkloadsCheck) Validate(
 
 func (c *ImpactedWorkloadsCheck) findImpactedRayClusters(
 	ctx context.Context,
-	target *check.CheckTarget,
+	target check.Target,
 ) ([]types.NamespacedName, error) {
 	rayClusters, err := target.Client.ListMetadata(ctx, resources.RayCluster)
 	if err != nil {

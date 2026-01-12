@@ -178,4 +178,12 @@ var (
 		Kind:     "RayCluster",
 		Resource: "rayclusters",
 	}
+
+	// PyTorchJob is the Kubeflow Training PyTorchJob resource.
+	PyTorchJob = ResourceType{
+		Group:    "kubeflow.org",
+		Version:  "v1",
+		Kind:     "PyTorchJob",
+		Resource: "pytorchjobs",
+	}
 )

@@ -71,17 +71,13 @@ func (a *RHBOKMigrationAction) Group() action.ActionGroup {
 	return action.GroupMigration
 }
 
-func (a *RHBOKMigrationAction) CanApply(target *action.ActionTarget) bool {
-	if target == nil || target.CurrentVersion == nil {
-		return false
-	}
-
+func (a *RHBOKMigrationAction) CanApply(target action.Target) bool {
 	return target.CurrentVersion.Major == 2 && target.CurrentVersion.Minor >= 25
 }
 
 func (a *RHBOKMigrationAction) Validate(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) (*result.ActionResult, error) {
 	a.checkCurrentKueueState(ctx, target)
 	a.checkNoRHBOKConflicts(ctx, target)
@@ -97,7 +93,7 @@ func (a *RHBOKMigrationAction) Validate(
 
 func (a *RHBOKMigrationAction) Execute(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) (*result.ActionResult, error) {
 	// Check if Kueue is managed by DataScienceCluster
 	kueueManaged := a.checkKueueManaged(ctx, target)
@@ -121,7 +117,7 @@ func (a *RHBOKMigrationAction) Execute(
 
 func (a *RHBOKMigrationAction) checkKueueManaged(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) bool {
 	step := target.Recorder.Child(
 		"check-kueue-managed",
@@ -159,7 +155,7 @@ func (a *RHBOKMigrationAction) checkKueueManaged(
 
 func (a *RHBOKMigrationAction) preserveKueueConfig(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) {
 	step := target.Recorder.Child(
 		"preserve-kueue-config",
@@ -237,7 +233,7 @@ func (a *RHBOKMigrationAction) preserveKueueConfig(
 
 func (a *RHBOKMigrationAction) installRHBOKOperator(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) {
 	step := target.Recorder.Child(
 		"install-rhbok-operator",
@@ -294,7 +290,7 @@ func (a *RHBOKMigrationAction) installRHBOKOperator(
 
 func (a *RHBOKMigrationAction) updateDataScienceCluster(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) {
 	step := target.Recorder.Child(
 		"update-datasciencecluster",
@@ -377,7 +373,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 
 func (a *RHBOKMigrationAction) verifyResourcesPreserved(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) {
 	step := target.Recorder.Child(
 		"verify-resources-preserved",

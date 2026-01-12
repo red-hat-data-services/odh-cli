@@ -34,9 +34,9 @@ func TestServiceMeshOperator2Check_NotInstalled(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	serviceMeshOperator2Check := &servicemeshoperator.Check{}
@@ -79,9 +79,9 @@ func TestServiceMeshOperator2Check_InstalledBlocking(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	serviceMeshOperator2Check := &servicemeshoperator.Check{}

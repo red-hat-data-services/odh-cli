@@ -84,14 +84,14 @@ type Check interface {
 	// CanApply returns whether this check should run given the check target context.
 	// The target provides access to:
 	// - CurrentVersion: the current cluster version (source for upgrades, nil for lint mode)
-	// - Version: the target version being checked (for upgrades) or current version (for lint mode)
+	// - TargetVersion: the target version being checked (for upgrades) or current version (for lint mode)
 	// - Client: Kubernetes client for querying cluster state (enables component-conditional checks)
-	// Default behavior: returns true if applicable to target.Version.
-	// Upgrade checks can check both CurrentVersion and Version.
+	// Default behavior: returns true if applicable to target.TargetVersion.
+	// Upgrade checks can check both CurrentVersion and TargetVersion.
 	// Component-conditional checks can query DataScienceCluster via target.Client.
-	CanApply(target *CheckTarget) bool
+	CanApply(target Target) bool
 
 	// Validate executes the check against the provided target
 	// Returns DiagnosticResult following Kubernetes CR pattern with conditions
-	Validate(ctx context.Context, target *CheckTarget) (*result.DiagnosticResult, error)
+	Validate(ctx context.Context, target Target) (*result.DiagnosticResult, error)
 }

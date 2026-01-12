@@ -31,7 +31,7 @@ func NewExecutor(registry *CheckRegistry) *Executor {
 
 // ExecuteAll runs all checks in the registry against the target
 // Returns results for all checks, including errors.
-func (e *Executor) ExecuteAll(ctx context.Context, target *CheckTarget) []CheckExecution {
+func (e *Executor) ExecuteAll(ctx context.Context, target Target) []CheckExecution {
 	checks := e.registry.ListAll()
 
 	return e.executeChecks(ctx, target, checks)
@@ -39,10 +39,10 @@ func (e *Executor) ExecuteAll(ctx context.Context, target *CheckTarget) []CheckE
 
 // ExecuteSelective runs checks matching the pattern and group
 // Returns results for matching checks only.
-// Version filtering is done via CanApply during execution.
+// TargetVersion filtering is done via CanApply during execution.
 func (e *Executor) ExecuteSelective(
 	ctx context.Context,
-	target *CheckTarget,
+	target Target,
 	pattern string,
 	group CheckGroup,
 ) ([]CheckExecution, error) {
@@ -55,7 +55,7 @@ func (e *Executor) ExecuteSelective(
 }
 
 // executeChecks runs the provided checks against the target sequentially.
-func (e *Executor) executeChecks(ctx context.Context, target *CheckTarget, checks []Check) []CheckExecution {
+func (e *Executor) executeChecks(ctx context.Context, target Target, checks []Check) []CheckExecution {
 	results := make([]CheckExecution, 0, len(checks))
 
 	for _, check := range checks {
@@ -66,7 +66,7 @@ func (e *Executor) executeChecks(ctx context.Context, target *CheckTarget, check
 		}
 
 		// Filter by CanApply before executing
-		// Checks can use target.CurrentVersion, target.Version, or target.Client for filtering
+		// Checks can use target.CurrentVersion, target.TargetVersion, or target.Client for filtering
 		if !check.CanApply(target) {
 			// Skip checks that don't apply to this target context
 			continue
@@ -81,7 +81,7 @@ func (e *Executor) executeChecks(ctx context.Context, target *CheckTarget, check
 }
 
 // executeCheck runs a single check and captures the result or error.
-func (e *Executor) executeCheck(ctx context.Context, target *CheckTarget, check Check) CheckExecution {
+func (e *Executor) executeCheck(ctx context.Context, target Target, check Check) CheckExecution {
 	checkResult, err := check.Validate(ctx, target)
 
 	// If check returned an error, create a diagnostic result with error condition

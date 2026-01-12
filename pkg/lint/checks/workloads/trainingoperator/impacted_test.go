@@ -1,0 +1,404 @@
+package trainingoperator_test
+
+import (
+	"context"
+	"testing"
+
+	"github.com/blang/semver/v4"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
+
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/trainingoperator"
+	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+
+	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
+)
+
+//nolint:gochecknoglobals
+var listKinds = map[schema.GroupVersionResource]string{
+	resources.PyTorchJob.GVR(): resources.PyTorchJob.ListKind(),
+}
+
+func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
+
+	c := &client.Client{
+		Dynamic: dynamicClient,
+	}
+
+	ver := semver.MustParse("3.3.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &trainingoperator.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("No PyTorchJob(s) found"),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
+}
+
+func TestImpactedWorkloadsCheck_ActiveJobs(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	activeJob := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.PyTorchJob.APIVersion(),
+			"kind":       resources.PyTorchJob.Kind,
+			"metadata": map[string]any{
+				"name":      "active-pytorch-job",
+				"namespace": "test-ns",
+			},
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{
+						"type":   "Running",
+						"status": "True",
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, activeJob)
+
+	c := &client.Client{
+		Dynamic: dynamicClient,
+	}
+
+	ver := semver.MustParse("3.3.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &trainingoperator.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Message": And(ContainSubstring("Found 1 active PyTorchJob(s)"), ContainSubstring("deprecated TrainingOperator")),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
+	g.Expect(result.ImpactedObjects).To(HaveLen(1))
+	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "active"))
+}
+
+func TestImpactedWorkloadsCheck_CompletedJobsSucceeded(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	completedJob := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.PyTorchJob.APIVersion(),
+			"kind":       resources.PyTorchJob.Kind,
+			"metadata": map[string]any{
+				"name":      "completed-pytorch-job",
+				"namespace": "test-ns",
+			},
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{
+						"type":   "Succeeded",
+						"status": "True",
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, completedJob)
+
+	c := &client.Client{
+		Dynamic: dynamicClient,
+	}
+
+	ver := semver.MustParse("3.3.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &trainingoperator.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("Found 1 completed PyTorchJob(s)"),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
+	g.Expect(result.ImpactedObjects).To(HaveLen(1))
+	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "completed"))
+}
+
+func TestImpactedWorkloadsCheck_CompletedJobsFailed(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	failedJob := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.PyTorchJob.APIVersion(),
+			"kind":       resources.PyTorchJob.Kind,
+			"metadata": map[string]any{
+				"name":      "failed-pytorch-job",
+				"namespace": "test-ns",
+			},
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{
+						"type":   "Failed",
+						"status": "True",
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, failedJob)
+
+	c := &client.Client{
+		Dynamic: dynamicClient,
+	}
+
+	ver := semver.MustParse("3.3.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &trainingoperator.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal(check.ReasonVersionCompatible),
+		"Message": ContainSubstring("Found 1 completed PyTorchJob(s)"),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
+	g.Expect(result.ImpactedObjects).To(HaveLen(1))
+	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "completed"))
+}
+
+func TestImpactedWorkloadsCheck_MixedActiveAndCompleted(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	activeJob1 := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.PyTorchJob.APIVersion(),
+			"kind":       resources.PyTorchJob.Kind,
+			"metadata": map[string]any{
+				"name":      "active-job-1",
+				"namespace": "ns1",
+			},
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{
+						"type":   "Running",
+						"status": "True",
+					},
+				},
+			},
+		},
+	}
+
+	activeJob2 := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.PyTorchJob.APIVersion(),
+			"kind":       resources.PyTorchJob.Kind,
+			"metadata": map[string]any{
+				"name":      "active-job-2",
+				"namespace": "ns2",
+			},
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{
+						"type":   "Created",
+						"status": "True",
+					},
+				},
+			},
+		},
+	}
+
+	completedJob := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.PyTorchJob.APIVersion(),
+			"kind":       resources.PyTorchJob.Kind,
+			"metadata": map[string]any{
+				"name":      "completed-job",
+				"namespace": "ns1",
+			},
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{
+						"type":   "Succeeded",
+						"status": "True",
+					},
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		scheme,
+		listKinds,
+		activeJob1,
+		activeJob2,
+		completedJob,
+	)
+
+	c := &client.Client{
+		Dynamic: dynamicClient,
+	}
+
+	ver := semver.MustParse("3.3.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &trainingoperator.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Message": And(ContainSubstring("Found 3 PyTorchJob(s)"), ContainSubstring("2 active"), ContainSubstring("1 completed")),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "3"))
+	g.Expect(result.ImpactedObjects).To(HaveLen(3))
+}
+
+func TestImpactedWorkloadsCheck_JobWithoutStatus(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	jobWithoutStatus := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.PyTorchJob.APIVersion(),
+			"kind":       resources.PyTorchJob.Kind,
+			"metadata": map[string]any{
+				"name":      "job-without-status",
+				"namespace": "test-ns",
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, jobWithoutStatus)
+
+	c := &client.Client{
+		Dynamic: dynamicClient,
+	}
+
+	ver := semver.MustParse("3.3.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := &trainingoperator.ImpactedWorkloadsCheck{}
+	result, err := impactedCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0]).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(trainingoperator.ConditionTypePyTorchJobsCompatible),
+		"Status": Equal(metav1.ConditionFalse),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
+	g.Expect(result.ImpactedObjects).To(HaveLen(1))
+	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "active"))
+}
+
+func TestImpactedWorkloadsCheck_Metadata(t *testing.T) {
+	g := NewWithT(t)
+
+	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
+
+	g.Expect(impactedCheck.ID()).To(Equal("workloads.trainingoperator.impacted-workloads"))
+	g.Expect(impactedCheck.Name()).To(Equal("Workloads :: TrainingOperator :: Impacted Workloads (3.3+)"))
+	g.Expect(impactedCheck.Group()).To(Equal(check.GroupWorkload))
+	g.Expect(impactedCheck.Description()).ToNot(BeEmpty())
+}
+
+func TestImpactedWorkloadsCheck_CanApply_Version32(t *testing.T) {
+	g := NewWithT(t)
+
+	ver := semver.MustParse("3.2.0")
+	target := check.Target{
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
+	canApply := impactedCheck.CanApply(target)
+
+	g.Expect(canApply).To(BeFalse())
+}
+
+func TestImpactedWorkloadsCheck_CanApply_Version33(t *testing.T) {
+	g := NewWithT(t)
+
+	ver := semver.MustParse("3.3.0")
+	target := check.Target{
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
+	canApply := impactedCheck.CanApply(target)
+
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestImpactedWorkloadsCheck_CanApply_Version34(t *testing.T) {
+	g := NewWithT(t)
+
+	ver := semver.MustParse("3.4.0")
+	target := check.Target{
+		TargetVersion: &ver,
+	}
+
+	impactedCheck := trainingoperator.NewImpactedWorkloadsCheck()
+	canApply := impactedCheck.CanApply(target)
+
+	g.Expect(canApply).To(BeTrue())
+}

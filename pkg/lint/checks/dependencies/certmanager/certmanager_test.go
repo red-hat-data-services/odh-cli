@@ -34,9 +34,9 @@ func TestCertManagerCheck_NotInstalled(t *testing.T) {
 	}
 
 	ver := semver.MustParse("2.17.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	certManagerCheck := certmanager.NewCheck()
@@ -76,9 +76,9 @@ func TestCertManagerCheck_InstalledCertManager(t *testing.T) {
 	}
 
 	ver := semver.MustParse("2.17.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	certManagerCheck := certmanager.NewCheck()
@@ -119,9 +119,9 @@ func TestCertManagerCheck_InstalledOpenShiftCertManager(t *testing.T) {
 	}
 
 	ver := semver.MustParse("2.17.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	certManagerCheck := certmanager.NewCheck()

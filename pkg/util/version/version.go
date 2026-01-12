@@ -56,7 +56,7 @@ type ClusterVersion struct {
 }
 
 // VersionToBranch maps a version string to the corresponding Git branch
-// Version format: X.Y.Z
+// TargetVersion format: X.Y.Z
 // Branch mapping:
 //   - 2.x.x → stable-2.x
 //   - 3.x.x → main

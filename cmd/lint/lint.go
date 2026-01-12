@@ -17,12 +17,14 @@ import (
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kueue"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/modelmesh"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/trainingoperator"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/certmanager"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/kueueoperator"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/servicemeshoperator"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/services/servicemesh"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/kserve"
 	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/ray"
+	_ "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/trainingoperator"
 )
 
 const (

@@ -12,6 +12,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 const (
@@ -51,19 +52,19 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 
 // CanApply returns whether this check should run for the given target.
 // Only applies when upgrading FROM 2.x TO 3.x since KServe workloads may be impacted.
-func (c *ImpactedWorkloadsCheck) CanApply(target *check.CheckTarget) bool {
-	return check.IsUpgradeFrom2xTo3x(target)
+func (c *ImpactedWorkloadsCheck) CanApply(target check.Target) bool {
+	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
 // Validate executes the check against the provided target.
 func (c *ImpactedWorkloadsCheck) Validate(
 	ctx context.Context,
-	target *check.CheckTarget,
+	target check.Target,
 ) (*result.DiagnosticResult, error) {
 	dr := c.NewResult()
 
-	if target.Version != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.Version.String()
+	if target.TargetVersion != nil {
+		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
 	}
 
 	// Find impacted workloads by category
@@ -98,7 +99,7 @@ func (c *ImpactedWorkloadsCheck) Validate(
 
 func (c *ImpactedWorkloadsCheck) findImpactedInferenceServices(
 	ctx context.Context,
-	target *check.CheckTarget,
+	target check.Target,
 ) (impactedInferenceServices, error) {
 	inferenceServices, err := target.Client.ListMetadata(ctx, resources.InferenceService)
 	if err != nil {
@@ -129,7 +130,7 @@ func (c *ImpactedWorkloadsCheck) findImpactedInferenceServices(
 
 func (c *ImpactedWorkloadsCheck) findImpactedServingRuntimes(
 	ctx context.Context,
-	target *check.CheckTarget,
+	target check.Target,
 ) ([]types.NamespacedName, error) {
 	servingRuntimes, err := target.Client.List(ctx, resources.ServingRuntime)
 	if err != nil {

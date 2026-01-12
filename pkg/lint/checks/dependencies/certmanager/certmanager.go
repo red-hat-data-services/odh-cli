@@ -30,11 +30,11 @@ func NewCheck() *Check {
 	}
 }
 
-func (c *Check) CanApply(_ *check.CheckTarget) bool {
+func (c *Check) CanApply(_ check.Target) bool {
 	return true
 }
 
-func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	res, err := operators.CheckOperatorPresence(
 		ctx,
 		target.Client,

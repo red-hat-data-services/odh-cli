@@ -60,7 +60,7 @@ func (r *CheckRegistry) ListByGroup(group CheckGroup) []Check {
 
 // ListBySelector returns checks matching group
 // If group is empty, all groups are included
-// Version filtering is handled by CanApply in the executor.
+// TargetVersion filtering is handled by CanApply in the executor.
 func (r *CheckRegistry) ListBySelector(group CheckGroup) []Check {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -99,7 +99,7 @@ func (r *CheckRegistry) ListAll() []Check {
 //   - Glob pattern: "components.*", "*dashboard*", "*.dashboard"
 //
 // If group is empty, all groups are included
-// Version filtering is handled by CanApply in the executor.
+// TargetVersion filtering is handled by CanApply in the executor.
 func (r *CheckRegistry) ListByPattern(
 	pattern string,
 	group CheckGroup,

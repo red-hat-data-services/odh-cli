@@ -112,13 +112,13 @@ type MockCheck struct {
 	base.BaseCheck
 }
 
-func (c *MockCheck) CanApply(_ *check.CheckTarget) bool {
+func (c *MockCheck) CanApply(target check.Target) bool {
 	return true
 }
 
 func (c *MockCheck) Validate(
 	ctx context.Context,
-	target *check.CheckTarget,
+	target check.Target,
 ) (*result.DiagnosticResult, error) {
 	return c.NewResult(), nil
 }
@@ -145,13 +145,13 @@ func TestBaseCheckIntegration(t *testing.T) {
 
 		v2 := semver.MustParse("2.15.0")
 		v3 := semver.MustParse("3.0.0")
-		target := &check.CheckTarget{
+		target := check.Target{
 			CurrentVersion: &v2,
-			Version:        &v3,
+			TargetVersion:  &v3,
 		}
 		g.Expect(mockCheck.CanApply(target)).To(BeTrue())
 
-		dr, err := mockCheck.Validate(context.Background(), &check.CheckTarget{})
+		dr, err := mockCheck.Validate(context.Background(), check.Target{})
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(dr).ToNot(BeNil())
 		g.Expect(dr.Group).To(Equal("component"))

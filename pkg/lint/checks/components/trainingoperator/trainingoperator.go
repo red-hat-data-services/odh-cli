@@ -1,0 +1,87 @@
+package trainingoperator
+
+import (
+	"context"
+	"fmt"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
+	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
+)
+
+type DeprecationCheck struct {
+	base.BaseCheck
+}
+
+func NewDeprecationCheck() *DeprecationCheck {
+	return &DeprecationCheck{
+		BaseCheck: base.BaseCheck{
+			CheckGroup:       check.GroupComponent,
+			Kind:             check.ComponentTrainingOperator,
+			CheckType:        check.CheckTypeDeprecation,
+			CheckID:          "components.trainingoperator.deprecation",
+			CheckName:        "Components :: TrainingOperator :: Deprecation (3.3+)",
+			CheckDescription: "Validates that TrainingOperator (Kubeflow Training Operator v1) deprecation is acknowledged - will be replaced by Trainer v2 in future RHOAI releases",
+		},
+	}
+}
+
+func (c *DeprecationCheck) CanApply(target check.Target) bool {
+	//nolint:mnd // Version numbers 3.3
+	return version.IsVersionAtLeast(target.TargetVersion, 3, 3)
+}
+
+func (c *DeprecationCheck) Validate(
+	ctx context.Context,
+	target check.Target,
+) (*result.DiagnosticResult, error) {
+	dr := c.NewResult()
+
+	dsc, err := target.Client.GetDataScienceCluster(ctx)
+	switch {
+	case apierrors.IsNotFound(err):
+		return results.DataScienceClusterNotFound(string(c.Group()), c.Kind, c.CheckType, c.Description()), nil
+	case err != nil:
+		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
+	}
+
+	managementStateStr, err := jq.Query[string](dsc, ".spec.components.trainingoperator.managementState")
+	if err != nil {
+		return nil, fmt.Errorf("querying trainingoperator managementState: %w", err)
+	}
+
+	if managementStateStr == "" {
+		results.SetComponentNotConfigured(dr, "TrainingOperator")
+
+		return dr, nil
+	}
+
+	dr.Annotations[check.AnnotationComponentManagementState] = managementStateStr
+	if target.TargetVersion != nil {
+		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
+	}
+
+	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {
+		results.SetCompatibilityFailuref(dr,
+			"TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release",
+			managementStateStr)
+
+		return dr, nil
+	}
+
+	results.SetCompatibilitySuccessf(dr,
+		"TrainingOperator is disabled (state: %s) - no action required for deprecation in RHOAI 3.3+",
+		managementStateStr)
+
+	return dr, nil
+}
+
+//nolint:gochecknoinits
+func init() {
+	check.MustRegisterCheck(NewDeprecationCheck())
+}

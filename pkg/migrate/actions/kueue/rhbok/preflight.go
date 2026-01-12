@@ -14,7 +14,7 @@ import (
 
 func (a *RHBOKMigrationAction) checkCurrentKueueState(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) {
 	step := target.Recorder.Child(
 		"check-kueue-state",
@@ -52,7 +52,7 @@ func (a *RHBOKMigrationAction) checkCurrentKueueState(
 
 func (a *RHBOKMigrationAction) checkNoRHBOKConflicts(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) {
 	step := target.Recorder.Child(
 		"check-rhbok-conflicts",
@@ -80,7 +80,7 @@ func (a *RHBOKMigrationAction) checkNoRHBOKConflicts(
 
 func (a *RHBOKMigrationAction) verifyKueueResources(
 	ctx context.Context,
-	target *action.ActionTarget,
+	target action.Target,
 ) {
 	step := target.Recorder.Child(
 		"verify-kueue-resources",

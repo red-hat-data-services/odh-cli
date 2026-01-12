@@ -117,7 +117,7 @@ func (c *ListCommand) Run(ctx context.Context) error {
 		if c.ShowAll && c.parsedTargetVersion == nil {
 			applicableStr = "N/A"
 		} else {
-			target := &action.ActionTarget{
+			target := action.Target{
 				Client:         c.Client,
 				CurrentVersion: currentVersion,
 				TargetVersion:  c.parsedTargetVersion,

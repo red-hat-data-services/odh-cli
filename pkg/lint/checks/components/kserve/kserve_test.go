@@ -39,9 +39,9 @@ func TestKServeServerlessRemovalCheck_NoDSC(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -87,9 +87,9 @@ func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -135,9 +135,9 @@ func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -185,9 +185,9 @@ func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -237,9 +237,9 @@ func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -293,9 +293,9 @@ func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) 
 	}
 
 	ver := semver.MustParse("3.1.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}
@@ -345,9 +345,9 @@ func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	kserveCheck := &kserve.ServerlessRemovalCheck{}

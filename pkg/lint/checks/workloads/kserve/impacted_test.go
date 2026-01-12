@@ -69,9 +69,9 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -129,9 +129,9 @@ func TestImpactedWorkloadsCheck_ModelMeshInferenceService(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -189,9 +189,9 @@ func TestImpactedWorkloadsCheck_ServerlessInferenceService(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -249,9 +249,9 @@ func TestImpactedWorkloadsCheck_ModelMeshServingRuntime(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -310,9 +310,9 @@ func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -364,9 +364,9 @@ func TestImpactedWorkloadsCheck_RawDeploymentAnnotation(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -418,9 +418,9 @@ func TestImpactedWorkloadsCheck_NoAnnotation(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -514,9 +514,9 @@ func TestImpactedWorkloadsCheck_MixedWorkloads(t *testing.T) {
 	}
 
 	ver := semver.MustParse("3.0.0")
-	target := &check.CheckTarget{
-		Client:  c,
-		Version: &ver,
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &ver,
 	}
 
 	impactedCheck := &kserve.ImpactedWorkloadsCheck{}
@@ -562,21 +562,21 @@ func TestImpactedWorkloadsCheck_CanApply(t *testing.T) {
 	impactedCheck := kserve.NewImpactedWorkloadsCheck()
 
 	// Should not apply when target is nil
-	g.Expect(impactedCheck.CanApply(nil)).To(BeFalse())
+	g.Expect(impactedCheck.CanApply(check.Target{})).To(BeFalse())
 
 	// Should not apply for 2.x to 2.x
 	v2_15 := semver.MustParse("2.15.0")
 	v2_17 := semver.MustParse("2.17.0")
-	target2x := &check.CheckTarget{CurrentVersion: &v2_15, Version: &v2_17}
+	target2x := check.Target{CurrentVersion: &v2_15, TargetVersion: &v2_17}
 	g.Expect(impactedCheck.CanApply(target2x)).To(BeFalse())
 
 	// Should apply for 2.x to 3.x
 	v3_0 := semver.MustParse("3.0.0")
-	target2xTo3x := &check.CheckTarget{CurrentVersion: &v2_17, Version: &v3_0}
+	target2xTo3x := check.Target{CurrentVersion: &v2_17, TargetVersion: &v3_0}
 	g.Expect(impactedCheck.CanApply(target2xTo3x)).To(BeTrue())
 
 	// Should not apply for 3.x to 3.x
 	v3_1 := semver.MustParse("3.1.0")
-	target3x := &check.CheckTarget{CurrentVersion: &v3_0, Version: &v3_1}
+	target3x := check.Target{CurrentVersion: &v3_0, TargetVersion: &v3_1}
 	g.Expect(impactedCheck.CanApply(target3x)).To(BeFalse())
 }

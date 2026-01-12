@@ -150,10 +150,10 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 
 	// Execute component and service checks (Resource: nil)
 	c.IO.Errorf("Running component and service checks...")
-	componentTarget := &check.CheckTarget{
+	componentTarget := check.Target{
 		Client:         c.Client,
 		CurrentVersion: clusterVersion, // For lint mode, current = target
-		Version:        clusterVersion,
+		TargetVersion:  clusterVersion,
 		Resource:       nil, // No specific resource for component/service checks
 	}
 
@@ -199,10 +199,10 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 
 		// Run workload checks for each instance
 		for i := range instances {
-			workloadTarget := &check.CheckTarget{
+			workloadTarget := check.Target{
 				Client:         c.Client,
 				CurrentVersion: clusterVersion, // For lint mode, current = target
-				Version:        clusterVersion,
+				TargetVersion:  clusterVersion,
 				Resource:       &instances[i],
 			}
 
@@ -264,10 +264,10 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 	executor := check.NewExecutor(registry)
 
 	// Create check target with BOTH current and target versions for upgrade checks
-	checkTarget := &check.CheckTarget{
+	checkTarget := check.Target{
 		Client:         c.Client,
 		CurrentVersion: currentVersion,        // The version we're upgrading FROM
-		Version:        c.parsedTargetVersion, // The version we're upgrading TO
+		TargetVersion:  c.parsedTargetVersion, // The version we're upgrading TO
 		Resource:       nil,
 	}
 

@@ -12,6 +12,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/operators"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 const (
@@ -39,11 +40,11 @@ func (c *Check) Group() check.CheckGroup {
 	return check.GroupDependency
 }
 
-func (c *Check) CanApply(target *check.CheckTarget) bool {
-	return check.IsUpgradeFrom2xTo3x(target)
+func (c *Check) CanApply(target check.Target) bool {
+	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
-func (c *Check) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	res, err := operators.CheckOperatorPresence(
 		ctx,
 		target.Client,

@@ -63,9 +63,9 @@ func TestUpgradeMode_WithVersionFlag(t *testing.T) {
 	})
 }
 
-// T024: Test CheckTarget.CurrentVersion == CheckTarget.Version in lint mode.
+// T024: Test CheckTarget.CurrentVersion == CheckTarget.TargetVersion in lint mode.
 func TestLintMode_CheckTargetVersionMatches(t *testing.T) {
-	t.Run("lint mode should pass same version for CurrentVersion and Version", func(t *testing.T) {
+	t.Run("lint mode should pass same version for CurrentVersion and TargetVersion", func(t *testing.T) {
 		g := NewWithT(t)
 
 		var out, errOut bytes.Buffer
@@ -82,16 +82,16 @@ func TestLintMode_CheckTargetVersionMatches(t *testing.T) {
 		g.Expect(command.TargetVersion).To(BeEmpty())
 
 		// In lint mode, when Run() executes, it should create CheckTarget
-		// with CurrentVersion == Version (both pointing to detected cluster version)
+		// with CurrentVersion == TargetVersion (both pointing to detected cluster version)
 		// This is architectural verification - the actual Run() implementation
 		// already does this at lint.go:169-170
 		// We verify the logic path exists without requiring a real cluster
 	})
 }
 
-// T025: Test CheckTarget.CurrentVersion != CheckTarget.Version in upgrade mode.
+// T025: Test CheckTarget.CurrentVersion != CheckTarget.TargetVersion in upgrade mode.
 func TestUpgradeMode_CheckTargetVersionDiffers(t *testing.T) {
-	t.Run("upgrade mode should pass different versions for CurrentVersion and Version", func(t *testing.T) {
+	t.Run("upgrade mode should pass different versions for CurrentVersion and TargetVersion", func(t *testing.T) {
 		g := NewWithT(t)
 
 		var out, errOut bytes.Buffer
@@ -113,7 +113,7 @@ func TestUpgradeMode_CheckTargetVersionDiffers(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		// In upgrade mode, when Run() executes, it should create CheckTarget
-		// with CurrentVersion != Version (current vs target)
+		// with CurrentVersion != TargetVersion (current vs target)
 		// This is architectural verification - the actual Run() implementation
 		// already does this at lint.go:297-298
 		// We verify the command is properly configured for upgrade mode

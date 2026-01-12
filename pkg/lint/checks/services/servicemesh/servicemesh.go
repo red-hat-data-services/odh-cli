@@ -10,6 +10,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
+	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 const (
@@ -43,12 +44,12 @@ func (c *RemovalCheck) Group() check.CheckGroup {
 
 // CanApply returns whether this check should run for the given target.
 // This check only applies when upgrading FROM 2.x TO 3.x.
-func (c *RemovalCheck) CanApply(target *check.CheckTarget) bool {
-	return check.IsUpgradeFrom2xTo3x(target)
+func (c *RemovalCheck) CanApply(target check.Target) bool {
+	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
 // Validate executes the check against the provided target.
-func (c *RemovalCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	dr := result.New(
 		string(check.GroupService),
 		check.ServiceServiceMesh,

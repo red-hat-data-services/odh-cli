@@ -47,13 +47,13 @@ func (m *MockCheck) Group() check.CheckGroup {
 	return group
 }
 
-func (m *MockCheck) CanApply(target *check.CheckTarget) bool {
+func (m *MockCheck) CanApply(target check.Target) bool {
 	args := m.Called(target)
 
 	return args.Bool(0)
 }
 
-func (m *MockCheck) Validate(ctx context.Context, target *check.CheckTarget) (*result.DiagnosticResult, error) {
+func (m *MockCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	args := m.Called(ctx, target)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
