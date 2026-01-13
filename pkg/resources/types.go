@@ -186,4 +186,12 @@ var (
 		Kind:     "PyTorchJob",
 		Resource: "pytorchjobs",
 	}
+
+	// ClusterVersion is the OpenShift cluster version resource.
+	ClusterVersion = ResourceType{
+		Group:    "config.openshift.io",
+		Version:  "v1",
+		Kind:     "ClusterVersion",
+		Resource: "clusterversions",
+	}
 )

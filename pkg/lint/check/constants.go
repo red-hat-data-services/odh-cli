@@ -27,16 +27,18 @@ const (
 	DependencyCertManager           = "certmanager"
 	DependencyKueueOperator         = "kueueoperator"
 	DependencyServiceMeshOperatorV2 = "servicemesh-operator-v2"
+	DependencyOpenShiftPlatform     = "openshift-platform"
 )
 
 // Check type names (third parameter to result.New).
 const (
-	CheckTypeRemoval           = "removal"
-	CheckTypeInstalled         = "installed"
-	CheckTypeManagedRemoval    = "managed-removal"
-	CheckTypeServerlessRemoval = "serverless-removal"
-	CheckTypeImpactedWorkloads = "impacted-workloads"
-	CheckTypeDeprecation       = "deprecation"
+	CheckTypeRemoval            = "removal"
+	CheckTypeInstalled          = "installed"
+	CheckTypeManagedRemoval     = "managed-removal"
+	CheckTypeServerlessRemoval  = "serverless-removal"
+	CheckTypeImpactedWorkloads  = "impacted-workloads"
+	CheckTypeDeprecation        = "deprecation"
+	CheckTypeVersionRequirement = "version-requirement"
 )
 
 // Annotation keys for diagnostic results.
