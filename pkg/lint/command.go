@@ -159,28 +159,25 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 
 	executor := check.NewExecutor(registry)
 
-	// Execute all component checks
-	componentResults, err := executor.ExecuteSelective(ctx, componentTarget, c.CheckSelector, check.GroupComponent)
-	if err != nil {
-		// Log error but continue with other checks
-		c.IO.Errorf("Warning: Failed to execute component checks: %v", err)
-		componentResults = []check.CheckExecution{}
-	}
+	// Execute checks in canonical order: dependencies → services → components → workloads
+	// Store results by group for later organization
+	resultsByGroup := make(map[check.CheckGroup][]check.CheckExecution)
 
-	// Execute all service checks
-	serviceResults, err := executor.ExecuteSelective(ctx, componentTarget, c.CheckSelector, check.GroupService)
-	if err != nil {
-		// Log error but continue with other checks
-		c.IO.Errorf("Warning: Failed to execute service checks: %v", err)
-		serviceResults = []check.CheckExecution{}
-	}
+	for _, group := range check.CanonicalGroupOrder {
+		if group == check.GroupWorkload {
+			continue // Workloads handled separately below
+		}
 
-	// Execute all dependency checks
-	dependencyResults, err := executor.ExecuteSelective(ctx, componentTarget, c.CheckSelector, check.GroupDependency)
-	if err != nil {
-		// Log error but continue with other checks
-		c.IO.Errorf("Warning: Failed to execute dependency checks: %v", err)
-		dependencyResults = []check.CheckExecution{}
+		results, err := executor.ExecuteSelective(ctx, componentTarget, c.CheckSelector, group)
+		if err != nil {
+			// Log error but continue with other checks
+			c.IO.Errorf("Warning: Failed to execute %s checks: %v", group, err)
+			resultsByGroup[group] = []check.CheckExecution{}
+
+			continue
+		}
+
+		resultsByGroup[group] = results
 	}
 
 	// Execute workload checks for each discovered workload instance
@@ -215,13 +212,8 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 		}
 	}
 
-	// Group results by group
-	resultsByGroup := map[check.CheckGroup][]check.CheckExecution{
-		check.GroupComponent:  componentResults,
-		check.GroupService:    serviceResults,
-		check.GroupDependency: dependencyResults,
-		check.GroupWorkload:   workloadResults,
-	}
+	// Add workload results to the results map
+	resultsByGroup[check.GroupWorkload] = workloadResults
 
 	// Format and output results based on output format
 	if err := c.formatAndOutputResults(resultsByGroup); err != nil {
@@ -268,18 +260,16 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 		Resource:       nil,
 	}
 
-	// Execute all checks (components, services, dependencies, workloads combined)
-	// The --checks flag allows users to filter if needed
-	results, err := executor.ExecuteSelective(ctx, checkTarget, c.CheckSelector, "")
-	if err != nil {
-		return fmt.Errorf("executing upgrade checks: %w", err)
-	}
-
-	// Group results by group
+	// Execute checks in canonical order: dependencies → services → components → workloads
 	resultsByGroup := make(map[check.CheckGroup][]check.CheckExecution)
-	for _, result := range results {
-		group := result.Check.Group()
-		resultsByGroup[group] = append(resultsByGroup[group], result)
+
+	for _, group := range check.CanonicalGroupOrder {
+		results, err := executor.ExecuteSelective(ctx, checkTarget, c.CheckSelector, group)
+		if err != nil {
+			return fmt.Errorf("executing %s checks: %w", group, err)
+		}
+
+		resultsByGroup[group] = results
 	}
 
 	// Format and output results

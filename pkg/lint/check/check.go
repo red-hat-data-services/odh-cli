@@ -16,6 +16,18 @@ const (
 	GroupDependency CheckGroup = "dependency"
 )
 
+// CanonicalGroupOrder defines the execution order for check groups.
+// Dependencies run first to validate platform prerequisites, followed by
+// services, components, and finally workloads.
+//
+//nolint:gochecknoglobals // Canonical ordering must be accessible across packages
+var CanonicalGroupOrder = []CheckGroup{
+	GroupDependency,
+	GroupService,
+	GroupComponent,
+	GroupWorkload,
+}
+
 // Check represents a diagnostic test that validates a specific aspect of cluster configuration.
 //
 // # Diagnostic Results (Kubernetes CR pattern)

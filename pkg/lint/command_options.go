@@ -290,17 +290,10 @@ type LintOutput struct {
 }
 
 // FlattenResults converts a map of results by group to a flat sorted array.
-// Results are sorted by group in the order: Component, Service, Dependency, Workload.
+// Results are sorted by group in the canonical order: Dependency, Service, Component, Workload.
 func FlattenResults(resultsByGroup map[check.CheckGroup][]check.CheckExecution) []check.CheckExecution {
-	groups := []check.CheckGroup{
-		check.GroupComponent,
-		check.GroupService,
-		check.GroupDependency,
-		check.GroupWorkload,
-	}
-
 	flattened := make([]check.CheckExecution, 0)
-	for _, group := range groups {
+	for _, group := range check.CanonicalGroupOrder {
 		flattened = append(flattened, resultsByGroup[group]...)
 	}
 
