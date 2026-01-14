@@ -2,6 +2,7 @@ package client
 
 import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 )
 
 // IsUnrecoverableError checks if an error is unrecoverable and should not be retried.
@@ -16,4 +17,9 @@ func IsUnrecoverableError(err error) bool {
 	}
 
 	return false
+}
+
+// IsResourceTypeNotFound checks if an error indicates the resource type/CRD doesn't exist.
+func IsResourceTypeNotFound(err error) bool {
+	return meta.IsNoMatchError(err)
 }

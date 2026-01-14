@@ -11,6 +11,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -83,6 +84,10 @@ func (c *ImpactedWorkloadsCheck) findImpactedPyTorchJobs(
 ) (impactedPyTorchJobs, error) {
 	pytorchJobs, err := target.Client.List(ctx, resources.PyTorchJob)
 	if err != nil {
+		if client.IsResourceTypeNotFound(err) {
+			return impactedPyTorchJobs{}, nil
+		}
+
 		return impactedPyTorchJobs{}, fmt.Errorf("listing PyTorchJobs: %w", err)
 	}
 

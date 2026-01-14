@@ -11,6 +11,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -103,6 +104,10 @@ func (c *ImpactedWorkloadsCheck) findImpactedInferenceServices(
 ) (impactedInferenceServices, error) {
 	inferenceServices, err := target.Client.ListMetadata(ctx, resources.InferenceService)
 	if err != nil {
+		if client.IsResourceTypeNotFound(err) {
+			return impactedInferenceServices{}, nil
+		}
+
 		return impactedInferenceServices{}, fmt.Errorf("listing InferenceServices: %w", err)
 	}
 
@@ -134,6 +139,10 @@ func (c *ImpactedWorkloadsCheck) findImpactedServingRuntimes(
 ) ([]types.NamespacedName, error) {
 	servingRuntimes, err := target.Client.List(ctx, resources.ServingRuntime)
 	if err != nil {
+		if client.IsResourceTypeNotFound(err) {
+			return nil, nil
+		}
+
 		return nil, fmt.Errorf("listing ServingRuntimes: %w", err)
 	}
 

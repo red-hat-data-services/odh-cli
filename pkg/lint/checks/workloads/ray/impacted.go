@@ -12,6 +12,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -86,6 +87,10 @@ func (c *ImpactedWorkloadsCheck) findImpactedRayClusters(
 ) ([]types.NamespacedName, error) {
 	rayClusters, err := target.Client.ListMetadata(ctx, resources.RayCluster)
 	if err != nil {
+		if client.IsResourceTypeNotFound(err) {
+			return nil, nil
+		}
+
 		return nil, fmt.Errorf("listing RayClusters: %w", err)
 	}
 
