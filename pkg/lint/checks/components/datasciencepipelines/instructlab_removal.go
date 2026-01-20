@@ -158,8 +158,3 @@ func populateImpactedDSPAs(
 		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
 	}
 }
-
-//nolint:gochecknoinits
-func init() {
-	check.MustRegisterCheck(NewInstructLabRemovalCheck())
-}
