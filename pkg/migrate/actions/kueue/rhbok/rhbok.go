@@ -418,8 +418,3 @@ func (a *RHBOKMigrationAction) verifyResourcesPreserved(
 		"All %d ClusterQueues and %d LocalQueues preserved",
 		len(clusterQueues), len(localQueues))
 }
-
-//nolint:gochecknoinits
-func init() {
-	action.MustRegisterAction(&RHBOKMigrationAction{})
-}
