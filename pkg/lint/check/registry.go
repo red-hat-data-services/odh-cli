@@ -33,6 +33,14 @@ func (r *CheckRegistry) Register(check Check) error {
 	return nil
 }
 
+// MustRegister registers a check and panics if registration fails.
+// Use this for check registration in command construction where failure is unrecoverable.
+func (r *CheckRegistry) MustRegister(check Check) {
+	if err := r.Register(check); err != nil {
+		panic(fmt.Sprintf("failed to register check %s: %v", check.ID(), err))
+	}
+}
+
 // Get looks up a check by ID, returning the check and whether it exists.
 func (r *CheckRegistry) Get(id string) (Check, bool) {
 	r.mu.RLock()

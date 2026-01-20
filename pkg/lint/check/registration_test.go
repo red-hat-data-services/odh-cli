@@ -124,69 +124,9 @@ func TestRegistry_ConcurrentRegistration(t *testing.T) {
 }
 
 // Test 5: Global Registry Expected Check Count.
-// Note: This test validates global registry population when run from integration tests
-// or when the cmd package is imported (which triggers init() functions).
-// When running package tests in isolation, the registry will be empty.
-func TestGlobalRegistry_ExpectedCheckCount(t *testing.T) {
-	g := NewWithT(t)
-
-	// Get the global registry (populated by init() functions)
-	globalRegistry := check.GetGlobalRegistry()
-
-	// List all registered checks
-	allChecks := globalRegistry.ListAll()
-
-	// When running check package tests in isolation, init() functions from
-	// check implementations don't run (they're triggered by cmd/lint/lint.go blank imports).
-	// Skip verification in this case.
-	if len(allChecks) == 0 {
-		t.Skip("Skipping global registry check count test - " +
-			"no checks registered (running in isolation without cmd/ imports)")
-	}
-
-	// We expect 10 checks to be registered based on cmd/lint/lint.go imports:
-	// - components/codeflare (1 check)
-	// - components/kserve (1 check: serverless-removal)
-	// - components/kueue (1 check)
-	// - components/modelmesh (1 check)
-	// - dependencies/certmanager (1 check)
-	// - dependencies/kueueoperator (1 check)
-	// - dependencies/servicemeshoperator (1 check)
-	// - services/servicemesh (1 check)
-	// - workloads/kserve (1 check: impacted-workloads)
-	// - workloads/ray (1 check: impacted-workloads)
-	expectedMinimum := 10
-
-	g.Expect(len(allChecks)).To(BeNumerically(">=", expectedMinimum),
-		"Expected at least %d checks to be registered, found %d",
-		expectedMinimum, len(allChecks))
-
-	// Verify expected check groups are represented
-	byGroup := make(map[check.CheckGroup]int)
-	for _, chk := range allChecks {
-		byGroup[chk.Group()]++
-	}
-
-	g.Expect(byGroup[check.GroupComponent]).To(BeNumerically(">", 0),
-		"Expected at least one check in GroupComponent")
-	g.Expect(byGroup[check.GroupDependency]).To(BeNumerically(">", 0),
-		"Expected at least one check in GroupDependency")
-	g.Expect(byGroup[check.GroupWorkload]).To(BeNumerically(">", 0),
-		"Expected at least one check in GroupWorkload")
-}
-
-// Test 6: Global Registry Initialization.
-func TestGlobalRegistry_Initialization(t *testing.T) {
-	g := NewWithT(t)
-
-	// Verify global registry is initialized
-	globalRegistry := check.GetGlobalRegistry()
-	g.Expect(globalRegistry).ToNot(BeNil())
-
-	// Verify it's a properly initialized registry
-	allChecks := globalRegistry.ListAll()
-	g.Expect(allChecks).ToNot(BeNil())
-}
+// Test 5 & 6: Global Registry tests REMOVED.
+// Global registry eliminated in favor of explicit dependency injection.
+// Checks are now registered directly in NewCommand().
 
 // Test 7: ListByGroup filtering.
 func TestRegistry_ListByGroup(t *testing.T) {
