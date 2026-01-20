@@ -13,6 +13,20 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/cmd"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	resultpkg "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/codeflare"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/datasciencepipelines"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kueue"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/modelmesh"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/trainingoperator"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/certmanager"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/kueueoperator"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/openshift"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/servicemeshoperator"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/services/servicemesh"
+	kserveworkloads "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/kserve"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/ray"
+	trainingoperatorworkloads "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/trainingoperator"
 	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube/discovery"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
@@ -35,15 +49,45 @@ type Command struct {
 
 	// currentClusterVersion stores the detected cluster version (populated during Run)
 	currentClusterVersion string
+
+	// registry is the check registry for this command instance.
+	// Explicitly populated to avoid global state and enable test isolation.
+	registry *check.CheckRegistry
 }
 
 // NewCommand creates a new Command with defaults.
 // Per FR-014, SharedOptions are initialized internally.
 func NewCommand(streams genericiooptions.IOStreams) *Command {
 	shared := NewSharedOptions(streams)
+	registry := check.NewRegistry()
+
+	// Explicitly register all checks (no global state, full test isolation)
+	// Components (7)
+	registry.MustRegister(codeflare.NewRemovalCheck())
+	registry.MustRegister(datasciencepipelines.NewInstructLabRemovalCheck())
+	registry.MustRegister(datasciencepipelines.NewRenamingCheck())
+	registry.MustRegister(kserve.NewServerlessRemovalCheck())
+	registry.MustRegister(kueue.NewManagedRemovalCheck())
+	registry.MustRegister(modelmesh.NewRemovalCheck())
+	registry.MustRegister(trainingoperator.NewDeprecationCheck())
+
+	// Dependencies (4)
+	registry.MustRegister(certmanager.NewCheck())
+	registry.MustRegister(kueueoperator.NewCheck())
+	registry.MustRegister(openshift.NewCheck())
+	registry.MustRegister(servicemeshoperator.NewCheck())
+
+	// Services (1)
+	registry.MustRegister(servicemesh.NewRemovalCheck())
+
+	// Workloads (3)
+	registry.MustRegister(kserveworkloads.NewImpactedWorkloadsCheck())
+	registry.MustRegister(ray.NewImpactedWorkloadsCheck())
+	registry.MustRegister(trainingoperatorworkloads.NewImpactedWorkloadsCheck())
 
 	return &Command{
 		SharedOptions: shared,
+		registry:      registry,
 	}
 }
 
@@ -145,9 +189,6 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 	}
 	c.IO.Fprintln()
 
-	// Get the global check registry
-	registry := check.GetGlobalRegistry()
-
 	// Execute component and service checks (Resource: nil)
 	c.IO.Errorf("Running component and service checks...")
 	componentTarget := check.Target{
@@ -157,7 +198,7 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 		Resource:       nil, // No specific resource for component/service checks
 	}
 
-	executor := check.NewExecutor(registry)
+	executor := check.NewExecutor(c.registry)
 
 	// Execute checks in canonical order: dependencies → services → components → workloads
 	// Store results by group for later organization
@@ -245,12 +286,9 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 
 	c.IO.Errorf("Assessing upgrade readiness: %s → %s\n", currentVersion.String(), c.TargetVersion)
 
-	// Get the global check registry
-	registry := check.GetGlobalRegistry()
-
 	// Execute checks using target version for applicability filtering
 	c.IO.Errorf("Running upgrade compatibility checks...")
-	executor := check.NewExecutor(registry)
+	executor := check.NewExecutor(c.registry)
 
 	// Create check target with BOTH current and target versions for upgrade checks
 	checkTarget := check.Target{

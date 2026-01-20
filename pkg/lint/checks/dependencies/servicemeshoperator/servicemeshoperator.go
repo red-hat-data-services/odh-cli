@@ -22,6 +22,11 @@ const (
 // Check validates that Service Mesh Operator v2 is not installed when upgrading to 3.x.
 type Check struct{}
 
+// NewCheck creates a new Service Mesh Operator v2 upgrade check.
+func NewCheck() *Check {
+	return &Check{}
+}
+
 func (c *Check) ID() string {
 	return checkID
 }
@@ -77,9 +82,4 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 	}
 
 	return res, nil
-}
-
-//nolint:gochecknoinits
-func init() {
-	check.MustRegisterCheck(&Check{})
 }

@@ -26,6 +26,11 @@ var minVersion = semver.MustParse("4.19.9")
 // Check validates OpenShift version requirements for RHOAI 3.x upgrades.
 type Check struct{}
 
+// NewCheck creates a new OpenShift version requirement check.
+func NewCheck() *Check {
+	return &Check{}
+}
+
 func (c *Check) ID() string {
 	return checkID
 }
@@ -90,9 +95,4 @@ func (c *Check) Validate(
 	}
 
 	return dr, nil
-}
-
-//nolint:gochecknoinits
-func init() {
-	check.MustRegisterCheck(&Check{})
 }

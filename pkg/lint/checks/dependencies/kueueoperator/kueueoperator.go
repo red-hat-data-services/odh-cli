@@ -20,6 +20,11 @@ const (
 
 type Check struct{}
 
+// NewCheck creates a new kueue-operator installation check.
+func NewCheck() *Check {
+	return &Check{}
+}
+
 func (c *Check) ID() string {
 	return checkID
 }
@@ -82,9 +87,4 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 	}
 
 	return res, nil
-}
-
-//nolint:gochecknoinits
-func init() {
-	check.MustRegisterCheck(&Check{})
 }

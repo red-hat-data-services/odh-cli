@@ -23,6 +23,11 @@ const (
 // RemovalCheck validates that ServiceMesh is disabled before upgrading to 3.x.
 type RemovalCheck struct{}
 
+// NewRemovalCheck creates a new ServiceMesh removal check.
+func NewRemovalCheck() *RemovalCheck {
+	return &RemovalCheck{}
+}
+
 // ID returns the unique identifier for this check.
 func (c *RemovalCheck) ID() string {
 	return checkID
@@ -94,11 +99,4 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 	results.SetCompatibilitySuccessf(dr, "ServiceMesh is disabled (state: %s) - ready for RHOAI 3.x upgrade", managementStateStr)
 
 	return dr, nil
-}
-
-// Register the check in the global registry.
-//
-//nolint:gochecknoinits // Required for auto-registration pattern
-func init() {
-	check.MustRegisterCheck(&RemovalCheck{})
 }
