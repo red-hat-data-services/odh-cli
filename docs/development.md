@@ -761,6 +761,80 @@ g.Expect(result.Metadata.Name).To(Equal("serverless-removal"))
 
 **Rationale:** Struct matchers provide clearer test output on failure, showing exactly which fields don't match in a single assertion rather than stopping at the first failed field.
 
+### Use Kubernetes Sets for Deduplication
+
+When collecting unique values (resource names, labels, etc.), use `k8s.io/apimachinery/pkg/util/sets` instead of `map[string]bool`:
+
+```go
+import "k8s.io/apimachinery/pkg/util/sets"
+
+// ✓ CORRECT: Use sets
+names := sets.New[string]()
+for _, vol := range volumes {
+    if vol.ConfigMap != nil && vol.ConfigMap.Name != "" {
+        names.Insert(vol.ConfigMap.Name)
+    }
+}
+return sets.List(names)
+
+// ❌ WRONG: Manual map and conversion
+names := make(map[string]bool)
+for _, vol := range volumes {
+    if vol.ConfigMap != nil && vol.ConfigMap.Name != "" {
+        names[vol.ConfigMap.Name] = true
+    }
+}
+result := make([]string, 0, len(names))
+for name := range names {
+    result = append(result, name)
+}
+return result
+```
+
+**Benefits:**
+- More expressive and idiomatic
+- Built-in set operations (Union, Difference, Intersection)
+- Sorted output with `sets.List()`
+
+### Use Generics for Type Conversion
+
+When converting unstructured data to typed Kubernetes objects, use generics with the type specified by the caller:
+
+```go
+// ✓ CORRECT: Generic function, type specified by caller
+func ConvertToTyped[T any](raw any, typeName string) (T, error) {
+    var zero T
+    if raw == nil {
+        return zero, nil
+    }
+
+    data, err := json.Marshal(raw)
+    if err != nil {
+        return zero, fmt.Errorf("marshaling %s: %w", typeName, err)
+    }
+
+    var result T
+    if err := json.Unmarshal(data, &result); err != nil {
+        return zero, fmt.Errorf("unmarshaling %s: %w", typeName, err)
+    }
+
+    return result, nil
+}
+
+// Usage: Caller specifies slice or single object
+volumes, err := ConvertToTyped[[]corev1.Volume](raw, "volumes")
+container, err := ConvertToTyped[corev1.Container](raw, "container")
+
+// ❌ WRONG: Separate function for each type
+func ConvertToVolumes(raw []any) ([]corev1.Volume, error) { ... }
+func ConvertToContainers(raw []any) ([]corev1.Container, error) { ... }
+```
+
+**Benefits:**
+- Single reusable function for all conversions
+- Caller controls whether result is a slice or single value
+- Type-safe at compile time
+
 ## Extensibility
 
 ### Adding a New Command

@@ -125,6 +125,21 @@ var (
 		Resource: "secrets",
 	}
 
+	PersistentVolumeClaim = ResourceType{
+		Group:    "",
+		Version:  "v1",
+		Kind:     "PersistentVolumeClaim",
+		Resource: "persistentvolumeclaims",
+	}
+
+	// Notebook is the Kubeflow Notebook resource.
+	Notebook = ResourceType{
+		Group:    "kubeflow.org",
+		Version:  "v1",
+		Kind:     "Notebook",
+		Resource: "notebooks",
+	}
+
 	// CustomResourceDefinition is the Kubernetes CustomResourceDefinition resource.
 	CustomResourceDefinition = ResourceType{
 		Group:    "apiextensions.k8s.io",

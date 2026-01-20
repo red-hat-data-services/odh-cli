@@ -70,8 +70,9 @@ func convertValue(value any) (any, error) {
 }
 
 // Query executes a JQ query against the provided value and returns the first result
-// cast to type T. Returns an error if the result cannot be cast to T.
-// When the query returns nil/null, returns the zero value of T.
+// cast to type T. Tries direct type assertion first (zero-cost when types match),
+// then falls back to JSON conversion if needed.
+// When the query returns nil/null, returns ErrNotFound.
 func Query[T any](value any, jqQuery string) (T, error) {
 	var zero T
 
@@ -87,11 +88,8 @@ func Query[T any](value any, jqQuery string) (T, error) {
 		return zero, err
 	}
 
-	// Run the query against the normalized value
-	iter := compiledQuery.Run(normalizedValue)
-
-	// Get the first result
-	result, ok := iter.Next()
+	// Run the query against the normalized value and get the first result
+	result, ok := compiledQuery.Run(normalizedValue).Next()
 	if !ok {
 		return zero, nil
 	}
@@ -106,14 +104,23 @@ func Query[T any](value any, jqQuery string) (T, error) {
 		return zero, ErrNotFound
 	}
 
-	// Type assertion to T
-	typed, ok := result.(T)
-	if !ok {
-		return zero, fmt.Errorf("query result type mismatch: expected %T, got %T (value: %v)",
-			zero, result, result)
+	// Try direct type assertion first (zero-cost when types match)
+	if typed, ok := result.(T); ok {
+		return typed, nil
 	}
 
-	return typed, nil
+	// Fall back to JSON conversion for type mismatches
+	data, err := json.Marshal(result)
+	if err != nil {
+		return zero, fmt.Errorf("marshaling query result: %w", err)
+	}
+
+	var convertedResult T
+	if err := json.Unmarshal(data, &convertedResult); err != nil {
+		return zero, fmt.Errorf("unmarshaling to type %T: %w", zero, err)
+	}
+
+	return convertedResult, nil
 }
 
 // Transform applies a JQ update expression to the object, modifying it in place.
