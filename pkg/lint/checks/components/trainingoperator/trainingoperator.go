@@ -88,8 +88,3 @@ func (c *DeprecationCheck) Validate(
 
 	return dr, nil
 }
-
-//nolint:gochecknoinits
-func init() {
-	check.MustRegisterCheck(NewDeprecationCheck())
-}
