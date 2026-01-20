@@ -83,10 +83,3 @@ func (c *ManagedRemovalCheck) Validate(ctx context.Context, target check.Target)
 
 	return dr, nil
 }
-
-// Register the check in the global registry.
-//
-//nolint:gochecknoinits // Required for auto-registration pattern
-func init() {
-	check.MustRegisterCheck(NewManagedRemovalCheck())
-}
