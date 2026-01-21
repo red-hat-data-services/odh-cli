@@ -631,4 +631,4 @@ func TestServerlessRemovalCheck(t *testing.T) {
 }
 ```
 
-See [../development.md](../development.md#testing-guidelines) for comprehensive testing guidelines.
+See [../testing.md](../testing.md) for comprehensive testing guidelines.
