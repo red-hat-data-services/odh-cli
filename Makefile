@@ -90,29 +90,40 @@ check: lint vulncheck
 test:
 	go test ./...
 
-# Build and push container image using Podman manifest
-.PHONY: publish
-publish:
-	@echo "Building and pushing container image to $(CONTAINER_REPO):$(CONTAINER_TAGS)"
-	@MANIFEST_NAME="localhost/odh-cli-build:$(VERSION)"; \
+# Build container image without pushing (creates local manifest)
+.PHONY: build-image
+build-image:
+	@echo "Building container image for platforms: $(CONTAINER_PLATFORMS)"
+	@MANIFEST_NAME="localhost/odh-cli:$(VERSION)"; \
 	podman build \
 		--platform=$(CONTAINER_PLATFORMS) \
 		--build-arg VERSION=$(VERSION) \
 		--build-arg COMMIT=$(COMMIT) \
 		--build-arg DATE=$(DATE) \
 		--manifest=$$MANIFEST_NAME \
-		.; \
+		.
+	@echo "Container image built successfully: localhost/odh-cli:$(VERSION)"
+	@echo "To inspect the manifest: podman manifest inspect localhost/odh-cli:$(VERSION)"
+	@echo "To run: podman run --rm localhost/odh-cli:$(VERSION) version"
+
+# Build and push container image using Podman manifest
+.PHONY: publish
+publish: build-image
+	@echo "Pushing container image to $(CONTAINER_REPO):$(CONTAINER_TAGS)"
+	@MANIFEST_NAME="localhost/odh-cli:$(VERSION)"; \
 	TAGS="$(CONTAINER_TAGS)"; \
 	for tag in $${TAGS//,/ }; do \
 		podman manifest push $$MANIFEST_NAME docker://$(CONTAINER_REPO):$$tag; \
 	done; \
 	podman manifest rm $$MANIFEST_NAME 2>/dev/null || true
+	@echo "Container image published successfully"
 
 # Help target
 .PHONY: help
 help:
 	@echo "Available targets:"
 	@echo "  build       - Build the kubectl-odh binary"
+	@echo "  build-image - Build container image without pushing (creates local manifest)"
 	@echo "  publish     - Build and push container image using Podman manifest"
 	@echo "  run         - Run the doctor command"
 	@echo "  tidy        - Tidy up Go module dependencies"

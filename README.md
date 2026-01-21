@@ -18,6 +18,25 @@ The container has `KUBECONFIG=/kubeconfig` set by default, so you just need to m
 
 > **Note:** The images are OCI-compliant and work with both Podman and Docker.
 
+**Interactive Debugging:**
+
+The container includes kubectl, oc, and debugging utilities for interactive troubleshooting:
+
+```bash
+# Shell into container
+podman run -it --rm \
+  -v $KUBECONFIG:/kubeconfig \
+  --entrypoint /bin/bash \
+  quay.io/lburgazzoli/odh-cli:latest
+
+# Inside container, use kubectl/oc/wget/curl
+kubectl get pods -n opendatahub
+oc get dsci
+kubectl-odh lint --target-version 3.3.0
+```
+
+Available tools: `kubectl` (latest stable), `oc` (latest stable), `wget`, `curl`, `tar`, `gzip`, `bash`
+
 ### Using Go Run (No Installation Required)
 
 If you have Go installed, you can run the CLI directly from GitHub without cloning:

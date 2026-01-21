@@ -33,6 +33,29 @@ docker run --rm -ti \
   quay.io/lburgazzoli/odh-cli:latest lint --target-version 3.3.0
 ```
 
+**Interactive Debugging:**
+The container includes kubectl, oc, and common utilities (wget, curl, tar, gzip, bash) for interactive debugging and troubleshooting:
+
+```bash
+# Shell into container for interactive debugging
+docker run -it --rm \
+  -v $KUBECONFIG:/kubeconfig \
+  --entrypoint /bin/bash \
+  quay.io/lburgazzoli/odh-cli:latest
+
+# Inside container, use kubectl/oc for troubleshooting
+kubectl get pods -n opendatahub
+oc get dsci
+kubectl-odh lint --target-version 3.3.0
+```
+
+**Available Tools:**
+- `kubectl` (latest stable) - Standard Kubernetes CLI
+- `oc` (latest stable) - OpenShift CLI
+- `wget`, `curl` - Download utilities
+- `tar`, `gzip` - Archive utilities
+- `bash` - Interactive shell
+
 ### kubectl Plugin
 
 Install the `kubectl-odh` binary to your PATH for kubectl integration:
