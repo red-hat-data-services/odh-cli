@@ -1,3 +1,4 @@
+//nolint:testpackage // Tests internal implementation (Client fields)
 package client
 
 import (
