@@ -17,12 +17,13 @@ require (
 	k8s.io/apimachinery v0.35.0
 	k8s.io/cli-runtime v0.35.0
 	k8s.io/client-go v0.35.0
+	sigs.k8s.io/controller-runtime v0.23.1
 	sigs.k8s.io/yaml v1.6.0
 )
 
 require (
+	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	k8s.io/apiserver v0.35.0 // indirect
-	sigs.k8s.io/controller-runtime v0.23.1 // indirect
 )
 
 require (
