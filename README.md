@@ -8,8 +8,16 @@ CLI tool for ODH (Open Data Hub) and RHOAI (Red Hat OpenShift AI) for interactin
 
 Run the CLI using the pre-built container image:
 
+**Podman:**
 ```bash
 podman run --rm -ti \
+  -v $KUBECONFIG:/kubeconfig \
+  quay.io/lburgazzoli/odh-cli:latest lint --target-version 3.3.0
+```
+
+**Docker:**
+```bash
+docker run --rm -ti \
   -v $KUBECONFIG:/kubeconfig \
   quay.io/lburgazzoli/odh-cli:latest lint --target-version 3.3.0
 ```
@@ -18,7 +26,13 @@ The container has `KUBECONFIG=/kubeconfig` set by default, so you just need to m
 
 > **SELinux:** On systems with SELinux enabled (Fedora, RHEL, CentOS), add `:Z` to the volume mount:
 > ```bash
+> # Podman
 > podman run --rm -ti \
+>   -v $KUBECONFIG:/kubeconfig:Z \
+>   quay.io/lburgazzoli/odh-cli:latest lint --target-version 3.3.0
+>
+> # Docker
+> docker run --rm -ti \
 >   -v $KUBECONFIG:/kubeconfig:Z \
 >   quay.io/lburgazzoli/odh-cli:latest lint --target-version 3.3.0
 > ```
@@ -28,20 +42,30 @@ The container has `KUBECONFIG=/kubeconfig` set by default, so you just need to m
 - `:dev` - Latest development build from main branch (updated on every push)
 - `:vX.Y.Z` - Specific version (e.g., `:v1.2.3`)
 
-> **Note:** The images are OCI-compliant and work with both Podman and Docker.
+> **Note:** The images are OCI-compliant and work with both Podman and Docker. Examples for both are provided below.
 
 **Interactive Debugging:**
 
 The container includes kubectl, oc, and debugging utilities for interactive troubleshooting:
 
+**Podman:**
 ```bash
-# Shell into container
 podman run -it --rm \
   -v $KUBECONFIG:/kubeconfig \
   --entrypoint /bin/bash \
   quay.io/lburgazzoli/odh-cli:latest
+```
 
-# Inside container, use kubectl/oc/wget/curl
+**Docker:**
+```bash
+docker run -it --rm \
+  -v $KUBECONFIG:/kubeconfig \
+  --entrypoint /bin/bash \
+  quay.io/lburgazzoli/odh-cli:latest
+```
+
+Once inside the container, use kubectl/oc/wget/curl:
+```bash
 kubectl get pods -n opendatahub
 oc get dsci
 kubectl-odh lint --target-version 3.3.0
@@ -53,8 +77,19 @@ Available tools: `kubectl` (latest stable), `oc` (latest stable), `wget`, `curl`
 
 For environments where you have a token and server URL instead of a kubeconfig file:
 
+**Podman:**
 ```bash
 podman run --rm -ti \
+  quay.io/lburgazzoli/odh-cli:latest \
+  lint \
+  --target-version 3.3.0 \
+  --token=sha256~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
+  --server=https://api.my-cluster.p3.openshiftapps.com:6443
+```
+
+**Docker:**
+```bash
+docker run --rm -ti \
   quay.io/lburgazzoli/odh-cli:latest \
   lint \
   --target-version 3.3.0 \
