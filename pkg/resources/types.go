@@ -227,6 +227,14 @@ var (
 		Resource: "pytorchjobs",
 	}
 
+	// GuardrailsOrchestrator is the TrustyAI GuardrailsOrchestrator resource.
+	GuardrailsOrchestrator = ResourceType{
+		Group:    "trustyai.opendatahub.io",
+		Version:  "v1alpha1",
+		Kind:     "GuardrailsOrchestrator",
+		Resource: "guardrailsorchestrators",
+	}
+
 	// ClusterVersion is the OpenShift cluster version resource.
 	ClusterVersion = ResourceType{
 		Group:    "config.openshift.io",

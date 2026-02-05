@@ -11,6 +11,7 @@ const (
 const (
 	ComponentCodeFlare            = "codeflare"
 	ComponentDataSciencePipelines = "datasciencepipelines"
+	ComponentGuardrails           = "guardrails"
 	ComponentModelMesh            = "modelmesh"
 	ComponentKServe               = "kserve"
 	ComponentKueue                = "kueue"

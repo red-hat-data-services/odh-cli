@@ -25,6 +25,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/openshift"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/servicemeshoperator"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/services/servicemesh"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/guardrails"
 	kserveworkloads "github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/kserve"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/notebook"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/ray"
@@ -90,7 +91,8 @@ func NewCommand(
 	// Services (1)
 	registry.MustRegister(servicemesh.NewRemovalCheck())
 
-	// Workloads (4)
+	// Workloads (5)
+	registry.MustRegister(guardrails.NewOtelMigrationCheck())
 	registry.MustRegister(kserveworkloads.NewImpactedWorkloadsCheck())
 	registry.MustRegister(notebook.NewImpactedWorkloadsCheck())
 	registry.MustRegister(ray.NewImpactedWorkloadsCheck())
