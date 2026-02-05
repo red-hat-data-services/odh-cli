@@ -16,6 +16,11 @@ podman run --rm -ti \
 
 The container has `KUBECONFIG=/kubeconfig` set by default, so you just need to mount your kubeconfig to that path.
 
+**Available Tags:**
+- `:latest` - Latest stable release
+- `:dev` - Latest development build from main branch (updated on every push)
+- `:vX.Y.Z` - Specific version (e.g., `:v1.2.3`)
+
 > **Note:** The images are OCI-compliant and work with both Podman and Docker.
 
 **Interactive Debugging:**
