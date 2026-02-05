@@ -43,6 +43,7 @@ const (
 	CheckTypeImpactedWorkloads  = "impacted-workloads"
 	CheckTypeDeprecation        = "deprecation"
 	CheckTypeVersionRequirement = "version-requirement"
+	CheckTypeConfigMigration    = "config-migration"
 )
 
 // Annotation keys for diagnostic results.
@@ -65,4 +66,7 @@ const (
 
 	// AnnotationImpactedWorkloadCount is the count of impacted workloads.
 	AnnotationImpactedWorkloadCount = "workload.opendatahub.io/impacted-count"
+
+	// AnnotationInferenceServiceConfigManaged indicates whether the inferenceservice-config ConfigMap is managed.
+	AnnotationInferenceServiceConfigManaged = "component.opendatahub.io/inferenceservice-config-managed"
 )

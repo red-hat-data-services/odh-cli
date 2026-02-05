@@ -70,12 +70,14 @@ func NewCommand(
 	registry := check.NewRegistry()
 
 	// Explicitly register all checks (no global state, full test isolation)
-	// Components (7)
+	// Components (9)
 	registry.MustRegister(codeflare.NewRemovalCheck())
 	registry.MustRegister(datasciencepipelines.NewInstructLabRemovalCheck())
 	registry.MustRegister(datasciencepipelines.NewRenamingCheck())
 	registry.MustRegister(kserve.NewServerlessRemovalCheck())
+	registry.MustRegister(kserve.NewInferenceServiceConfigCheck())
 	registry.MustRegister(kueue.NewManagedRemovalCheck())
+	registry.MustRegister(kueue.NewConfigMapManagedCheck())
 	registry.MustRegister(modelmesh.NewRemovalCheck())
 	registry.MustRegister(trainingoperator.NewDeprecationCheck())
 

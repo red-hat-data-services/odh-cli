@@ -205,6 +205,9 @@ const (
 
 	// ReasonFeatureRemoved indicates a feature was removed in a new version.
 	ReasonFeatureRemoved = "FeatureRemoved"
+
+	// ReasonConfigurationUnmanaged indicates a configuration is not managed by the operator.
+	ReasonConfigurationUnmanaged = "ConfigurationUnmanaged"
 )
 
 // Standard Reason Values - Unknown/Error.
