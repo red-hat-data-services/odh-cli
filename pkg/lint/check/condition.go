@@ -148,6 +148,9 @@ const (
 
 	// ConditionTypeAuthorized indicates permissions/access are granted.
 	ConditionTypeAuthorized = "Authorized"
+
+	// ConditionTypeMigrationRequired indicates resources require migration during upgrade.
+	ConditionTypeMigrationRequired = "MigrationRequired"
 )
 
 // Standard Reason Values - Success.
@@ -172,6 +175,12 @@ const (
 
 	// ReasonComponentRenamed indicates a component was renamed in a new version.
 	ReasonComponentRenamed = "ComponentRenamed"
+
+	// ReasonMigrationPending indicates resources will be auto-migrated during upgrade.
+	ReasonMigrationPending = "MigrationPending"
+
+	// ReasonNoMigrationRequired indicates no resources require migration.
+	ReasonNoMigrationRequired = "NoMigrationRequired"
 )
 
 // Standard Reason Values - Failure.

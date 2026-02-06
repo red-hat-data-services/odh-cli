@@ -18,15 +18,6 @@ import (
 )
 
 const (
-	// ConditionTypeMigrationRequired indicates AcceleratorProfiles require migration.
-	ConditionTypeMigrationRequired = "MigrationRequired"
-
-	// ReasonMigrationPending indicates AcceleratorProfiles will be auto-migrated.
-	ReasonMigrationPending = "MigrationPending"
-
-	// ReasonNoMigrationRequired indicates no AcceleratorProfiles exist.
-	ReasonNoMigrationRequired = "NoMigrationRequired"
-
 	// minMigrationMajorVersion is the minimum major version for this check to apply.
 	minMigrationMajorVersion = 3
 )
@@ -80,9 +71,9 @@ func (c *MigrationCheck) Validate(
 	// Add condition based on findings.
 	if totalCount == 0 {
 		results.SetCondition(dr, check.NewCondition(
-			ConditionTypeMigrationRequired,
+			check.ConditionTypeMigrationRequired,
 			metav1.ConditionFalse,
-			ReasonNoMigrationRequired,
+			check.ReasonNoMigrationRequired,
 			"No AcceleratorProfiles found - no migration required",
 		))
 
@@ -91,9 +82,9 @@ func (c *MigrationCheck) Validate(
 
 	// AcceleratorProfiles found - advisory notice about auto-migration.
 	results.SetCondition(dr, check.NewCondition(
-		ConditionTypeMigrationRequired,
+		check.ConditionTypeMigrationRequired,
 		metav1.ConditionTrue,
-		ReasonMigrationPending,
+		check.ReasonMigrationPending,
 		"Found %d AcceleratorProfile(s) that will be automatically migrated to HardwareProfiles during upgrade",
 		totalCount,
 		check.WithImpact(result.ImpactAdvisory),

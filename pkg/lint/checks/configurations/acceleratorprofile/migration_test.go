@@ -123,9 +123,9 @@ func TestMigrationCheck_Validate_NoProfiles(t *testing.T) {
 	})))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(acceleratorprofile.ConditionTypeMigrationRequired),
+		"Type":   Equal(check.ConditionTypeMigrationRequired),
 		"Status": Equal(metav1.ConditionFalse),
-		"Reason": Equal(acceleratorprofile.ReasonNoMigrationRequired),
+		"Reason": Equal(check.ReasonNoMigrationRequired),
 	}))
 	g.Expect(dr.ImpactedObjects).To(BeEmpty())
 }
@@ -175,9 +175,9 @@ func TestMigrationCheck_Validate_WithProfiles(t *testing.T) {
 	})))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(acceleratorprofile.ConditionTypeMigrationRequired),
+		"Type":    Equal(check.ConditionTypeMigrationRequired),
 		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(acceleratorprofile.ReasonMigrationPending),
+		"Reason":  Equal(check.ReasonMigrationPending),
 		"Message": ContainSubstring("2 AcceleratorProfile"),
 	}))
 	g.Expect(dr.Status.Conditions[0].Impact).To(Equal(result.ImpactAdvisory))
