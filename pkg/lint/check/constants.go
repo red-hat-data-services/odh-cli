@@ -9,6 +9,7 @@ const (
 
 // Component names used across multiple package groups.
 const (
+	ComponentDashboard        = "dashboard"
 	ComponentKServe           = "kserve"
 	ComponentTrainingOperator = "trainingoperator"
 )

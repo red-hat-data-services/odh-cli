@@ -250,4 +250,13 @@ var (
 		Kind:     "AcceleratorProfile",
 		Resource: "acceleratorprofiles",
 	}
+
+	// HardwareProfile is the OpenShift AI HardwareProfile resource in the old API group.
+	// During upgrade to 3.x, these are auto-migrated to infrastructure.opendatahub.io.
+	HardwareProfile = ResourceType{
+		Group:    "opendatahub.io",
+		Version:  "v1alpha1",
+		Kind:     "HardwareProfile",
+		Resource: "hardwareprofiles",
+	}
 )

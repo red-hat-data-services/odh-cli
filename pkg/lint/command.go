@@ -15,12 +15,12 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	resultpkg "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/codeflare"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/dashboard"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/datasciencepipelines"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kserve"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/kueue"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/modelmesh"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/trainingoperator"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/configurations/acceleratorprofile"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/certmanager"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/kueueoperator"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/openshift"
@@ -72,8 +72,10 @@ func NewCommand(
 	registry := check.NewRegistry()
 
 	// Explicitly register all checks (no global state, full test isolation)
-	// Components (9)
+	// Components (11)
 	registry.MustRegister(codeflare.NewRemovalCheck())
+	registry.MustRegister(dashboard.NewAcceleratorProfileMigrationCheck())
+	registry.MustRegister(dashboard.NewHardwareProfileMigrationCheck())
 	registry.MustRegister(datasciencepipelines.NewInstructLabRemovalCheck())
 	registry.MustRegister(datasciencepipelines.NewRenamingCheck())
 	registry.MustRegister(kserve.NewServerlessRemovalCheck())
@@ -91,9 +93,6 @@ func NewCommand(
 
 	// Services (1)
 	registry.MustRegister(servicemesh.NewRemovalCheck())
-
-	// Configurations (1)
-	registry.MustRegister(acceleratorprofile.NewMigrationCheck())
 
 	// Workloads (7)
 	registry.MustRegister(guardrails.NewOtelMigrationCheck())
