@@ -13,6 +13,8 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
+const checkType = "deprecation"
+
 type DeprecationCheck struct {
 	base.BaseCheck
 }
@@ -22,7 +24,7 @@ func NewDeprecationCheck() *DeprecationCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentTrainingOperator,
-			Type:             check.CheckTypeDeprecation,
+			Type:             checkType,
 			CheckID:          "components.trainingoperator.deprecation",
 			CheckName:        "Components :: TrainingOperator :: Deprecation (3.3+)",
 			CheckDescription: "Validates that TrainingOperator (Kubeflow Training Operator v1) deprecation is acknowledged - will be replaced by Trainer v2 in future RHOAI releases",

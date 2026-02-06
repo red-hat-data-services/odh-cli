@@ -14,6 +14,8 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
+const checkType = "serverless-removal"
+
 // ServerlessRemovalCheck validates that KServe serverless is disabled before upgrading to 3.x.
 type ServerlessRemovalCheck struct {
 	base.BaseCheck
@@ -24,7 +26,7 @@ func NewServerlessRemovalCheck() *ServerlessRemovalCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentKServe,
-			Type:             check.CheckTypeServerlessRemoval,
+			Type:             checkType,
 			CheckID:          "components.kserve.serverless-removal",
 			CheckName:        "Components :: KServe :: Serverless Removal (3.x)",
 			CheckDescription: "Validates that KServe serverless mode is disabled before upgrading from RHOAI 2.x to 3.x (serverless support will be removed)",

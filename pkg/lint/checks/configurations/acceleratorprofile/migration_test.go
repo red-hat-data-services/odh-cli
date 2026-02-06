@@ -119,8 +119,8 @@ func TestMigrationCheck_Validate_NoProfiles(t *testing.T) {
 	g.Expect(dr).ToNot(BeNil())
 	g.Expect(dr).To(PointTo(MatchFields(IgnoreExtras, Fields{
 		"Group": Equal(string(check.GroupConfigurations)),
-		"Kind":  Equal(check.ConfigurationAcceleratorProfile),
-		"Name":  Equal(check.CheckTypeMigration),
+		"Kind":  Equal("acceleratorprofile"),
+		"Name":  Equal("migration"),
 	})))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -172,7 +172,7 @@ func TestMigrationCheck_Validate_WithProfiles(t *testing.T) {
 	g.Expect(dr).ToNot(BeNil())
 	g.Expect(dr).To(PointTo(MatchFields(IgnoreExtras, Fields{
 		"Group": Equal(string(check.GroupConfigurations)),
-		"Kind":  Equal(check.ConfigurationAcceleratorProfile),
+		"Kind":  Equal("acceleratorprofile"),
 	})))
 	g.Expect(dr.Status.Conditions).To(HaveLen(1))
 	// Status=False (not yet migrated) with advisory impact since auto-migration is informational

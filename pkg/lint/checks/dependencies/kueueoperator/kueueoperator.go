@@ -11,6 +11,8 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
+const kind = "kueueoperator"
+
 // Check validates kueue-operator installation.
 type Check struct {
 	base.BaseCheck
@@ -21,7 +23,7 @@ func NewCheck() *Check {
 	return &Check{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupDependency,
-			Kind:             check.DependencyKueueOperator,
+			Kind:             kind,
 			Type:             check.CheckTypeInstalled,
 			CheckID:          "dependencies.kueueoperator.installed",
 			CheckName:        "Dependencies :: KueueOperator :: Installed",

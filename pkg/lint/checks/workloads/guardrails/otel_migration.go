@@ -18,6 +18,8 @@ import (
 )
 
 const (
+	kind = "guardrails"
+
 	ConditionTypeOtelConfigCompatible = "OtelConfigCompatible"
 
 	// minTargetMajorVersion is the minimum major version for this check to apply.
@@ -33,7 +35,7 @@ func NewOtelMigrationCheck() *OtelMigrationCheck {
 	return &OtelMigrationCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
-			Kind:             check.ComponentGuardrails,
+			Kind:             kind,
 			Type:             check.CheckTypeConfigMigration,
 			CheckID:          "workloads.guardrails.otel-config-migration",
 			CheckName:        "Workloads :: Guardrails :: OTEL Config Migration (3.x)",

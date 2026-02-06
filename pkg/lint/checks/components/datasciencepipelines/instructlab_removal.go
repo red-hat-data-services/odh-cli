@@ -21,6 +21,8 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
+const checkTypeInstructLabRemoval = "instructlab-removal"
+
 type InstructLabRemovalCheck struct {
 	base.BaseCheck
 }
@@ -29,8 +31,8 @@ func NewInstructLabRemovalCheck() *InstructLabRemovalCheck {
 	return &InstructLabRemovalCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentDataSciencePipelines,
-			Type:             check.CheckTypeInstructLabRemoval,
+			Kind:             kind,
+			Type:             checkTypeInstructLabRemoval,
 			CheckID:          "components.datasciencepipelines.instructlab-removal",
 			CheckName:        "Components :: DataSciencePipelines :: InstructLab ManagedPipelines Removal (3.x)",
 			CheckDescription: "Validates that DSPA objects do not use the removed InstructLab managedPipelines field before upgrading to RHOAI 3.x",

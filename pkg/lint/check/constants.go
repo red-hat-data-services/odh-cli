@@ -7,72 +7,28 @@ const (
 	ManagementStateRemoved   = "Removed"
 )
 
-// Component names for diagnostic results.
-// These values match the DSC spec component path keys
-// (the key used in .spec.components.<key>.managementState).
+// Component names used across multiple package groups.
 const (
-	ComponentCodeFlare            = "codeflare"
-	ComponentDataSciencePipelines = "datasciencepipelines"
-	ComponentGuardrails           = "guardrails"
-	ComponentModelMesh            = "modelmeshserving"
-	ComponentKServe               = "kserve"
-	ComponentKueue                = "kueue"
-	ComponentRay                  = "ray"
-	ComponentTrainingOperator     = "trainingoperator"
-	ComponentNotebook             = "notebook"
+	ComponentKServe           = "kserve"
+	ComponentTrainingOperator = "trainingoperator"
 )
 
-// Service names for diagnostic results.
+// Check type names used across multiple packages.
 const (
-	ServiceServiceMesh = "servicemesh"
+	CheckTypeRemoval           = "removal"
+	CheckTypeInstalled         = "installed"
+	CheckTypeImpactedWorkloads = "impacted-workloads"
+	CheckTypeConfigMigration   = "config-migration"
 )
 
-// Dependency names for diagnostic results.
-const (
-	DependencyCertManager           = "certmanager"
-	DependencyKueueOperator         = "kueueoperator"
-	DependencyServiceMeshOperatorV2 = "servicemesh-operator-v2"
-	DependencyOpenShiftPlatform     = "openshift-platform"
-)
-
-// Configuration names for diagnostic results.
-const (
-	ConfigurationAcceleratorProfile = "acceleratorprofile"
-)
-
-// Check type names (third parameter to result.New).
-const (
-	CheckTypeRemoval            = "removal"
-	CheckTypeInstalled          = "installed"
-	CheckTypeInstructLabRemoval = "instructlab-removal"
-	CheckTypeManagedRemoval     = "managed-removal"
-	CheckTypeRenaming           = "renaming"
-	CheckTypeServerlessRemoval  = "serverless-removal"
-	CheckTypeImpactedWorkloads  = "impacted-workloads"
-	CheckTypeDeprecation        = "deprecation"
-	CheckTypeVersionRequirement = "version-requirement"
-	CheckTypeConfigMigration    = "config-migration"
-	CheckTypeMigration          = "migration"
-	CheckTypeUpgrade            = "upgrade"
-)
-
-// Annotation keys for diagnostic results.
+// Annotation keys used across multiple packages.
 const (
 	// AnnotationComponentManagementState is the management state for components.
 	AnnotationComponentManagementState = "component.opendatahub.io/management-state"
 
-	// AnnotationServiceManagementState is the management state for services.
-	AnnotationServiceManagementState = "service.opendatahub.io/management-state"
-
 	// AnnotationCheckTargetVersion is the target version for upgrade checks.
 	AnnotationCheckTargetVersion = "check.opendatahub.io/target-version"
 
-	// AnnotationOperatorInstalledVersion is the installed operator version.
-	AnnotationOperatorInstalledVersion = "operator.opendatahub.io/installed-version"
-
 	// AnnotationImpactedWorkloadCount is the count of impacted workloads.
 	AnnotationImpactedWorkloadCount = "workload.opendatahub.io/impacted-count"
-
-	// AnnotationInferenceServiceConfigManaged indicates whether the inferenceservice-config ConfigMap is managed.
-	AnnotationInferenceServiceConfigManaged = "component.opendatahub.io/inferenceservice-config-managed"
 )

@@ -16,9 +16,12 @@ import (
 )
 
 const (
+	kind             = "servicemesh"
 	checkID          = "services.servicemesh.removal"
 	checkName        = "Services :: ServiceMesh :: Removal (3.x)"
 	checkDescription = "Validates that ServiceMesh is disabled before upgrading from RHOAI 2.x to 3.x (service mesh will be removed)"
+
+	annotationManagementState = "service.opendatahub.io/management-state"
 )
 
 // RemovalCheck validates that ServiceMesh is disabled before upgrading to 3.x.
@@ -51,7 +54,7 @@ func (c *RemovalCheck) Group() check.CheckGroup {
 
 // CheckKind returns the kind of resource being checked.
 func (c *RemovalCheck) CheckKind() string {
-	return check.ServiceServiceMesh
+	return kind
 }
 
 // CheckType returns the type of check.
@@ -69,7 +72,7 @@ func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	dr := result.New(
 		string(check.GroupService),
-		check.ServiceServiceMesh,
+		kind,
 		check.CheckTypeRemoval,
 		checkDescription,
 	)
@@ -78,7 +81,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 	dsci, err := client.GetDSCInitialization(ctx, target.Client)
 	switch {
 	case apierrors.IsNotFound(err):
-		return results.DSCInitializationNotFound(string(check.GroupService), check.ServiceServiceMesh, check.CheckTypeRemoval, checkDescription), nil
+		return results.DSCInitializationNotFound(string(check.GroupService), kind, check.CheckTypeRemoval, checkDescription), nil
 	case err != nil:
 		return nil, fmt.Errorf("getting DSCInitialization: %w", err)
 	}
@@ -97,7 +100,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 	}
 
 	// Add management state as annotation
-	dr.Annotations[check.AnnotationServiceManagementState] = managementStateStr
+	dr.Annotations[annotationManagementState] = managementStateStr
 
 	// Check if servicemesh is enabled (Managed or Unmanaged)
 	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {

@@ -18,6 +18,9 @@ import (
 )
 
 const (
+	kind      = "acceleratorprofile"
+	checkType = "migration"
+
 	// minMigrationMajorVersion is the minimum major version for this check to apply.
 	minMigrationMajorVersion = 3
 )
@@ -33,8 +36,8 @@ func NewMigrationCheck() *MigrationCheck {
 	return &MigrationCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupConfigurations,
-			Kind:             check.ConfigurationAcceleratorProfile,
-			Type:             check.CheckTypeMigration,
+			Kind:             kind,
+			Type:             checkType,
 			CheckID:          "configuration.acceleratorprofile.migration",
 			CheckName:        "Configuration :: AcceleratorProfile :: Migration (3.x)",
 			CheckDescription: "Lists AcceleratorProfiles that will be auto-migrated to HardwareProfiles during upgrade",

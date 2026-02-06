@@ -10,6 +10,8 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
+const kind = "modelmeshserving"
+
 // RemovalCheck validates that ModelMesh is disabled before upgrading to 3.x.
 type RemovalCheck struct {
 	base.BaseCheck
@@ -19,7 +21,7 @@ func NewRemovalCheck() *RemovalCheck {
 	return &RemovalCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentModelMesh,
+			Kind:             kind,
 			Type:             check.CheckTypeRemoval,
 			CheckID:          "components.modelmesh.removal",
 			CheckName:        "Components :: ModelMesh :: Removal (3.x)",

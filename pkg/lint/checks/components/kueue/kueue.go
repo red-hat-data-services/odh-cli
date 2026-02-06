@@ -10,6 +10,11 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
+const (
+	kind                    = "kueue"
+	checkTypeManagedRemoval = "managed-removal"
+)
+
 // ManagedRemovalCheck validates that Kueue managed option is not used before upgrading to 3.x.
 type ManagedRemovalCheck struct {
 	base.BaseCheck
@@ -19,8 +24,8 @@ func NewManagedRemovalCheck() *ManagedRemovalCheck {
 	return &ManagedRemovalCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentKueue,
-			Type:             check.CheckTypeManagedRemoval,
+			Kind:             kind,
+			Type:             checkTypeManagedRemoval,
 			CheckID:          "components.kueue.managed-removal",
 			CheckName:        "Components :: Kueue :: Managed Removal (3.x)",
 			CheckDescription: "Validates that Kueue managed option is not used before upgrading from RHOAI 2.x to 3.x (managed option will be removed)",

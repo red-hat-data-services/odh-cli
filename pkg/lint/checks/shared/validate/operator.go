@@ -11,6 +11,8 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 )
 
+const annotationInstalledVersion = "operator.opendatahub.io/installed-version"
+
 // OperatorBuilder provides a fluent API for OLM operator presence validation.
 // It handles OLM availability checking, subscription matching, and annotation population automatically.
 type OperatorBuilder struct {
@@ -122,7 +124,7 @@ func (b *OperatorBuilder) Run(ctx context.Context) (*result.DiagnosticResult, er
 
 	// Store version in annotations if found.
 	if found.Version != "" {
-		dr.Annotations[check.AnnotationOperatorInstalledVersion] = found.Version
+		dr.Annotations[annotationInstalledVersion] = found.Version
 	}
 
 	return dr, nil

@@ -130,7 +130,7 @@ func TestBaseCheckIntegration(t *testing.T) {
 		mockCheck := &MockCheck{
 			BaseCheck: base.BaseCheck{
 				CheckGroup:       check.GroupComponent,
-				Kind:             check.ComponentModelMesh,
+				Kind:             "modelmeshserving",
 				Type:             check.CheckTypeRemoval,
 				CheckID:          "components.modelmesh.removal",
 				CheckName:        "Components :: ModelMesh :: Removal (3.x)",
@@ -155,7 +155,7 @@ func TestBaseCheckIntegration(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(dr).ToNot(BeNil())
 		g.Expect(dr.Group).To(Equal("component"))
-		g.Expect(dr.Kind).To(Equal(check.ComponentModelMesh))
+		g.Expect(dr.Kind).To(Equal("modelmeshserving"))
 		g.Expect(dr.Name).To(Equal(check.CheckTypeRemoval))
 	})
 }

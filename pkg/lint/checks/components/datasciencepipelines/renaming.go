@@ -13,6 +13,11 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
+const (
+	kind              = "datasciencepipelines"
+	checkTypeRenaming = "renaming"
+)
+
 type RenamingCheck struct {
 	base.BaseCheck
 }
@@ -21,8 +26,8 @@ func NewRenamingCheck() *RenamingCheck {
 	return &RenamingCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentDataSciencePipelines,
-			Type:             check.CheckTypeRenaming,
+			Kind:             kind,
+			Type:             checkTypeRenaming,
 			CheckID:          "components.datasciencepipelines.renaming",
 			CheckName:        "Components :: DataSciencePipelines :: Component Renaming (3.x)",
 			CheckDescription: "Informs about DataSciencePipelines component renaming to AIPipelines in DSC v2 (RHOAI 3.x)",

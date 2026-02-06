@@ -10,6 +10,8 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
+const kind = "codeflare"
+
 // RemovalCheck validates that CodeFlare is disabled before upgrading to 3.x.
 type RemovalCheck struct {
 	base.BaseCheck
@@ -19,7 +21,7 @@ func NewRemovalCheck() *RemovalCheck {
 	return &RemovalCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentCodeFlare,
+			Kind:             kind,
 			Type:             check.CheckTypeRemoval,
 			CheckID:          "components.codeflare.removal",
 			CheckName:        "Components :: CodeFlare :: Removal (3.x)",

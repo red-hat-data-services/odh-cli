@@ -17,6 +17,8 @@ import (
 )
 
 const (
+	kind = "notebook"
+
 	ConditionTypeNotebooksCompatible = "NotebooksCompatible"
 )
 
@@ -29,7 +31,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	return &ImpactedWorkloadsCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
-			Kind:             check.ComponentNotebook,
+			Kind:             kind,
 			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.notebook.impacted-workloads",
 			CheckName:        "Workloads :: Notebook :: Impacted Workloads (3.x)",

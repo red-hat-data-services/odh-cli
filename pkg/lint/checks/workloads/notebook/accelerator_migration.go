@@ -39,7 +39,7 @@ func NewAcceleratorMigrationCheck() *AcceleratorMigrationCheck {
 	return &AcceleratorMigrationCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
-			Kind:             check.ComponentNotebook,
+			Kind:             kind,
 			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.notebook.accelerator-migration",
 			CheckName:        "Workloads :: Notebook :: AcceleratorProfile Migration (3.x)",

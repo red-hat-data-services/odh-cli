@@ -54,7 +54,7 @@ func newTestCheck() *testCheck {
 	return &testCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentCodeFlare,
+			Kind:             "codeflare",
 			Type:             check.CheckTypeRemoval,
 			CheckID:          "test.check",
 			CheckName:        "Test Check",
@@ -309,7 +309,7 @@ func newTestOperatorCheck() *testCheck {
 	return &testCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupDependency,
-			Kind:             check.DependencyCertManager,
+			Kind:             "certmanager",
 			Type:             check.CheckTypeInstalled,
 			CheckID:          "test.operator.check",
 			CheckName:        "Test Operator Check",
@@ -369,7 +369,7 @@ func TestOperatorBuilder(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(dr).ToNot(BeNil())
 		g.Expect(dr.Group).To(Equal("dependency"))
-		g.Expect(dr.Kind).To(Equal(check.DependencyCertManager))
+		g.Expect(dr.Kind).To(Equal("certmanager"))
 		g.Expect(dr.Name).To(Equal(check.CheckTypeInstalled))
 		g.Expect(dr.Status.Conditions).To(HaveLen(1))
 		g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
@@ -418,7 +418,7 @@ func TestOperatorBuilder(t *testing.T) {
 			"Reason":  Equal(check.ReasonResourceFound),
 			"Message": ContainSubstring("cert-manager.v1.13.0"),
 		}))
-		g.Expect(dr.Annotations).To(HaveKeyWithValue(check.AnnotationOperatorInstalledVersion, "cert-manager.v1.13.0"))
+		g.Expect(dr.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "cert-manager.v1.13.0"))
 		g.Expect(dr.Annotations).To(HaveKeyWithValue(check.AnnotationCheckTargetVersion, "2.17.0"))
 	})
 
@@ -460,7 +460,7 @@ func TestOperatorBuilder(t *testing.T) {
 			"Type":   Equal(check.ConditionTypeAvailable),
 			"Status": Equal(metav1.ConditionTrue),
 		}))
-		g.Expect(dr.Annotations).To(HaveKeyWithValue(check.AnnotationOperatorInstalledVersion, "cert-manager-operator.v1.12.0"))
+		g.Expect(dr.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "cert-manager-operator.v1.12.0"))
 	})
 
 	t.Run("should match with WithNames and WithChannels", func(t *testing.T) {
@@ -505,7 +505,7 @@ func TestOperatorBuilder(t *testing.T) {
 			"Type":   Equal(check.ConditionTypeAvailable),
 			"Status": Equal(metav1.ConditionTrue),
 		}))
-		g.Expect(dr.Annotations).To(HaveKeyWithValue(check.AnnotationOperatorInstalledVersion, "servicemeshoperator.v2.6.0"))
+		g.Expect(dr.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "servicemeshoperator.v2.6.0"))
 	})
 
 	t.Run("should not match when channel does not match", func(t *testing.T) {
@@ -610,7 +610,7 @@ func TestOperatorBuilder(t *testing.T) {
 
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(dr).ToNot(BeNil())
-		g.Expect(dr.Annotations).ToNot(HaveKey(check.AnnotationOperatorInstalledVersion))
+		g.Expect(dr.Annotations).ToNot(HaveKey("operator.opendatahub.io/installed-version"))
 		// No target version set, so annotation should also be absent.
 		g.Expect(dr.Annotations).ToNot(HaveKey(check.AnnotationCheckTargetVersion))
 	})

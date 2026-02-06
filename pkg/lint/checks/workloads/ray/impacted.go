@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	kind                    = "ray"
 	finalizerCodeFlareOAuth = "ray.openshift.ai/oauth-finalizer"
 )
 
@@ -33,7 +34,7 @@ func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	return &ImpactedWorkloadsCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
-			Kind:             check.ComponentRay,
+			Kind:             kind,
 			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.ray.impacted-workloads",
 			CheckName:        "Workloads :: Ray :: Impacted Workloads (3.x)",

@@ -32,7 +32,7 @@ func NewConfigMapManagedCheck() *ConfigMapManagedCheck {
 	return &ConfigMapManagedCheck{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
-			Kind:             check.ComponentKueue,
+			Kind:             kind,
 			Type:             check.CheckTypeConfigMigration,
 			CheckID:          "components.kueue.configmap-managed",
 			CheckName:        "Components :: Kueue :: ConfigMap Managed Check (3.x)",

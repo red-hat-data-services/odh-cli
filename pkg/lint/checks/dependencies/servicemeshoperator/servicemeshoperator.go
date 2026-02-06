@@ -11,6 +11,11 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
+const (
+	kind      = "servicemesh-operator-v2"
+	checkType = "upgrade"
+)
+
 // Check validates that Service Mesh Operator v2 is not installed when upgrading to 3.x.
 type Check struct {
 	base.BaseCheck
@@ -21,8 +26,8 @@ func NewCheck() *Check {
 	return &Check{
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupDependency,
-			Kind:             check.DependencyServiceMeshOperatorV2,
-			Type:             check.CheckTypeUpgrade,
+			Kind:             kind,
+			Type:             checkType,
 			CheckID:          "dependencies.servicemeshoperator2.upgrade",
 			CheckName:        "Dependencies :: ServiceMeshOperator2 :: Upgrade (3.x)",
 			CheckDescription: "Validates that servicemeshoperator2 is not installed when upgrading to RHOAI 3.x (requires servicemeshoperator3)",
