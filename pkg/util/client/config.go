@@ -47,5 +47,8 @@ func NewRESTConfig(
 
 	ConfigureThrottling(restConfig, qps, burst)
 
+	// Suppress Kubernetes API server deprecation warnings from cluttering CLI output.
+	restConfig.WarningHandler = rest.NoWarnings{}
+
 	return restConfig, nil
 }
