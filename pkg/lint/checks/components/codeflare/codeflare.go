@@ -2,16 +2,12 @@ package codeflare
 
 import (
 	"context"
-	"fmt"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
-	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -25,7 +21,7 @@ func NewRemovalCheck() *RemovalCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentCodeFlare,
-			CheckType:        check.CheckTypeRemoval,
+			Type:             check.CheckTypeRemoval,
 			CheckID:          "components.codeflare.removal",
 			CheckName:        "Components :: CodeFlare :: Removal (3.x)",
 			CheckDescription: "Validates that CodeFlare is disabled before upgrading from RHOAI 2.x to 3.x (component will be removed)",
@@ -41,37 +37,21 @@ func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 
 // Validate executes the check against the provided target.
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
-	dr := c.NewResult()
+	return validate.Component(c, "codeflare", target).
+		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
+			switch req.ManagementState {
+			case check.ManagementStateManaged:
+				// CodeFlare is enabled - blocks upgrade (Unmanaged not supported for this component)
+				results.SetCompatibilityFailuref(req.Result,
+					"CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x",
+					req.ManagementState)
+			default:
+				// CodeFlare is disabled (Removed, Unmanaged, or not configured) - check passes
+				results.SetCompatibilitySuccessf(req.Result,
+					"CodeFlare is disabled (state: %s) - ready for RHOAI 3.x upgrade",
+					req.ManagementState)
+			}
 
-	// Get the DataScienceCluster singleton
-	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
-	switch {
-	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(c.Group()), c.Kind, c.CheckType, c.Description()), nil
-	case err != nil:
-		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
-	}
-
-	managementStateStr, err := components.GetManagementState(dsc, "codeflare")
-	if err != nil {
-		return nil, fmt.Errorf("querying codeflare managementState: %w", err)
-	}
-
-	// Add management state as annotation
-	dr.Annotations[check.AnnotationComponentManagementState] = managementStateStr
-	if target.TargetVersion != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
-	}
-
-	// Check if codeflare is enabled (Managed or Unmanaged)
-	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {
-		results.SetCompatibilityFailuref(dr, "CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x", managementStateStr)
-
-		return dr, nil
-	}
-
-	// CodeFlare is disabled (Removed) - check passes
-	results.SetCompatibilitySuccessf(dr, "CodeFlare is disabled (state: %s) - ready for RHOAI 3.x upgrade", managementStateStr)
-
-	return dr, nil
+			return nil
+		})
 }

@@ -24,17 +24,35 @@ import (
 
 //nolint:gochecknoglobals // Test fixture - shared across test functions
 var inferenceServiceConfigListKinds = map[schema.GroupVersionResource]string{
-	resources.DSCInitialization.GVR(): resources.DSCInitialization.ListKind(),
-	resources.ConfigMap.GVR():         resources.ConfigMap.ListKind(),
+	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
+	resources.DSCInitialization.GVR():  resources.DSCInitialization.ListKind(),
+	resources.ConfigMap.GVR():          resources.ConfigMap.ListKind(),
 }
 
 func TestInferenceServiceConfigCheck_NoDSCI(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create empty cluster (no DSCInitialization)
+	// Create DSC with kserve managed but no DSCInitialization
+	dsc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"spec": map[string]any{
+				"components": map[string]any{
+					"kserve": map[string]any{
+						"managementState": "Managed",
+					},
+				},
+			},
+		},
+	}
+
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsc)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
@@ -65,6 +83,24 @@ func TestInferenceServiceConfigCheck_ConfigMapNotFound(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
+	// Create DSC with kserve managed
+	dsc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"spec": map[string]any{
+				"components": map[string]any{
+					"kserve": map[string]any{
+						"managementState": "Managed",
+					},
+				},
+			},
+		},
+	}
+
 	// Create DSCInitialization without the ConfigMap
 	dsci := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -80,7 +116,7 @@ func TestInferenceServiceConfigCheck_ConfigMapNotFound(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsc, dsci)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
@@ -110,6 +146,24 @@ func TestInferenceServiceConfigCheck_ConfigMapNotFound(t *testing.T) {
 func TestInferenceServiceConfigCheck_ConfigMapManagedFalse(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
+
+	// Create DSC with kserve managed
+	dsc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"spec": map[string]any{
+				"components": map[string]any{
+					"kserve": map[string]any{
+						"managementState": "Managed",
+					},
+				},
+			},
+		},
+	}
 
 	// Create DSCInitialization and ConfigMap with managed=false annotation
 	dsci := &unstructured.Unstructured{
@@ -143,7 +197,7 @@ func TestInferenceServiceConfigCheck_ConfigMapManagedFalse(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsc, dsci, configMap)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
@@ -175,6 +229,24 @@ func TestInferenceServiceConfigCheck_ConfigMapManagedFalse(t *testing.T) {
 func TestInferenceServiceConfigCheck_ConfigMapManagedTrue(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
+
+	// Create DSC with kserve managed
+	dsc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"spec": map[string]any{
+				"components": map[string]any{
+					"kserve": map[string]any{
+						"managementState": "Managed",
+					},
+				},
+			},
+		},
+	}
 
 	// Create DSCInitialization and ConfigMap with managed=true annotation
 	dsci := &unstructured.Unstructured{
@@ -208,7 +280,7 @@ func TestInferenceServiceConfigCheck_ConfigMapManagedTrue(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsc, dsci, configMap)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
@@ -239,6 +311,24 @@ func TestInferenceServiceConfigCheck_ConfigMapNoAnnotation(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
+	// Create DSC with kserve managed
+	dsc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"spec": map[string]any{
+				"components": map[string]any{
+					"kserve": map[string]any{
+						"managementState": "Managed",
+					},
+				},
+			},
+		},
+	}
+
 	// Create DSCInitialization and ConfigMap without the managed annotation
 	dsci := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -268,7 +358,7 @@ func TestInferenceServiceConfigCheck_ConfigMapNoAnnotation(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsc, dsci, configMap)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
@@ -298,6 +388,24 @@ func TestInferenceServiceConfigCheck_ConfigMapNoAnnotation(t *testing.T) {
 func TestInferenceServiceConfigCheck_ConfigMapEmptyAnnotations(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
+
+	// Create DSC with kserve managed
+	dsc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"spec": map[string]any{
+				"components": map[string]any{
+					"kserve": map[string]any{
+						"managementState": "Managed",
+					},
+				},
+			},
+		},
+	}
 
 	// Create DSCInitialization and ConfigMap with empty annotations
 	dsci := &unstructured.Unstructured{
@@ -329,7 +437,7 @@ func TestInferenceServiceConfigCheck_ConfigMapEmptyAnnotations(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsc, dsci, configMap)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
@@ -359,6 +467,24 @@ func TestInferenceServiceConfigCheck_ConfigMapEmptyAnnotations(t *testing.T) {
 func TestInferenceServiceConfigCheck_DSCINoNamespace(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
+
+	// Create DSC with kserve managed
+	dsc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"spec": map[string]any{
+				"components": map[string]any{
+					"kserve": map[string]any{
+						"managementState": "Managed",
+					},
+				},
+			},
+		},
+	}
 
 	// Create DSCInitialization without applicationsNamespace - treated as NotFound since namespace is required
 	dsci := &unstructured.Unstructured{
@@ -393,7 +519,7 @@ func TestInferenceServiceConfigCheck_DSCINoNamespace(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsci, configMap)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, inferenceServiceConfigListKinds, dsc, dsci, configMap)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,

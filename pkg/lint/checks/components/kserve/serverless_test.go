@@ -98,14 +98,13 @@ func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	// When KServe is not configured, it's treated as Removed - check reports "not managed"
+	// When KServe is not configured, InState filter returns "not configured" result
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeConfigured),
 		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal("ComponentNotManaged"),
-		"Message": ContainSubstring("state: Removed"),
+		"Reason":  Equal(check.ReasonResourceNotFound),
+		"Message": ContainSubstring("kserve component is not configured"),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Removed"))
 }
 
 func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
@@ -148,13 +147,13 @@ func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	// When KServe is Removed, InState filter returns "not configured" result
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(check.ConditionTypeConfigured),
 		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal("ComponentNotManaged"),
-		"Message": ContainSubstring("not managed"),
+		"Reason":  Equal(check.ReasonResourceNotFound),
+		"Message": ContainSubstring("kserve component is not configured"),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Removed"))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
@@ -204,7 +203,7 @@ func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
 		"Reason":  Equal(check.ReasonVersionCompatible),
 		"Message": ContainSubstring("serverless mode is not configured"),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Managed"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
@@ -257,9 +256,9 @@ func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 		"Message": And(ContainSubstring("serverless mode is enabled"), ContainSubstring("removed in RHOAI 3.x")),
 	}))
 	g.Expect(result.Annotations).To(And(
-		HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Managed"),
-		HaveKeyWithValue("component.opendatahub.io/serving-management-state", "Managed"),
-		HaveKeyWithValue("check.opendatahub.io/target-version", "3.0.0"),
+		HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged),
+		HaveKeyWithValue(check.AnnotationComponentServingState, check.ManagementStateManaged),
+		HaveKeyWithValue(check.AnnotationCheckTargetVersion, "3.0.0"),
 	))
 }
 
@@ -312,7 +311,7 @@ func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) 
 		"Reason":  Equal(check.ReasonVersionIncompatible),
 		"Message": ContainSubstring("state: Unmanaged"),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/serving-management-state", "Unmanaged"))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationComponentServingState, check.ManagementStateUnmanaged))
 }
 
 func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
@@ -365,8 +364,8 @@ func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 		"Message": And(ContainSubstring("serverless mode is disabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
 	}))
 	g.Expect(result.Annotations).To(And(
-		HaveKeyWithValue("component.opendatahub.io/kserve-management-state", "Managed"),
-		HaveKeyWithValue("component.opendatahub.io/serving-management-state", "Removed"),
+		HaveKeyWithValue(check.AnnotationComponentManagementState, check.ManagementStateManaged),
+		HaveKeyWithValue(check.AnnotationComponentServingState, check.ManagementStateRemoved),
 	))
 }
 

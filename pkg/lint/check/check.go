@@ -95,6 +95,14 @@ type Check interface {
 	// Group returns the check group (component, service, workload, dependency)
 	Group() CheckGroup
 
+	// CheckKind returns the kind of resource being checked (e.g., "kserve", "codeflare").
+	// Used by validation builders to construct diagnostic results.
+	CheckKind() string
+
+	// CheckType returns the type of check (e.g., "removal", "deprecation").
+	// Used by validation builders to construct diagnostic results.
+	CheckType() string
+
 	// CanApply returns whether this check should run given the check target context.
 	// The target provides access to:
 	// - CurrentVersion: the current cluster version (source for upgrades, nil for lint mode)

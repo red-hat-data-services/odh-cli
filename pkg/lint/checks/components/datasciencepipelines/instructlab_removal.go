@@ -14,7 +14,9 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/inspect"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -28,7 +30,7 @@ func NewInstructLabRemovalCheck() *InstructLabRemovalCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentDataSciencePipelines,
-			CheckType:        check.CheckTypeInstructLabRemoval,
+			Type:             check.CheckTypeInstructLabRemoval,
 			CheckID:          "components.datasciencepipelines.instructlab-removal",
 			CheckName:        "Components :: DataSciencePipelines :: InstructLab ManagedPipelines Removal (3.x)",
 			CheckDescription: "Validates that DSPA objects do not use the removed InstructLab managedPipelines field before upgrading to RHOAI 3.x",
@@ -42,80 +44,67 @@ func (c *InstructLabRemovalCheck) CanApply(_ context.Context, target check.Targe
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
-// Validate executes the check against the provided target.
-func (c *InstructLabRemovalCheck) Validate(
-	ctx context.Context,
-	target check.Target,
-) (*result.DiagnosticResult, error) {
-	dr := c.NewResult()
+func (c *InstructLabRemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
+	return validate.Component(c, "datasciencepipelines", target).
+		InState(check.ManagementStateManaged).
+		Run(ctx, func(ctx context.Context, req *validate.ComponentRequest) error {
+			dspas, usedResourceType, err := c.listDSPAs(ctx, req.Client)
+			if err != nil {
+				return err
+			}
 
-	if target.TargetVersion != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
-	}
+			impactedDSPAs := make([]types.NamespacedName, 0)
 
-	// Determine which DSPA API version is available at runtime
-	dspas, usedResourceType, err := c.listDSPAs(ctx, target)
-	if err != nil {
-		return nil, err
-	}
+			for i := range dspas {
+				dspa := dspas[i]
 
-	// Find DSPAs with managedPipelines.instructLab field set
-	impactedDSPAs := make([]types.NamespacedName, 0)
+				found, err := inspect.HasFields(dspa, ".spec.apiServer.managedPipelines.instructLab")
+				if err != nil {
+					return fmt.Errorf("querying managedPipelines.instructLab for DSPA %s/%s: %w",
+						dspa.GetNamespace(), dspa.GetName(), err)
+				}
 
-	for i := range dspas {
-		dspa := dspas[i]
+				if len(found) == 0 {
+					continue
+				}
 
-		found, err := inspect.HasFields(&dspa, ".spec.apiServer.managedPipelines.instructLab")
-		if err != nil {
-			return nil, fmt.Errorf("querying managedPipelines.instructLab for DSPA %s/%s: %w",
-				dspa.GetNamespace(), dspa.GetName(), err)
-		}
+				impactedDSPAs = append(impactedDSPAs, types.NamespacedName{
+					Namespace: dspa.GetNamespace(),
+					Name:      dspa.GetName(),
+				})
+			}
 
-		if len(found) == 0 {
-			continue
-		}
+			req.Result.Annotations[check.AnnotationImpactedWorkloadCount] = strconv.Itoa(len(impactedDSPAs))
 
-		impactedDSPAs = append(impactedDSPAs, types.NamespacedName{
-			Namespace: dspa.GetNamespace(),
-			Name:      dspa.GetName(),
+			if len(impactedDSPAs) > 0 {
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionFalse,
+					check.ReasonFeatureRemoved,
+					"Found %d DataSciencePipelinesApplication(s) with deprecated '.spec.apiServer.managedPipelines.instructLab' field - InstructLab feature was removed in RHOAI 3.x",
+					len(impactedDSPAs),
+				))
+
+				results.PopulateImpactedObjects(req.Result, usedResourceType, impactedDSPAs)
+
+				return nil
+			}
+
+			results.SetCompatibilitySuccessf(req.Result,
+				"No DataSciencePipelinesApplications found using deprecated 'managedPipelines.instructLab' field - ready for RHOAI 3.x upgrade")
+
+			return nil
 		})
-	}
-
-	// Set impacted count annotation
-	dr.Annotations[check.AnnotationImpactedWorkloadCount] = strconv.Itoa(len(impactedDSPAs))
-
-	// Create condition based on findings
-	if len(impactedDSPAs) > 0 {
-		// FAILURE - blocking upgrade
-		results.SetCondition(dr, check.NewCondition(
-			check.ConditionTypeCompatible,
-			metav1.ConditionFalse,
-			check.ReasonFeatureRemoved,
-			"Found %d DataSciencePipelinesApplication(s) with deprecated '.spec.apiServer.managedPipelines.instructLab' field - InstructLab feature was removed in RHOAI 3.x",
-			len(impactedDSPAs),
-		))
-
-		// Populate ImpactedObjects
-		populateImpactedDSPAs(dr, impactedDSPAs, usedResourceType)
-
-		return dr, nil
-	}
-
-	// Success - no DSPAs using managedPipelines.instructLab
-	results.SetCompatibilitySuccessf(dr,
-		"No DataSciencePipelinesApplications found using deprecated 'managedPipelines.instructLab' field - ready for RHOAI 3.x upgrade")
-
-	return dr, nil
 }
 
 // listDSPAs attempts to list DSPAs using v1 first, falling back to v1alpha1 if v1 is not available.
 // Returns the list of DSPAs and the ResourceType that was successfully used.
 func (c *InstructLabRemovalCheck) listDSPAs(
 	ctx context.Context,
-	target check.Target,
+	r client.Reader,
 ) ([]*unstructured.Unstructured, resources.ResourceType, error) {
 	// Try v1 first
-	dspasV1, err := target.Client.List(ctx, resources.DataSciencePipelinesApplicationV1)
+	dspasV1, err := r.List(ctx, resources.DataSciencePipelinesApplicationV1)
 	if err == nil {
 		// v1 exists, use it
 		return dspasV1, resources.DataSciencePipelinesApplicationV1, nil
@@ -127,30 +116,10 @@ func (c *InstructLabRemovalCheck) listDSPAs(
 	}
 
 	// v1 not found, try v1alpha1
-	dspasV1Alpha1, err := target.Client.List(ctx, resources.DataSciencePipelinesApplicationV1Alpha1)
+	dspasV1Alpha1, err := r.List(ctx, resources.DataSciencePipelinesApplicationV1Alpha1)
 	if err != nil {
 		return nil, resources.ResourceType{}, fmt.Errorf("listing DataSciencePipelinesApplications v1alpha1: %w", err)
 	}
 
 	return dspasV1Alpha1, resources.DataSciencePipelinesApplicationV1Alpha1, nil
-}
-
-// populateImpactedDSPAs adds impacted DSPA objects to the diagnostic result.
-func populateImpactedDSPAs(
-	dr *result.DiagnosticResult,
-	impactedDSPAs []types.NamespacedName,
-	resourceType resources.ResourceType,
-) {
-	dr.ImpactedObjects = make([]metav1.PartialObjectMetadata, 0, len(impactedDSPAs))
-
-	for _, dspa := range impactedDSPAs {
-		obj := metav1.PartialObjectMetadata{
-			TypeMeta: resourceType.TypeMeta(),
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: dspa.Namespace,
-				Name:      dspa.Name,
-			},
-		}
-		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
-	}
 }

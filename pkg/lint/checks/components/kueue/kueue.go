@@ -2,16 +2,12 @@ package kueue
 
 import (
 	"context"
-	"fmt"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
-	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -25,7 +21,7 @@ func NewManagedRemovalCheck() *ManagedRemovalCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentKueue,
-			CheckType:        check.CheckTypeManagedRemoval,
+			Type:             check.CheckTypeManagedRemoval,
 			CheckID:          "components.kueue.managed-removal",
 			CheckName:        "Components :: Kueue :: Managed Removal (3.x)",
 			CheckDescription: "Validates that Kueue managed option is not used before upgrading from RHOAI 2.x to 3.x (managed option will be removed)",
@@ -39,39 +35,16 @@ func (c *ManagedRemovalCheck) CanApply(_ context.Context, target check.Target) b
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
-// Validate executes the check against the provided target.
 func (c *ManagedRemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
-	dr := c.NewResult()
+	return validate.Component(c, "kueue", target).
+		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
+			switch req.ManagementState {
+			case check.ManagementStateManaged:
+				results.SetCompatibilityFailuref(req.Result, "Kueue is managed by OpenShift AI (state: %s) but will be removed in RHOAI 3.x - migrate to RHBOK operator", req.ManagementState)
+			default:
+				results.SetCompatibilitySuccessf(req.Result, "Kueue configuration (state: %s) is compatible with RHOAI 3.x", req.ManagementState)
+			}
 
-	// Get the DataScienceCluster singleton
-	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
-	switch {
-	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(c.Group()), c.Kind, c.CheckType, c.Description()), nil
-	case err != nil:
-		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
-	}
-
-	managementStateStr, err := components.GetManagementState(dsc, "kueue")
-	if err != nil {
-		return nil, fmt.Errorf("querying kueue managementState: %w", err)
-	}
-
-	// Add management state as annotation
-	dr.Annotations[check.AnnotationComponentManagementState] = managementStateStr
-	if target.TargetVersion != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
-	}
-
-	// Check if kueue is Managed (old way - needs migration)
-	if managementStateStr == check.ManagementStateManaged {
-		results.SetCompatibilityFailuref(dr, "Kueue is managed by OpenShift AI (state: %s) but will be removed in RHOAI 3.x - migrate to RHBOK operator", managementStateStr)
-
-		return dr, nil
-	}
-
-	// Kueue is Unmanaged (using RHBOK operator) or Removed - check passes
-	results.SetCompatibilitySuccessf(dr, "Kueue configuration (state: %s) is compatible with RHOAI 3.x", managementStateStr)
-
-	return dr, nil
+			return nil
+		})
 }

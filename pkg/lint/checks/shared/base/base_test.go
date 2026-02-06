@@ -20,7 +20,7 @@ func TestBaseCheck(t *testing.T) {
 		bc := base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             "test-component",
-			CheckType:        "test-type",
+			Type:             "test-type",
 			CheckID:          "components.test.check",
 			CheckName:        "Test Check Name",
 			CheckDescription: "Test description",
@@ -34,14 +34,14 @@ func TestBaseCheck(t *testing.T) {
 
 		// Public fields (can be accessed directly)
 		g.Expect(bc.Kind).To(Equal("test-component"))
-		g.Expect(bc.CheckType).To(Equal("test-type"))
+		g.Expect(bc.Type).To(Equal("test-type"))
 	})
 
 	t.Run("NewResult should create properly initialized result", func(t *testing.T) {
 		bc := base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentKServe,
-			CheckType:        check.CheckTypeRemoval,
+			Type:             check.CheckTypeRemoval,
 			CheckID:          "components.kserve.removal",
 			CheckName:        "KServe Removal",
 			CheckDescription: "Validates KServe removal",
@@ -63,7 +63,7 @@ func TestBaseCheck(t *testing.T) {
 			BaseCheck: base.BaseCheck{
 				CheckGroup:       check.GroupComponent,
 				Kind:             "test",
-				CheckType:        "type",
+				Type:             "type",
 				CheckID:          "test.id",
 				CheckName:        "Test Name",
 				CheckDescription: "Test description",
@@ -94,7 +94,7 @@ func TestBaseCheck(t *testing.T) {
 				bc := base.BaseCheck{
 					CheckGroup:       tc.group,
 					Kind:             "test",
-					CheckType:        "test",
+					Type:             "test",
 					CheckID:          "test.id",
 					CheckName:        "Test",
 					CheckDescription: "Test",
@@ -131,7 +131,7 @@ func TestBaseCheckIntegration(t *testing.T) {
 			BaseCheck: base.BaseCheck{
 				CheckGroup:       check.GroupComponent,
 				Kind:             check.ComponentModelMesh,
-				CheckType:        check.CheckTypeRemoval,
+				Type:             check.CheckTypeRemoval,
 				CheckID:          "components.modelmesh.removal",
 				CheckName:        "Components :: ModelMesh :: Removal (3.x)",
 				CheckDescription: "Validates that ModelMesh is disabled",

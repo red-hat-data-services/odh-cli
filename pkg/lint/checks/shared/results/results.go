@@ -43,6 +43,16 @@ func DSCInitializationNotFound(group string, kind string, name string, descripti
 	return dr
 }
 
+// SetDSCInitializationNotFound sets a condition on the result indicating DSCInitialization was not found.
+func SetDSCInitializationNotFound(dr *result.DiagnosticResult) {
+	SetCondition(dr, check.NewCondition(
+		check.ConditionTypeAvailable,
+		metav1.ConditionFalse,
+		check.ReasonResourceNotFound,
+		"No DSCInitialization found",
+	))
+}
+
 // SetCondition updates or adds a condition to the diagnostic result.
 // If a condition with the same type already exists, it updates it.
 // If no condition with that type exists, it adds a new one.

@@ -11,6 +11,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
@@ -32,7 +33,7 @@ func NewConfigMapManagedCheck() *ConfigMapManagedCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentKueue,
-			CheckType:        check.CheckTypeConfigMigration,
+			Type:             check.CheckTypeConfigMigration,
 			CheckID:          "components.kueue.configmap-managed",
 			CheckName:        "Components :: Kueue :: ConfigMap Managed Check (3.x)",
 			CheckDescription: "Validates that kueue-manager-config ConfigMap is managed by the operator before upgrading from RHOAI 2.x to 3.x",
@@ -46,72 +47,57 @@ func (c *ConfigMapManagedCheck) CanApply(_ context.Context, target check.Target)
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
-// Validate executes the check against the provided target.
-func (c *ConfigMapManagedCheck) Validate(
-	ctx context.Context,
-	target check.Target,
-) (*result.DiagnosticResult, error) {
-	dr := c.NewResult()
+func (c *ConfigMapManagedCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
+	return validate.Component(c, "kueue", target).
+		InState(check.ManagementStateManaged).
+		Run(ctx, func(ctx context.Context, req *validate.ComponentRequest) error {
+			applicationsNamespace, err := req.ApplicationsNamespace(ctx)
+			switch {
+			case apierrors.IsNotFound(err):
+				results.SetDSCInitializationNotFound(req.Result)
 
-	// Get the applications namespace from DSCI
-	applicationsNamespace, err := client.GetApplicationsNamespace(ctx, target.Client)
-	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return results.DSCInitializationNotFound(
-				string(c.Group()), c.Kind, c.CheckType, c.Description(),
-			), nil
-		}
+				return nil
+			case err != nil:
+				return fmt.Errorf("getting applications namespace: %w", err)
+			}
 
-		return nil, fmt.Errorf("getting applications namespace: %w", err)
-	}
+			configMap, err := req.Client.GetResource(
+				ctx, resources.ConfigMap, configMapName, client.InNamespace(applicationsNamespace),
+			)
+			if err != nil {
+				if apierrors.IsNotFound(err) {
+					results.SetCompatibilitySuccessf(req.Result,
+						"ConfigMap %s/%s not found - no action required", applicationsNamespace, configMapName)
 
-	// Check if ConfigMap exists in that namespace
-	configMap, err := target.Client.GetResource(
-		ctx, resources.ConfigMap, configMapName, client.InNamespace(applicationsNamespace),
-	)
-	if err != nil {
-		// NotFound is okay - ConfigMap doesn't exist, no warning needed
-		if apierrors.IsNotFound(err) {
-			results.SetCompatibilitySuccessf(dr,
-				"ConfigMap %s/%s not found - no action required", applicationsNamespace, configMapName)
+					return nil
+				}
 
-			return dr, nil
-		}
+				return fmt.Errorf("getting ConfigMap %s/%s: %w", applicationsNamespace, configMapName, err)
+			}
 
-		return nil, fmt.Errorf("getting ConfigMap %s/%s: %w", applicationsNamespace, configMapName, err)
-	}
+			if configMap == nil {
+				results.SetCompatibilitySuccessf(req.Result,
+					"ConfigMap %s/%s not accessible - no action required", applicationsNamespace, configMapName)
 
-	// ConfigMap nil (permission error) - treated as not found, no warning needed
-	if configMap == nil {
-		results.SetCompatibilitySuccessf(dr,
-			"ConfigMap %s/%s not accessible - no action required", applicationsNamespace, configMapName)
+				return nil
+			}
 
-		return dr, nil
-	}
+			switch {
+			case kube.IsManaged(configMap):
+				results.SetCompatibilitySuccessf(req.Result,
+					"ConfigMap %s/%s is managed by operator (annotation %s not set to false)",
+					applicationsNamespace, configMapName, kube.AnnotationManaged)
+			default:
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeConfigured,
+					metav1.ConditionFalse,
+					check.ReasonConfigurationInvalid,
+					"ConfigMap %s/%s has annotation %s=false - migration will not update this ConfigMap and it may become out of sync with operator defaults",
+					applicationsNamespace, configMapName, kube.AnnotationManaged,
+					check.WithImpact(result.ImpactAdvisory),
+				))
+			}
 
-	if target.TargetVersion != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
-	}
-
-	// Check if ConfigMap is managed using the kube helper
-	if !kube.IsManaged(configMap) {
-		// ConfigMap has managed=false - advisory warning (non-blocking)
-		results.SetCondition(dr, check.NewCondition(
-			check.ConditionTypeConfigured,
-			metav1.ConditionFalse,
-			check.ReasonConfigurationInvalid,
-			"ConfigMap %s/%s has annotation %s=false - migration will not update this ConfigMap and it may become out of sync with operator defaults",
-			applicationsNamespace, configMapName, kube.AnnotationManaged,
-			check.WithImpact(result.ImpactAdvisory),
-		))
-
-		return dr, nil
-	}
-
-	// ConfigMap exists without managed=false annotation - check passes
-	results.SetCompatibilitySuccessf(dr,
-		"ConfigMap %s/%s is managed by operator (annotation %s not set to false)",
-		applicationsNamespace, configMapName, kube.AnnotationManaged)
-
-	return dr, nil
+			return nil
+		})
 }

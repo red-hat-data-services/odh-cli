@@ -27,8 +27,28 @@ const testApplicationsNamespace = "redhat-ods-applications"
 
 //nolint:gochecknoglobals // Test fixture - shared across test functions
 var configMapListKinds = map[schema.GroupVersionResource]string{
-	resources.DSCInitialization.GVR(): resources.DSCInitialization.ListKind(),
-	resources.ConfigMap.GVR():         resources.ConfigMap.ListKind(),
+	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
+	resources.DSCInitialization.GVR():  resources.DSCInitialization.ListKind(),
+	resources.ConfigMap.GVR():          resources.ConfigMap.ListKind(),
+}
+
+func newDSCWithKueueManaged() *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"spec": map[string]any{
+				"components": map[string]any{
+					"kueue": map[string]any{
+						"managementState": "Managed",
+					},
+				},
+			},
+		},
+	}
 }
 
 func newDSCIWithNamespace(namespace string) *unstructured.Unstructured {
@@ -75,9 +95,11 @@ func TestConfigMapManagedCheck_NoDSCI(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create empty cluster (no DSCInitialization)
+	// Create DSC with kueue managed but no DSCInitialization
+	dsc := newDSCWithKueueManaged()
+
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, configMapListKinds)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, configMapListKinds, dsc)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
@@ -108,6 +130,9 @@ func TestConfigMapManagedCheck_DSCINoNamespace(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
+	// Create DSC with kueue managed
+	dsc := newDSCWithKueueManaged()
+
 	// Create DSCI without applicationsNamespace - treated as NotFound since namespace is required
 	dsci := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -125,7 +150,7 @@ func TestConfigMapManagedCheck_DSCINoNamespace(t *testing.T) {
 	}
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, configMapListKinds, dsci)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, configMapListKinds, dsc, dsci)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
@@ -158,11 +183,13 @@ func TestConfigMapManagedCheck_ConfigMapNotFound(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
+	// Create DSC with kueue managed
+	dsc := newDSCWithKueueManaged()
 	// Create DSCI with namespace but no ConfigMap
 	dsci := newDSCIWithNamespace(testApplicationsNamespace)
 
 	scheme := runtime.NewScheme()
-	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, configMapListKinds, dsci)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, configMapListKinds, dsc, dsci)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic: dynamicClient,
@@ -193,13 +220,15 @@ func TestConfigMapManagedCheck_ConfigMapManaged(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
+	// Create DSC with kueue managed
+	dsc := newDSCWithKueueManaged()
 	// Create DSCI and ConfigMap without managed=false annotation
 	dsci := newDSCIWithNamespace(testApplicationsNamespace)
 	configMap := newConfigMapUnstructured(testApplicationsNamespace, "kueue-manager-config", nil)
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
-		scheme, configMapListKinds, dsci, configMap,
+		scheme, configMapListKinds, dsc, dsci, configMap,
 	)
 
 	c := client.NewForTesting(client.TestClientConfig{
@@ -232,6 +261,8 @@ func TestConfigMapManagedCheck_ConfigMapManagedTrue(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
+	// Create DSC with kueue managed
+	dsc := newDSCWithKueueManaged()
 	// Create DSCI and ConfigMap with managed=true annotation (should pass)
 	dsci := newDSCIWithNamespace(testApplicationsNamespace)
 	configMap := newConfigMapUnstructured(testApplicationsNamespace, "kueue-manager-config", map[string]string{
@@ -240,7 +271,7 @@ func TestConfigMapManagedCheck_ConfigMapManagedTrue(t *testing.T) {
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
-		scheme, configMapListKinds, dsci, configMap,
+		scheme, configMapListKinds, dsc, dsci, configMap,
 	)
 
 	c := client.NewForTesting(client.TestClientConfig{
@@ -272,6 +303,8 @@ func TestConfigMapManagedCheck_ConfigMapManagedFalse(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
+	// Create DSC with kueue managed
+	dsc := newDSCWithKueueManaged()
 	// Create DSCI and ConfigMap with managed=false annotation (advisory warning)
 	dsci := newDSCIWithNamespace(testApplicationsNamespace)
 	configMap := newConfigMapUnstructured(testApplicationsNamespace, "kueue-manager-config", map[string]string{
@@ -280,7 +313,7 @@ func TestConfigMapManagedCheck_ConfigMapManagedFalse(t *testing.T) {
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
-		scheme, configMapListKinds, dsci, configMap,
+		scheme, configMapListKinds, dsc, dsci, configMap,
 	)
 
 	c := client.NewForTesting(client.TestClientConfig{

@@ -252,7 +252,7 @@ func TestTrainingOperatorDeprecationCheck_RemovedReady(t *testing.T) {
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": And(ContainSubstring("disabled"), ContainSubstring("no action required")),
+		"Message": And(ContainSubstring("disabled"), ContainSubstring("no deprecation warning needed")),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Removed"))
 }

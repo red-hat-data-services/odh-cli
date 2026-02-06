@@ -2,17 +2,14 @@ package trainingoperator
 
 import (
 	"context"
-	"fmt"
 
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
-	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -25,7 +22,7 @@ func NewDeprecationCheck() *DeprecationCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentTrainingOperator,
-			CheckType:        check.CheckTypeDeprecation,
+			Type:             check.CheckTypeDeprecation,
 			CheckID:          "components.trainingoperator.deprecation",
 			CheckName:        "Components :: TrainingOperator :: Deprecation (3.3+)",
 			CheckDescription: "Validates that TrainingOperator (Kubeflow Training Operator v1) deprecation is acknowledged - will be replaced by Trainer v2 in future RHOAI releases",
@@ -38,47 +35,26 @@ func (c *DeprecationCheck) CanApply(_ context.Context, target check.Target) bool
 	return version.IsVersionAtLeast(target.TargetVersion, 3, 3)
 }
 
-func (c *DeprecationCheck) Validate(
-	ctx context.Context,
-	target check.Target,
-) (*result.DiagnosticResult, error) {
-	dr := c.NewResult()
+func (c *DeprecationCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
+	// Note: No InState filter - we need to handle all states explicitly
+	return validate.Component(c, "trainingoperator", target).
+		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
+			// Check if trainingoperator is enabled (Managed or Unmanaged)
+			switch req.ManagementState {
+			case check.ManagementStateManaged, check.ManagementStateUnmanaged:
+				results.SetCondition(req.Result, check.NewCondition(
+					check.ConditionTypeCompatible,
+					metav1.ConditionFalse,
+					check.ReasonDeprecated,
+					"TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release",
+					req.ManagementState,
+					check.WithImpact(result.ImpactAdvisory),
+				))
+			default:
+				// TrainingOperator is disabled (Removed or not configured) - check passes
+				results.SetCompatibilitySuccessf(req.Result, "TrainingOperator is disabled (state: %s) - no deprecation warning needed", req.ManagementState)
+			}
 
-	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
-	switch {
-	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(c.Group()), c.Kind, c.CheckType, c.Description()), nil
-	case err != nil:
-		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
-	}
-
-	managementStateStr, err := components.GetManagementState(dsc, "trainingoperator")
-	if err != nil {
-		return nil, fmt.Errorf("querying trainingoperator managementState: %w", err)
-	}
-
-	dr.Annotations[check.AnnotationComponentManagementState] = managementStateStr
-	if target.TargetVersion != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
-	}
-
-	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {
-		// Deprecation is advisory (non-blocking).
-		results.SetCondition(dr, check.NewCondition(
-			check.ConditionTypeCompatible,
-			metav1.ConditionFalse,
-			check.ReasonDeprecated,
-			"TrainingOperator (Kubeflow Training Operator v1) is enabled (state: %s) but is deprecated in RHOAI 3.3 and will be replaced by Trainer v2 in a future release",
-			managementStateStr,
-			check.WithImpact(result.ImpactAdvisory),
-		))
-
-		return dr, nil
-	}
-
-	results.SetCompatibilitySuccessf(dr,
-		"TrainingOperator is disabled (state: %s) - no action required for deprecation in RHOAI 3.3+",
-		managementStateStr)
-
-	return dr, nil
+			return nil
+		})
 }

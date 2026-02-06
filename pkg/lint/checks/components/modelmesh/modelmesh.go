@@ -2,16 +2,12 @@ package modelmesh
 
 import (
 	"context"
-	"fmt"
-
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
-	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -25,7 +21,7 @@ func NewRemovalCheck() *RemovalCheck {
 		BaseCheck: base.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentModelMesh,
-			CheckType:        check.CheckTypeRemoval,
+			Type:             check.CheckTypeRemoval,
 			CheckID:          "components.modelmesh.removal",
 			CheckName:        "Components :: ModelMesh :: Removal (3.x)",
 			CheckDescription: "Validates that ModelMesh is disabled before upgrading from RHOAI 2.x to 3.x (component will be removed)",
@@ -39,39 +35,19 @@ func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
 }
 
-// Validate executes the check against the provided target.
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
-	dr := c.NewResult()
+	// Note: No InState filter - we need to handle all states explicitly
+	return validate.Component(c, "modelmeshserving", target).
+		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
+			// Check if modelmesh is enabled (Managed or Unmanaged)
+			switch req.ManagementState {
+			case check.ManagementStateManaged, check.ManagementStateUnmanaged:
+				results.SetCompatibilityFailuref(req.Result, "ModelMesh is enabled (state: %s) but will be removed in RHOAI 3.x", req.ManagementState)
+			default:
+				// ModelMesh is disabled (Removed or not configured) - check passes
+				results.SetCompatibilitySuccessf(req.Result, "ModelMesh is disabled (state: %s) - ready for RHOAI 3.x upgrade", req.ManagementState)
+			}
 
-	// Get the DataScienceCluster singleton
-	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
-	switch {
-	case apierrors.IsNotFound(err):
-		return results.DataScienceClusterNotFound(string(c.Group()), c.Kind, c.CheckType, c.Description()), nil
-	case err != nil:
-		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
-	}
-
-	managementStateStr, err := components.GetManagementState(dsc, "modelmeshserving")
-	if err != nil {
-		return nil, fmt.Errorf("querying modelmeshserving managementState: %w", err)
-	}
-
-	// Add management state as annotation
-	dr.Annotations[check.AnnotationComponentManagementState] = managementStateStr
-	if target.TargetVersion != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
-	}
-
-	// Check if modelmesh is enabled (Managed or Unmanaged)
-	if managementStateStr == check.ManagementStateManaged || managementStateStr == check.ManagementStateUnmanaged {
-		results.SetCompatibilityFailuref(dr, "ModelMesh is enabled (state: %s) but will be removed in RHOAI 3.x", managementStateStr)
-
-		return dr, nil
-	}
-
-	// ModelMesh is disabled (Removed) - check passes
-	results.SetCompatibilitySuccessf(dr, "ModelMesh is disabled (state: %s) - ready for RHOAI 3.x upgrade", managementStateStr)
-
-	return dr, nil
+			return nil
+		})
 }

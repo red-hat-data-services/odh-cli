@@ -41,7 +41,7 @@ import (
 //	}
 //
 // BaseCheck holds common check metadata as public fields.
-// Checks can access these fields directly (e.g., c.Kind, c.CheckType).
+// Checks can access these fields directly (e.g., c.Kind, c.Type).
 //
 // Example usage:
 //
@@ -54,7 +54,7 @@ import (
 //	        BaseCheck: base.BaseCheck{
 //	            CheckGroup:       check.GroupComponent,
 //	            Kind:             check.ComponentModelMesh,
-//	            CheckType:        check.CheckTypeRemoval,
+//	            Type:             check.CheckTypeRemoval,
 //	            CheckID:          "components.modelmesh.removal",
 //	            CheckName:        "Components :: ModelMesh :: Removal (3.x)",
 //	            CheckDescription: "Validates that ModelMesh is disabled...",
@@ -65,7 +65,7 @@ import (
 type BaseCheck struct {
 	CheckGroup       check.CheckGroup
 	Kind             string
-	CheckType        string
+	Type             string
 	CheckID          string
 	CheckName        string
 	CheckDescription string
@@ -101,6 +101,18 @@ func (b BaseCheck) Group() check.CheckGroup {
 	return b.CheckGroup
 }
 
+// CheckKind returns the kind of resource being checked.
+// Required by check.Check interface.
+func (b BaseCheck) CheckKind() string {
+	return b.Kind
+}
+
+// CheckType returns the type of check (e.g., "removal", "deprecation").
+// Required by check.Check interface.
+func (b BaseCheck) CheckType() string {
+	return b.Type
+}
+
 // NewResult creates a DiagnosticResult initialized with this check's metadata.
 // This is the primary convenience method that eliminates result.New() boilerplate.
 //
@@ -116,7 +128,7 @@ func (b BaseCheck) NewResult() *result.DiagnosticResult {
 	return result.New(
 		string(b.CheckGroup),
 		b.Kind,
-		b.CheckType,
+		b.Type,
 		b.CheckDescription,
 	)
 }
