@@ -13,9 +13,9 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/inspect"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/inspect"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 

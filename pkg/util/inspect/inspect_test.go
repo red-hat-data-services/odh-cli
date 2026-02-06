@@ -5,7 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/inspect"
+	"github.com/lburgazzoli/odh-cli/pkg/util/inspect"
 
 	. "github.com/onsi/gomega"
 )
