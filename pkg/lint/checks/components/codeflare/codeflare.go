@@ -6,7 +6,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -39,13 +38,5 @@ func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) bool {
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	return validate.Component(c, target).
 		InState(check.ManagementStateManaged).
-		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
-			results.SetCompatibilityFailuref(
-				req.Result,
-				"CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x",
-				req.ManagementState,
-			)
-
-			return nil
-		})
+		Run(ctx, validate.Removal("CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x"))
 }

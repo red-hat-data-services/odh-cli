@@ -96,6 +96,22 @@ func (b *ComponentBuilder) WithApplicationsNamespace() *ComponentBuilder {
 	return b
 }
 
+// Removal returns a ComponentValidateFn that sets a compatibility failure condition.
+// ManagementState is automatically prepended as the first format argument.
+//
+// Example:
+//
+//	validate.Component(c, target).
+//	    InState(check.ManagementStateManaged).
+//	    Run(ctx, validate.Removal("CodeFlare is enabled (state: %s) but will be removed in RHOAI 3.x"))
+func Removal(format string, args ...any) ComponentValidateFn {
+	return func(_ context.Context, req *ComponentRequest) error {
+		results.SetCompatibilityFailuref(req.Result, format, append([]any{req.ManagementState}, args...)...)
+
+		return nil
+	}
+}
+
 // Run fetches the DSC, checks component state, auto-populates annotations, and executes validation.
 //
 // The builder handles:

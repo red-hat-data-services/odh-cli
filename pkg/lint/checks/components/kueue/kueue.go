@@ -6,7 +6,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -38,13 +37,5 @@ func (c *ManagedRemovalCheck) CanApply(_ context.Context, target check.Target) b
 func (c *ManagedRemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	return validate.Component(c, target).
 		InState(check.ManagementStateManaged).
-		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
-			results.SetCompatibilityFailuref(
-				req.Result,
-				"Kueue is managed by OpenShift AI (state: %s) but will be removed in RHOAI 3.x - migrate to RHBOK operator",
-				req.ManagementState,
-			)
-
-			return nil
-		})
+		Run(ctx, validate.Removal("Kueue is managed by OpenShift AI (state: %s) but will be removed in RHOAI 3.x - migrate to RHBOK operator"))
 }

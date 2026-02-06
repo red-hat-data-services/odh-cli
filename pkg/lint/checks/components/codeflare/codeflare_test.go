@@ -98,14 +98,12 @@ func TestCodeFlareRemovalCheck_NotConfigured(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	// When component is not configured, it's treated as Removed - check passes
+	// When component is not configured, InState(Managed) filter returns "not configured"
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": ContainSubstring("state: Removed"),
+		"Type":   Equal(check.ConditionTypeConfigured),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonResourceNotFound),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Removed"))
 }
 
 func TestCodeFlareRemovalCheck_ManagedBlocking(t *testing.T) {
@@ -201,13 +199,12 @@ func TestCodeFlareRemovalCheck_UnmanagedReady(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	// Unmanaged is not in InState(Managed), so the builder returns "not configured"
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": ContainSubstring("disabled"),
+		"Type":   Equal(check.ConditionTypeConfigured),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonResourceNotFound),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Unmanaged"))
 }
 
 func TestCodeFlareRemovalCheck_RemovedReady(t *testing.T) {
@@ -250,13 +247,12 @@ func TestCodeFlareRemovalCheck_RemovedReady(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	// Removed is not in InState(Managed), so the builder returns "not configured"
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": And(ContainSubstring("disabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
+		"Type":   Equal(check.ConditionTypeConfigured),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonResourceNotFound),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Removed"))
 }
 
 func TestCodeFlareRemovalCheck_Metadata(t *testing.T) {

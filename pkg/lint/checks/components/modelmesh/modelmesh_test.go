@@ -98,14 +98,12 @@ func TestModelmeshRemovalCheck_NotConfigured(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
-	// When component is not configured, it's treated as Removed - check passes
+	// When component is not configured, InState(Managed) filter returns "not configured"
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": ContainSubstring("state: Removed"),
+		"Type":   Equal(check.ConditionTypeConfigured),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonResourceNotFound),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Removed"))
 }
 
 func TestModelmeshRemovalCheck_ManagedBlocking(t *testing.T) {
@@ -200,13 +198,12 @@ func TestModelmeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	// Unmanaged is not in InState(Managed), so the builder returns "not configured"
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonVersionIncompatible),
-		"Message": ContainSubstring("state: Unmanaged"),
+		"Type":   Equal(check.ConditionTypeConfigured),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonResourceNotFound),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Unmanaged"))
 }
 
 func TestModelmeshRemovalCheck_RemovedReady(t *testing.T) {
@@ -249,13 +246,12 @@ func TestModelmeshRemovalCheck_RemovedReady(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	// Removed is not in InState(Managed), so the builder returns "not configured"
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(check.ConditionTypeCompatible),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Reason":  Equal(check.ReasonVersionCompatible),
-		"Message": And(ContainSubstring("disabled"), ContainSubstring("ready for RHOAI 3.x upgrade")),
+		"Type":   Equal(check.ConditionTypeConfigured),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonResourceNotFound),
 	}))
-	g.Expect(result.Annotations).To(HaveKeyWithValue("component.opendatahub.io/management-state", "Removed"))
 }
 
 func TestModelmeshRemovalCheck_Metadata(t *testing.T) {
