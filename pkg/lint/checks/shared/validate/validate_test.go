@@ -215,6 +215,71 @@ func TestComponentBuilder(t *testing.T) {
 	})
 }
 
+func TestComponentBuilder_Complete_SetsConditions(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	dsc := createDSCWithComponent("codeflare", check.ManagementStateManaged)
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic: dynamicClient,
+	})
+
+	targetVersion := semver.MustParse("3.0.0")
+	target := check.Target{
+		Client:        c,
+		TargetVersion: &targetVersion,
+	}
+
+	chk := newTestCheck()
+	dr, err := validate.Component(chk, target).
+		InState(check.ManagementStateManaged).
+		Complete(ctx, func(_ context.Context, req *validate.ComponentRequest) ([]result.Condition, error) {
+			return []result.Condition{
+				results.NewCompatibilitySuccess("Component %s is valid", req.ManagementState),
+			}, nil
+		})
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(dr).ToNot(BeNil())
+	g.Expect(dr.Status.Conditions).To(HaveLen(1))
+	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(check.ConditionTypeCompatible),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+	g.Expect(dr.Status.Conditions[0].Message).To(Equal("Component Managed is valid"))
+	g.Expect(dr.Annotations[check.AnnotationComponentManagementState]).To(Equal(check.ManagementStateManaged))
+	g.Expect(dr.Annotations[check.AnnotationCheckTargetVersion]).To(Equal("3.0.0"))
+}
+
+func TestComponentBuilder_Complete_ErrorPropagated(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	dsc := createDSCWithComponent("codeflare", check.ManagementStateManaged)
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic: dynamicClient,
+	})
+
+	target := check.Target{
+		Client: c,
+	}
+
+	expectedErr := errors.New("condition fn failed")
+	chk := newTestCheck()
+
+	_, err := validate.Component(chk, target).
+		InState(check.ManagementStateManaged).
+		Complete(ctx, func(_ context.Context, _ *validate.ComponentRequest) ([]result.Condition, error) {
+			return nil, expectedErr
+		})
+
+	g.Expect(err).To(MatchError(expectedErr))
+}
+
 func TestDSCIBuilder(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()

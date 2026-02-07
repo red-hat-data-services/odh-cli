@@ -73,6 +73,10 @@ type ComponentRequest struct {
 // It receives context and a ComponentRequest with pre-populated data.
 type ComponentValidateFn func(ctx context.Context, req *ComponentRequest) error
 
+// ComponentConditionFn maps a component request to conditions to set on the result.
+// Use with Complete as a higher-level alternative to Run when the callback only needs to set conditions.
+type ComponentConditionFn func(ctx context.Context, req *ComponentRequest) ([]result.Condition, error)
+
 // InState specifies which management states trigger validation.
 // If the component is not in any of the specified states, a "not configured" result is returned.
 // If no states are specified (InState not called), validation runs for any configured state.
@@ -201,4 +205,24 @@ func (b *ComponentBuilder) Run(
 	}
 
 	return dr, nil
+}
+
+// Complete is a convenience alternative to Run for checks that only need to set conditions.
+// It calls fn to obtain conditions, sets each on the result, and returns.
+func (b *ComponentBuilder) Complete(
+	ctx context.Context,
+	fn ComponentConditionFn,
+) (*result.DiagnosticResult, error) {
+	return b.Run(ctx, func(ctx context.Context, req *ComponentRequest) error {
+		conditions, err := fn(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		for _, c := range conditions {
+			results.SetCondition(req.Result, c)
+		}
+
+		return nil
+	})
 }

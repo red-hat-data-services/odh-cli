@@ -8,7 +8,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -44,16 +43,18 @@ func (c *RenamingCheck) CanApply(_ context.Context, target check.Target) bool {
 func (c *RenamingCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	return validate.Component(c, target).
 		InState(check.ManagementStateManaged).
-		Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
-			results.SetCondition(req.Result, check.NewCondition(
-				check.ConditionTypeCompatible,
-				metav1.ConditionFalse,
-				check.ReasonComponentRenamed,
-				"DataSciencePipelines component (state: %s) will be renamed to AIPipelines in DSC v2 (RHOAI 3.x). The field path changes from '.spec.components.datasciencepipelines' to '.spec.components.aipipelines'",
-				req.ManagementState,
-				check.WithImpact(result.ImpactAdvisory),
-			))
+		Complete(ctx, newRenamingCondition)
+}
 
-			return nil
-		})
+func newRenamingCondition(_ context.Context, req *validate.ComponentRequest) ([]result.Condition, error) {
+	return []result.Condition{
+		check.NewCondition(
+			check.ConditionTypeCompatible,
+			metav1.ConditionFalse,
+			check.ReasonComponentRenamed,
+			"DataSciencePipelines component (state: %s) will be renamed to AIPipelines in DSC v2 (RHOAI 3.x). The field path changes from '.spec.components.datasciencepipelines' to '.spec.components.aipipelines'",
+			req.ManagementState,
+			check.WithImpact(result.ImpactAdvisory),
+		),
+	}, nil
 }
