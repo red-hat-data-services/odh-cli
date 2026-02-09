@@ -147,6 +147,58 @@ func TestOtelMigrationCheck_OrchestratorWithOtelExporter(t *testing.T) {
 	g.Expect(result.ImpactedObjects[0].Namespace).To(Equal("test-ns"))
 }
 
+func TestOtelMigrationCheck_OrchestratorWithEmptyOtelExporter(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	// Empty otelExporter: {} should not be flagged as deprecated.
+	orch := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.GuardrailsOrchestrator.APIVersion(),
+			"kind":       resources.GuardrailsOrchestrator.Kind,
+			"metadata": map[string]any{
+				"name":      "empty-otel-orch",
+				"namespace": "test-ns",
+			},
+			"spec": map[string]any{
+				"otelExporter": map[string]any{},
+				"replicas":     int64(1),
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, orch)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(orch)...)
+
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic:  dynamicClient,
+		Metadata: metadataClient,
+	})
+
+	currentVer := semver.MustParse("2.17.0")
+	targetVer := semver.MustParse("3.0.0")
+	target := check.Target{
+		Client:         c,
+		CurrentVersion: &currentVer,
+		TargetVersion:  &targetVer,
+	}
+
+	otelCheck := guardrails.NewOtelMigrationCheck()
+	result, err := otelCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(guardrails.ConditionTypeOtelConfigCompatible),
+		"Status": Equal(metav1.ConditionTrue),
+		"Reason": Equal(check.ReasonVersionCompatible),
+	}))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
+	g.Expect(result.ImpactedObjects).To(BeEmpty())
+}
+
 func TestOtelMigrationCheck_OrchestratorWithoutOtelExporter(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()

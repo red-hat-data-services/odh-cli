@@ -2,6 +2,7 @@ package guardrails
 
 import (
 	"context"
+	"errors"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -9,26 +10,24 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
-	"github.com/lburgazzoli/odh-cli/pkg/util/inspect"
+	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
-// deprecatedOtelExpressions lists JQ expressions for the deprecated otelExporter section in 3.x.
-// The entire otelExporter struct is changing and needs migration.
-//
-//nolint:gochecknoglobals // Package-level constant for deprecated field expressions.
-var deprecatedOtelExpressions = []string{
-	".spec.otelExporter",
-}
-
-// hasDeprecatedOtelFields returns true if the object contains any deprecated otelExporter fields.
+// hasDeprecatedOtelFields returns true if the object contains a non-empty otelExporter section.
+// An empty otelExporter ({}) is not considered deprecated since there is no configuration to migrate.
 func hasDeprecatedOtelFields(obj *unstructured.Unstructured) (bool, error) {
-	found, err := inspect.HasFields(obj.Object, deprecatedOtelExpressions...)
+	val, err := jq.Query[any](obj, ".spec.otelExporter")
 	if err != nil {
-		//nolint:wrapcheck // WorkloadBuilder.Run wraps filter errors with resource-type context.
+		if errors.Is(err, jq.ErrNotFound) {
+			return false, nil
+		}
+
 		return false, err
 	}
 
-	return len(found) > 0, nil
+	m, ok := val.(map[string]any)
+
+	return ok && len(m) > 0, nil
 }
 
 func newOtelMigrationCondition(
