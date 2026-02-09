@@ -1,7 +1,6 @@
 package kueueoperator_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -22,7 +21,7 @@ import (
 
 func TestKueueOperatorCheck_NotInstalled(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)
@@ -54,7 +53,7 @@ func TestKueueOperatorCheck_NotInstalled(t *testing.T) {
 
 func TestKueueOperatorCheck_Installed(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	sub := &operatorsv1alpha1.Subscription{
 		ObjectMeta: metav1.ObjectMeta{

@@ -1,7 +1,6 @@
 package codeflare_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -28,7 +27,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestCodeFlareRemovalCheck_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create empty cluster (no DataScienceCluster)
 	scheme := runtime.NewScheme()
@@ -59,7 +58,7 @@ func TestCodeFlareRemovalCheck_NoDSC(t *testing.T) {
 
 func TestCodeFlareRemovalCheck_NotConfigured(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster without codeflare component
 	// "Not configured" is now treated as "Removed" - both mean component is not active
@@ -108,7 +107,7 @@ func TestCodeFlareRemovalCheck_NotConfigured(t *testing.T) {
 
 func TestCodeFlareRemovalCheck_ManagedBlocking(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with codeflare Managed (blocking upgrade)
 	dsc := &unstructured.Unstructured{
@@ -160,7 +159,7 @@ func TestCodeFlareRemovalCheck_ManagedBlocking(t *testing.T) {
 
 func TestCodeFlareRemovalCheck_UnmanagedReady(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with codeflare Unmanaged
 	// CodeFlare only supports Managed state, so Unmanaged is treated as disabled (ready for upgrade)
@@ -209,7 +208,7 @@ func TestCodeFlareRemovalCheck_UnmanagedReady(t *testing.T) {
 
 func TestCodeFlareRemovalCheck_RemovedReady(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with codeflare Removed (ready for upgrade)
 	dsc := &unstructured.Unstructured{

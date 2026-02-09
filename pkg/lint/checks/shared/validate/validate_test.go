@@ -65,7 +65,7 @@ func newTestCheck() *testCheck {
 
 func TestComponentBuilder(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should return not found when DSC does not exist", func(t *testing.T) {
 		scheme := runtime.NewScheme()
@@ -218,7 +218,7 @@ func TestComponentBuilder(t *testing.T) {
 
 func TestComponentBuilder_Complete_SetsConditions(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dsc := createDSCWithComponent("codeflare", check.ManagementStateManaged)
 	scheme := runtime.NewScheme()
@@ -256,7 +256,7 @@ func TestComponentBuilder_Complete_SetsConditions(t *testing.T) {
 
 func TestComponentBuilder_Complete_ErrorPropagated(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dsc := createDSCWithComponent("codeflare", check.ManagementStateManaged)
 	scheme := runtime.NewScheme()
@@ -283,7 +283,7 @@ func TestComponentBuilder_Complete_ErrorPropagated(t *testing.T) {
 
 func TestDSCIBuilder(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should return not found when DSCI does not exist", func(t *testing.T) {
 		scheme := runtime.NewScheme()
@@ -386,7 +386,7 @@ func newTestOperatorCheck() *testCheck {
 
 func TestOperatorBuilder(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	t.Run("should return OLM unavailable when no OLM client", func(t *testing.T) {
 		scheme := runtime.NewScheme()

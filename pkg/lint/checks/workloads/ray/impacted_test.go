@@ -1,7 +1,6 @@
 package ray_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -34,7 +33,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
@@ -68,7 +67,7 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_WithCodeFlareFinalizer(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	rayCluster := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -119,7 +118,7 @@ func TestImpactedWorkloadsCheck_WithCodeFlareFinalizer(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_WithoutCodeFlareFinalizer(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	rayCluster := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -165,7 +164,7 @@ func TestImpactedWorkloadsCheck_WithoutCodeFlareFinalizer(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_NoFinalizers(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	rayCluster := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -208,7 +207,7 @@ func TestImpactedWorkloadsCheck_NoFinalizers(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_MultipleClusters(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cluster1 := &unstructured.Unstructured{
 		Object: map[string]any{

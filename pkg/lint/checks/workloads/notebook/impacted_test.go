@@ -1,7 +1,6 @@
 package notebook_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -31,7 +30,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestImpactedWorkloadsCheck_NoNotebooks(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
@@ -68,7 +67,7 @@ func TestImpactedWorkloadsCheck_NoNotebooks(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_SingleNotebook(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	notebook1 := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -119,7 +118,7 @@ func TestImpactedWorkloadsCheck_SingleNotebook(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_MultipleNotebooks(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	notebook1 := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -254,7 +253,7 @@ func TestImpactedWorkloadsCheck_CanApply_Upgrade3xTo3x(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_AnnotationTargetVersion(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)

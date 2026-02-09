@@ -24,8 +24,8 @@ import (
 //nolint:gochecknoglobals // Test fixture - shared across test functions
 var instructLabListKinds = map[schema.GroupVersionResource]string{
 	resources.DataScienceCluster.GVR():                      resources.DataScienceCluster.ListKind(),
-	resources.DataSciencePipelinesApplicationV1.GVR():        resources.DataSciencePipelinesApplicationV1.ListKind(),
-	resources.DataSciencePipelinesApplicationV1Alpha1.GVR():  resources.DataSciencePipelinesApplicationV1Alpha1.ListKind(),
+	resources.DataSciencePipelinesApplicationV1.GVR():       resources.DataSciencePipelinesApplicationV1.ListKind(),
+	resources.DataSciencePipelinesApplicationV1Alpha1.GVR(): resources.DataSciencePipelinesApplicationV1Alpha1.ListKind(),
 }
 
 func newDSC(componentState string) *unstructured.Unstructured {

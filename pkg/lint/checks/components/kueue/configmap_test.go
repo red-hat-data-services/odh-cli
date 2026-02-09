@@ -1,7 +1,6 @@
 package kueue_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -93,7 +92,7 @@ func newConfigMapUnstructured(namespace string, name string, annotations map[str
 
 func TestConfigMapManagedCheck_NoDSCI(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kueue managed but no DSCInitialization
 	dsc := newDSCWithKueueManaged()
@@ -128,7 +127,7 @@ func TestConfigMapManagedCheck_NoDSCI(t *testing.T) {
 
 func TestConfigMapManagedCheck_DSCINoNamespace(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kueue managed
 	dsc := newDSCWithKueueManaged()
@@ -181,7 +180,7 @@ func TestConfigMapManagedCheck_DSCINoNamespace(t *testing.T) {
 
 func TestConfigMapManagedCheck_ConfigMapNotFound(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kueue managed
 	dsc := newDSCWithKueueManaged()
@@ -218,7 +217,7 @@ func TestConfigMapManagedCheck_ConfigMapNotFound(t *testing.T) {
 
 func TestConfigMapManagedCheck_ConfigMapManaged(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kueue managed
 	dsc := newDSCWithKueueManaged()
@@ -259,7 +258,7 @@ func TestConfigMapManagedCheck_ConfigMapManaged(t *testing.T) {
 
 func TestConfigMapManagedCheck_ConfigMapManagedTrue(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kueue managed
 	dsc := newDSCWithKueueManaged()
@@ -301,7 +300,7 @@ func TestConfigMapManagedCheck_ConfigMapManagedTrue(t *testing.T) {
 
 func TestConfigMapManagedCheck_ConfigMapManagedFalse(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kueue managed
 	dsc := newDSCWithKueueManaged()

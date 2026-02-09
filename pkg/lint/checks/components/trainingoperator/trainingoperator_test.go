@@ -1,7 +1,6 @@
 package trainingoperator_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -29,7 +28,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestTrainingOperatorDeprecationCheck_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
@@ -59,7 +58,7 @@ func TestTrainingOperatorDeprecationCheck_NoDSC(t *testing.T) {
 
 func TestTrainingOperatorDeprecationCheck_NotConfigured(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster without trainingoperator component
 	// "Not configured" is now treated as "Removed" - both mean component is not active
@@ -108,7 +107,7 @@ func TestTrainingOperatorDeprecationCheck_NotConfigured(t *testing.T) {
 
 func TestTrainingOperatorDeprecationCheck_ManagedDeprecated(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -160,7 +159,7 @@ func TestTrainingOperatorDeprecationCheck_ManagedDeprecated(t *testing.T) {
 
 func TestTrainingOperatorDeprecationCheck_UnmanagedDeprecated(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -207,7 +206,7 @@ func TestTrainingOperatorDeprecationCheck_UnmanagedDeprecated(t *testing.T) {
 
 func TestTrainingOperatorDeprecationCheck_RemovedReady(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{

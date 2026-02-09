@@ -51,7 +51,7 @@ func newWorkloadTestCheck() *testCheck {
 
 func TestWorkloadBuilder_MetadataListing_NoFilter_AutoPopulate(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	nb1 := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -109,7 +109,7 @@ func TestWorkloadBuilder_MetadataListing_NoFilter_AutoPopulate(t *testing.T) {
 
 func TestWorkloadBuilder_FullObjectListing_WithFilter(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	job1 := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -168,7 +168,7 @@ func TestWorkloadBuilder_FullObjectListing_WithFilter(t *testing.T) {
 
 func TestWorkloadBuilder_FilterError_Propagated(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	job := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -207,7 +207,7 @@ func TestWorkloadBuilder_FilterError_Propagated(t *testing.T) {
 
 func TestWorkloadBuilder_CRDNotFound_EmptyItems(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
@@ -246,7 +246,7 @@ func TestWorkloadBuilder_CRDNotFound_EmptyItems(t *testing.T) {
 
 func TestWorkloadBuilder_CustomImpactedObjects_SkipsAutoPopulate(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	nb := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -304,7 +304,7 @@ func TestWorkloadBuilder_CustomImpactedObjects_SkipsAutoPopulate(t *testing.T) {
 
 func TestWorkloadBuilder_ErrorFromMapper(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
@@ -332,7 +332,7 @@ func TestWorkloadBuilder_ErrorFromMapper(t *testing.T) {
 
 func TestWorkloadBuilder_NoTargetVersion_AnnotationNotSet(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
@@ -363,7 +363,7 @@ func TestWorkloadBuilder_NoTargetVersion_AnnotationNotSet(t *testing.T) {
 
 func TestWorkloadBuilder_EmptyItems_NoAutoPopulate(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
@@ -397,7 +397,7 @@ func TestWorkloadBuilder_EmptyItems_NoAutoPopulate(t *testing.T) {
 
 func TestWorkloadBuilder_ClientIsPassedToRequest(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
@@ -428,7 +428,7 @@ func TestWorkloadBuilder_ClientIsPassedToRequest(t *testing.T) {
 
 func TestWorkloadBuilder_ResultMetadata(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
@@ -464,7 +464,7 @@ func TestWorkloadBuilder_ResultMetadata(t *testing.T) {
 
 func TestWorkloadBuilder_Complete_SetsConditions(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	nb := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -508,7 +508,7 @@ func TestWorkloadBuilder_Complete_SetsConditions(t *testing.T) {
 
 func TestWorkloadBuilder_Complete_ErrorPropagated(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)

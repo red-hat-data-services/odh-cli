@@ -1,7 +1,6 @@
 package openshift_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -34,7 +33,7 @@ func createClusterVersion(version string) *unstructured.Unstructured {
 
 func TestOpenShiftCheck_VersionMeetsRequirement(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cv := createClusterVersion("4.19.9")
 
@@ -74,7 +73,7 @@ func TestOpenShiftCheck_VersionMeetsRequirement(t *testing.T) {
 
 func TestOpenShiftCheck_VersionAboveRequirement(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cv := createClusterVersion("4.20.5")
 
@@ -113,7 +112,7 @@ func TestOpenShiftCheck_VersionAboveRequirement(t *testing.T) {
 
 func TestOpenShiftCheck_VersionBelowRequirement(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cv := createClusterVersion("4.18.5")
 
@@ -156,7 +155,7 @@ func TestOpenShiftCheck_VersionBelowRequirement(t *testing.T) {
 
 func TestOpenShiftCheck_PatchVersionBelowRequirement(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	cv := createClusterVersion("4.19.8")
 
@@ -199,7 +198,7 @@ func TestOpenShiftCheck_PatchVersionBelowRequirement(t *testing.T) {
 
 func TestOpenShiftCheck_VersionNotDetectable(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, nil)

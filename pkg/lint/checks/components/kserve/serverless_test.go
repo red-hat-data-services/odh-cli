@@ -1,7 +1,6 @@
 package kserve_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -28,7 +27,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestKServeServerlessRemovalCheck_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create empty cluster (no DataScienceCluster)
 	scheme := runtime.NewScheme()
@@ -59,7 +58,7 @@ func TestKServeServerlessRemovalCheck_NoDSC(t *testing.T) {
 
 func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster without kserve component
 	// "Not configured" is now treated as "Removed" - both mean component is not active
@@ -108,7 +107,7 @@ func TestKServeServerlessRemovalCheck_KServeNotConfigured(t *testing.T) {
 
 func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with kserve Removed (not managed)
 	dsc := &unstructured.Unstructured{
@@ -156,7 +155,7 @@ func TestKServeServerlessRemovalCheck_KServeNotManaged(t *testing.T) {
 
 func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with kserve Managed but no serverless config
 	dsc := &unstructured.Unstructured{
@@ -206,7 +205,7 @@ func TestKServeServerlessRemovalCheck_ServerlessNotConfigured(t *testing.T) {
 
 func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with kserve serverless Managed (blocking upgrade)
 	dsc := &unstructured.Unstructured{
@@ -261,7 +260,7 @@ func TestKServeServerlessRemovalCheck_ServerlessManagedBlocking(t *testing.T) {
 
 func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with kserve serverless Unmanaged (also blocking)
 	dsc := &unstructured.Unstructured{
@@ -313,7 +312,7 @@ func TestKServeServerlessRemovalCheck_ServerlessUnmanagedBlocking(t *testing.T) 
 
 func TestKServeServerlessRemovalCheck_ServerlessRemovedReady(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with kserve serverless Removed (ready for upgrade)
 	dsc := &unstructured.Unstructured{

@@ -149,9 +149,9 @@ func TestBaseCheckIntegration(t *testing.T) {
 			CurrentVersion: &v2,
 			TargetVersion:  &v3,
 		}
-		g.Expect(mockCheck.CanApply(context.Background(), target)).To(BeTrue())
+		g.Expect(mockCheck.CanApply(t.Context(), target)).To(BeTrue())
 
-		dr, err := mockCheck.Validate(context.Background(), check.Target{})
+		dr, err := mockCheck.Validate(t.Context(), check.Target{})
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(dr).ToNot(BeNil())
 		g.Expect(dr.Group).To(Equal("component"))

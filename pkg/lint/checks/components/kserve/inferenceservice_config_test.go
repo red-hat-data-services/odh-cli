@@ -1,7 +1,6 @@
 package kserve_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -31,7 +30,7 @@ var inferenceServiceConfigListKinds = map[schema.GroupVersionResource]string{
 
 func TestInferenceServiceConfigCheck_NoDSCI(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kserve managed but no DSCInitialization
 	dsc := &unstructured.Unstructured{
@@ -81,7 +80,7 @@ func TestInferenceServiceConfigCheck_NoDSCI(t *testing.T) {
 
 func TestInferenceServiceConfigCheck_ConfigMapNotFound(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kserve managed
 	dsc := &unstructured.Unstructured{
@@ -145,7 +144,7 @@ func TestInferenceServiceConfigCheck_ConfigMapNotFound(t *testing.T) {
 
 func TestInferenceServiceConfigCheck_ConfigMapManagedFalse(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kserve managed
 	dsc := &unstructured.Unstructured{
@@ -228,7 +227,7 @@ func TestInferenceServiceConfigCheck_ConfigMapManagedFalse(t *testing.T) {
 
 func TestInferenceServiceConfigCheck_ConfigMapManagedTrue(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kserve managed
 	dsc := &unstructured.Unstructured{
@@ -309,7 +308,7 @@ func TestInferenceServiceConfigCheck_ConfigMapManagedTrue(t *testing.T) {
 
 func TestInferenceServiceConfigCheck_ConfigMapNoAnnotation(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kserve managed
 	dsc := &unstructured.Unstructured{
@@ -387,7 +386,7 @@ func TestInferenceServiceConfigCheck_ConfigMapNoAnnotation(t *testing.T) {
 
 func TestInferenceServiceConfigCheck_ConfigMapEmptyAnnotations(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kserve managed
 	dsc := &unstructured.Unstructured{
@@ -466,7 +465,7 @@ func TestInferenceServiceConfigCheck_ConfigMapEmptyAnnotations(t *testing.T) {
 
 func TestInferenceServiceConfigCheck_DSCINoNamespace(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSC with kserve managed
 	dsc := &unstructured.Unstructured{

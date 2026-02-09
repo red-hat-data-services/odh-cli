@@ -1,7 +1,6 @@
 package kueue_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -28,7 +27,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestKueueManagedRemovalCheck_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create empty cluster (no DataScienceCluster)
 	scheme := runtime.NewScheme()
@@ -59,7 +58,7 @@ func TestKueueManagedRemovalCheck_NoDSC(t *testing.T) {
 
 func TestKueueManagedRemovalCheck_NotConfigured(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster without kueue component
 	// "Not configured" is now treated as "Removed" - both mean component is not active
@@ -108,7 +107,7 @@ func TestKueueManagedRemovalCheck_NotConfigured(t *testing.T) {
 
 func TestKueueManagedRemovalCheck_ManagedBlocking(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with kueue Managed (blocking upgrade)
 	dsc := &unstructured.Unstructured{
@@ -160,7 +159,7 @@ func TestKueueManagedRemovalCheck_ManagedBlocking(t *testing.T) {
 
 func TestKueueManagedRemovalCheck_UnmanagedAllowed(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with kueue Unmanaged (allowed in 3.x, check passes)
 	dsc := &unstructured.Unstructured{
@@ -208,7 +207,7 @@ func TestKueueManagedRemovalCheck_UnmanagedAllowed(t *testing.T) {
 
 func TestKueueManagedRemovalCheck_RemovedAllowed(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with kueue Removed (allowed in 3.x, check passes)
 	dsc := &unstructured.Unstructured{

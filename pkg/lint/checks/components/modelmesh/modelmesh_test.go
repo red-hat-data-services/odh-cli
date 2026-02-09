@@ -1,7 +1,6 @@
 package modelmesh_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -28,7 +27,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestModelmeshRemovalCheck_NoDSC(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create empty cluster (no DataScienceCluster)
 	scheme := runtime.NewScheme()
@@ -59,7 +58,7 @@ func TestModelmeshRemovalCheck_NoDSC(t *testing.T) {
 
 func TestModelmeshRemovalCheck_NotConfigured(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster without modelmesh component
 	// "Not configured" is now treated as "Removed" - both mean component is not active
@@ -108,7 +107,7 @@ func TestModelmeshRemovalCheck_NotConfigured(t *testing.T) {
 
 func TestModelmeshRemovalCheck_ManagedBlocking(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with modelmeshserving Managed (blocking upgrade)
 	dsc := &unstructured.Unstructured{
@@ -160,7 +159,7 @@ func TestModelmeshRemovalCheck_ManagedBlocking(t *testing.T) {
 
 func TestModelmeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with modelmeshserving Unmanaged (also blocking)
 	dsc := &unstructured.Unstructured{
@@ -208,7 +207,7 @@ func TestModelmeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 
 func TestModelmeshRemovalCheck_RemovedReady(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DataScienceCluster with modelmeshserving Removed (ready for upgrade)
 	dsc := &unstructured.Unstructured{

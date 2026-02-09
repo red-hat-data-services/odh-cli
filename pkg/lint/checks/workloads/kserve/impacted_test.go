@@ -1,7 +1,6 @@
 package kserve_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -35,7 +34,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
@@ -87,7 +86,7 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_ModelMeshInferenceService(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	isvc := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -153,7 +152,7 @@ func TestImpactedWorkloadsCheck_ModelMeshInferenceService(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_ServerlessInferenceService(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	isvc := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -219,7 +218,7 @@ func TestImpactedWorkloadsCheck_ServerlessInferenceService(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_ModelMeshServingRuntime(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	sr := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -285,7 +284,7 @@ func TestImpactedWorkloadsCheck_ModelMeshServingRuntime(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// ServingRuntime without multiModel should NOT be flagged
 	sr := &unstructured.Unstructured{
@@ -344,7 +343,7 @@ func TestImpactedWorkloadsCheck_ServerlessServingRuntime_NotFlagged(t *testing.T
 
 func TestImpactedWorkloadsCheck_RawDeploymentAnnotation(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	isvc := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -402,7 +401,7 @@ func TestImpactedWorkloadsCheck_RawDeploymentAnnotation(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_NoAnnotation(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	isvc := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -460,7 +459,7 @@ func TestImpactedWorkloadsCheck_NoAnnotation(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_MixedWorkloads(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	isvc1 := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -568,7 +567,7 @@ func TestImpactedWorkloadsCheck_MixedWorkloads(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_RemovedRuntime_OVMS(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	isvc := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -629,7 +628,7 @@ func TestImpactedWorkloadsCheck_RemovedRuntime_OVMS(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_RemovedRuntime_CaikitTGIS(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	isvc := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -689,7 +688,7 @@ func TestImpactedWorkloadsCheck_RemovedRuntime_CaikitTGIS(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_NonRemovedRuntime(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	isvc := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -740,7 +739,7 @@ func TestImpactedWorkloadsCheck_NonRemovedRuntime(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_NoRuntimeField(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// ISVC without spec.predictor.model.runtime should not be flagged
 	isvc := &unstructured.Unstructured{
@@ -794,7 +793,7 @@ func TestImpactedWorkloadsCheck_NoRuntimeField(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_MixedRemovedAndNonRemovedRuntimes(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	isvc1 := &unstructured.Unstructured{
 		Object: map[string]any{

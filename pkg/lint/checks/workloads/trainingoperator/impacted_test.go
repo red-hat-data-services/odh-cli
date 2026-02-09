@@ -1,7 +1,6 @@
 package trainingoperator_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -29,7 +28,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	scheme := runtime.NewScheme()
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds)
@@ -60,7 +59,7 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_ActiveJobs(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	activeJob := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -112,7 +111,7 @@ func TestImpactedWorkloadsCheck_ActiveJobs(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_CompletedJobsSucceeded(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	completedJob := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -163,7 +162,7 @@ func TestImpactedWorkloadsCheck_CompletedJobsSucceeded(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_CompletedJobsFailed(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	failedJob := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -214,7 +213,7 @@ func TestImpactedWorkloadsCheck_CompletedJobsFailed(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_MixedActiveAndCompleted(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	activeJob1 := &unstructured.Unstructured{
 		Object: map[string]any{
@@ -310,7 +309,7 @@ func TestImpactedWorkloadsCheck_MixedActiveAndCompleted(t *testing.T) {
 
 func TestImpactedWorkloadsCheck_JobWithoutStatus(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	jobWithoutStatus := &unstructured.Unstructured{
 		Object: map[string]any{

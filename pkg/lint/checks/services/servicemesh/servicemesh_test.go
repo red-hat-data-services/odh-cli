@@ -1,7 +1,6 @@
 package servicemesh_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/blang/semver/v4"
@@ -28,7 +27,7 @@ var listKinds = map[schema.GroupVersionResource]string{
 
 func TestServiceMeshRemovalCheck_NoDSCI(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create empty cluster (no DSCInitialization)
 	scheme := runtime.NewScheme()
@@ -59,7 +58,7 @@ func TestServiceMeshRemovalCheck_NoDSCI(t *testing.T) {
 
 func TestServiceMeshRemovalCheck_NotConfigured(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSCInitialization without serviceMesh
 	dsci := &unstructured.Unstructured{
@@ -103,7 +102,7 @@ func TestServiceMeshRemovalCheck_NotConfigured(t *testing.T) {
 
 func TestServiceMeshRemovalCheck_ManagedBlocking(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSCInitialization with serviceMesh Managed (blocking upgrade)
 	dsci := &unstructured.Unstructured{
@@ -150,7 +149,7 @@ func TestServiceMeshRemovalCheck_ManagedBlocking(t *testing.T) {
 
 func TestServiceMeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSCInitialization with serviceMesh Unmanaged (also blocking)
 	dsci := &unstructured.Unstructured{
@@ -197,7 +196,7 @@ func TestServiceMeshRemovalCheck_UnmanagedBlocking(t *testing.T) {
 
 func TestServiceMeshRemovalCheck_RemovedReady(t *testing.T) {
 	g := NewWithT(t)
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// Create DSCInitialization with serviceMesh Removed (ready for upgrade)
 	dsci := &unstructured.Unstructured{
