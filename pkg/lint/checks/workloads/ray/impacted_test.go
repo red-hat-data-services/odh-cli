@@ -52,7 +52,7 @@ func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
 		TargetVersion: &ver,
 	}
 
-	impactedCheck := &ray.ImpactedWorkloadsCheck{}
+	impactedCheck := ray.NewImpactedWorkloadsCheck()
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
@@ -100,7 +100,7 @@ func TestImpactedWorkloadsCheck_WithCodeFlareFinalizer(t *testing.T) {
 		TargetVersion: &ver,
 	}
 
-	impactedCheck := &ray.ImpactedWorkloadsCheck{}
+	impactedCheck := ray.NewImpactedWorkloadsCheck()
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
@@ -151,7 +151,7 @@ func TestImpactedWorkloadsCheck_WithoutCodeFlareFinalizer(t *testing.T) {
 		TargetVersion: &ver,
 	}
 
-	impactedCheck := &ray.ImpactedWorkloadsCheck{}
+	impactedCheck := ray.NewImpactedWorkloadsCheck()
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
@@ -194,7 +194,7 @@ func TestImpactedWorkloadsCheck_NoFinalizers(t *testing.T) {
 		TargetVersion: &ver,
 	}
 
-	impactedCheck := &ray.ImpactedWorkloadsCheck{}
+	impactedCheck := ray.NewImpactedWorkloadsCheck()
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
@@ -272,7 +272,7 @@ func TestImpactedWorkloadsCheck_MultipleClusters(t *testing.T) {
 		TargetVersion: &ver,
 	}
 
-	impactedCheck := &ray.ImpactedWorkloadsCheck{}
+	impactedCheck := ray.NewImpactedWorkloadsCheck()
 	result, err := impactedCheck.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
