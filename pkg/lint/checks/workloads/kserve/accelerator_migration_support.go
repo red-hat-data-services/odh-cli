@@ -28,7 +28,7 @@ func newISVCAcceleratorMigrationCondition(totalImpacted int, totalMissing int, r
 			"Found %d InferenceService(s) referencing AcceleratorProfiles (%d missing) - ensure AcceleratorProfiles exist and migrate to HardwareProfiles",
 			totalImpacted,
 			totalMissing,
-			check.WithImpact(result.ImpactBlocking),
+			check.WithImpact(result.ImpactAdvisory),
 			check.WithRemediation(remediation),
 		)
 	}

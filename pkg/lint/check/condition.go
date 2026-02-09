@@ -50,24 +50,23 @@ func WithRemediation(remediation string) ConditionOption {
 }
 
 // deriveImpact derives the default impact from condition status.
+// Status=False and Status=Unknown both default to Advisory; checks that
+// truly block upgrades must explicitly opt in via WithImpact(result.ImpactBlocking).
 func deriveImpact(status metav1.ConditionStatus) result.Impact {
-	switch status {
-	case metav1.ConditionTrue:
+	if status == metav1.ConditionTrue {
 		return result.ImpactNone
-	case metav1.ConditionFalse:
-		return result.ImpactBlocking
-	case metav1.ConditionUnknown:
-		return result.ImpactAdvisory
 	}
-	// Unreachable - all ConditionStatus values handled above
-	return result.ImpactNone
+
+	return result.ImpactAdvisory
 }
 
 // NewCondition creates a new Condition with automatic Impact derivation.
 // Impact is derived from Status unless explicitly overridden via WithImpact option:
-//   - Status=True  → Impact=None      (requirement met, no issues)
-//   - Status=False → Impact=Blocking  (requirement not met, blocks upgrade)
+//   - Status=True    → Impact=None     (requirement met, no issues)
+//   - Status=False   → Impact=Advisory (requirement not met, warning)
 //   - Status=Unknown → Impact=Advisory (unable to determine, proceed with caution)
+//
+// Use WithImpact(result.ImpactBlocking) for conditions that truly block upgrades.
 //
 // The message parameter supports printf-style formatting when args are provided.
 //

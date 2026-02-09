@@ -85,6 +85,7 @@ func (c *InstructLabRemovalCheck) Validate(ctx context.Context, target check.Tar
 					check.ReasonFeatureRemoved,
 					"Found %d DataSciencePipelinesApplication(s) with deprecated '.spec.apiServer.managedPipelines.instructLab' field - InstructLab feature was removed in RHOAI 3.x",
 					len(impactedDSPAs),
+					check.WithImpact(result.ImpactAdvisory),
 				))
 
 				results.PopulateImpactedObjects(req.Result, usedResourceType, impactedDSPAs)

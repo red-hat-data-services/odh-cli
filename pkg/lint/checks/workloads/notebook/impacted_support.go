@@ -31,6 +31,6 @@ func newNotebookCondition(
 		check.ReasonWorkloadsImpacted,
 		"Found %d Notebook(s) - workloads will be impacted in RHOAI 3.x",
 		count,
-		check.WithImpact(result.ImpactBlocking),
+		check.WithImpact(result.ImpactAdvisory),
 	)}, nil
 }

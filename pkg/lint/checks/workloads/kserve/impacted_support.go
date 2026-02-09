@@ -36,6 +36,7 @@ func newWorkloadCompatibilityCondition(
 			"Found %d %s - will be impacted in RHOAI 3.x",
 			count,
 			workloadDescription,
+			check.WithImpact(result.ImpactAdvisory),
 		)
 	}
 

@@ -235,7 +235,7 @@ func TestAcceleratorMigrationCheck_ISVCWithMissingAcceleratorProfile(t *testing.
 		"Reason":  Equal(check.ReasonResourceNotFound),
 		"Message": And(ContainSubstring("1 missing"), ContainSubstring("ensure AcceleratorProfiles exist")),
 	}))
-	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Status.Conditions[0].Remediation).To(ContainSubstring("HardwareProfiles"))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
@@ -343,7 +343,7 @@ func TestAcceleratorMigrationCheck_MixedInferenceServices(t *testing.T) {
 		"Reason":  Equal(check.ReasonResourceNotFound),
 		"Message": And(ContainSubstring("2 InferenceService(s)"), ContainSubstring("1 missing")),
 	}))
-	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Status.Conditions[0].Remediation).To(ContainSubstring("HardwareProfiles"))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "2"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(2))

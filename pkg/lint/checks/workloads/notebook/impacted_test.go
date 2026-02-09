@@ -131,7 +131,7 @@ func TestImpactedWorkloadsCheck_SingleNotebook(t *testing.T) {
 		"Reason":  Equal(check.ReasonWorkloadsImpacted),
 		"Message": And(ContainSubstring("Found 1 Notebook(s)"), ContainSubstring("will be impacted")),
 	}))
-	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
 	g.Expect(result.ImpactedObjects[0].Name).To(Equal("test-notebook"))
@@ -210,7 +210,7 @@ func TestImpactedWorkloadsCheck_MultipleNotebooks(t *testing.T) {
 		"Reason":  Equal(check.ReasonWorkloadsImpacted),
 		"Message": And(ContainSubstring("Found 3 Notebook(s)"), ContainSubstring("will be impacted")),
 	}))
-	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "3"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(3))
 }
