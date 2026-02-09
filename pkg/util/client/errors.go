@@ -20,8 +20,12 @@ func IsUnrecoverableError(err error) bool {
 }
 
 // IsResourceTypeNotFound checks if an error indicates the resource type/CRD doesn't exist.
+// Catches both:
+//   - meta.NoResourceMatchError from the REST mapper when the GVK/GVR is unknown
+//   - 404 NotFound from the dynamic/metadata clients, which bypass the REST mapper
+//     and hit the API server directly (returns 404 when the resource endpoint doesn't exist)
 func IsResourceTypeNotFound(err error) bool {
-	return meta.IsNoMatchError(err)
+	return meta.IsNoMatchError(err) || apierrors.IsNotFound(err)
 }
 
 // IsPermissionError checks if an error is due to insufficient permissions.
