@@ -99,40 +99,54 @@ func (r *CheckRegistry) ListAll() []Check {
 	return result
 }
 
-// ListByPattern returns checks matching the selector pattern and group
-// Pattern can be:
+// ListByPatterns returns checks matching any of the selector patterns and group.
+// Each pattern can be:
 //   - Wildcard: "*" matches all checks
 //   - Group shortcut: "components", "services", "workloads", "dependencies"
 //   - Exact ID: "components.dashboard"
 //   - Glob pattern: "components.*", "*dashboard*", "*.dashboard"
 //
-// If group is empty, all groups are included
+// A check is included if it matches ANY of the provided patterns (union semantics).
+// If group is empty, all groups are included.
 // TargetVersion filtering is handled by CanApply in the executor.
-func (r *CheckRegistry) ListByPattern(
-	pattern string,
+func (r *CheckRegistry) ListByPatterns(
+	patterns []string,
 	group CheckGroup,
 ) ([]Check, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	result := make([]Check, 0, len(r.checks))
-	for _, check := range r.checks {
-		// Filter by pattern
-		matched, err := matchesPattern(check, pattern)
-		if err != nil {
-			return nil, fmt.Errorf("pattern matching for check %s: %w", check.ID(), err)
-		}
-		if !matched {
-			continue
-		}
 
-		// Filter by group if specified
+	for _, check := range r.checks {
+		// Filter by group first (cheaper than pattern matching)
 		if group != "" && check.Group() != group {
 			continue
 		}
 
-		result = append(result, check)
+		// Match against any pattern
+		for _, pattern := range patterns {
+			matched, err := matchesPattern(check, pattern)
+			if err != nil {
+				return nil, fmt.Errorf("pattern matching for check %s: %w", check.ID(), err)
+			}
+
+			if matched {
+				result = append(result, check)
+
+				break
+			}
+		}
 	}
 
 	return result, nil
+}
+
+// ListByPattern returns checks matching a single selector pattern and group.
+// For matching against multiple patterns, use ListByPatterns.
+func (r *CheckRegistry) ListByPattern(
+	pattern string,
+	group CheckGroup,
+) ([]Check, error) {
+	return r.ListByPatterns([]string{pattern}, group)
 }

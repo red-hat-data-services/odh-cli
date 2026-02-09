@@ -36,7 +36,7 @@ func BenchmarkExecuteSelective_FullSuite(b *testing.B) {
 	ctx := context.Background()
 
 	for b.Loop() {
-		_, err := executor.ExecuteSelective(ctx, target, "*", "")
+		_, err := executor.ExecuteSelective(ctx, target, []string{"*"}, "")
 		if err != nil {
 			b.Fatalf("ExecuteSelective failed: %v", err)
 		}
@@ -64,7 +64,7 @@ func BenchmarkExecuteSelective_GroupFilter(b *testing.B) {
 	ctx := context.Background()
 
 	for b.Loop() {
-		_, err := executor.ExecuteSelective(ctx, target, "components", "")
+		_, err := executor.ExecuteSelective(ctx, target, []string{"components"}, "")
 		if err != nil {
 			b.Fatalf("ExecuteSelective failed: %v", err)
 		}
@@ -92,7 +92,7 @@ func BenchmarkExecuteSelective_SingleCheck(b *testing.B) {
 	ctx := context.Background()
 
 	for b.Loop() {
-		_, err := executor.ExecuteSelective(ctx, target, "components.dashboard", "")
+		_, err := executor.ExecuteSelective(ctx, target, []string{"components.dashboard"}, "")
 		if err != nil {
 			b.Fatalf("ExecuteSelective failed: %v", err)
 		}

@@ -120,7 +120,7 @@ func NewCommand(
 func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescTargetVersion)
 	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescOutput)
-	fs.StringVar(&c.CheckSelector, "checks", "*", flagDescChecks)
+	fs.StringArrayVar(&c.CheckSelectors, "checks", []string{"*"}, flagDescChecks)
 	fs.BoolVar(&c.FailOnCritical, "fail-on-critical", true, flagDescFailCritical)
 	fs.BoolVar(&c.FailOnWarning, "fail-on-warning", false, flagDescFailWarning)
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
@@ -239,7 +239,7 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 			continue // Workloads handled separately below
 		}
 
-		results, err := executor.ExecuteSelective(ctx, componentTarget, c.CheckSelector, group)
+		results, err := executor.ExecuteSelective(ctx, componentTarget, c.CheckSelectors, group)
 		if err != nil {
 			// Log error but continue with other checks
 			c.IO.Errorf("Warning: Failed to execute %s checks: %v", group, err)
@@ -275,7 +275,7 @@ func (c *Command) runLintMode(ctx context.Context, clusterVersion *semver.Versio
 				IO:             c.IO,
 			}
 
-			results, err := executor.ExecuteSelective(ctx, workloadTarget, c.CheckSelector, check.GroupWorkload)
+			results, err := executor.ExecuteSelective(ctx, workloadTarget, c.CheckSelectors, check.GroupWorkload)
 			if err != nil {
 				return fmt.Errorf("executing workload checks: %w", err)
 			}
@@ -334,7 +334,7 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 	resultsByGroup := make(map[check.CheckGroup][]check.CheckExecution)
 
 	for _, group := range check.CanonicalGroupOrder {
-		results, err := executor.ExecuteSelective(ctx, checkTarget, c.CheckSelector, group)
+		results, err := executor.ExecuteSelective(ctx, checkTarget, c.CheckSelectors, group)
 		if err != nil {
 			return fmt.Errorf("executing %s checks: %w", group, err)
 		}

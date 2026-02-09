@@ -71,8 +71,8 @@ type SharedOptions struct {
 	// OutputFormat specifies the output format (table, json, yaml)
 	OutputFormat OutputFormat
 
-	// CheckSelector filters which checks to run (glob pattern)
-	CheckSelector string
+	// CheckSelectors filters which checks to run (glob patterns, repeatable)
+	CheckSelectors []string
 
 	// FailOnCritical exits with non-zero code if critical findings detected
 	FailOnCritical bool
@@ -103,7 +103,7 @@ func NewSharedOptions(
 	return &SharedOptions{
 		ConfigFlags:    configFlags,
 		OutputFormat:   OutputFormatTable,
-		CheckSelector:  "*",            // Run all checks by default
+		CheckSelectors: []string{"*"},  // Run all checks by default
 		FailOnCritical: true,           // Exit with error on critical findings (default)
 		FailOnWarning:  false,          // Don't exit on warnings by default
 		Timeout:        DefaultTimeout, // Default timeout to prevent hanging on slow clusters
@@ -139,8 +139,8 @@ func (o *SharedOptions) Validate() error {
 		return err
 	}
 
-	// Validate check selector
-	if err := ValidateCheckSelector(o.CheckSelector); err != nil {
+	// Validate check selectors
+	if err := ValidateCheckSelectors(o.CheckSelectors); err != nil {
 		return err
 	}
 
@@ -152,7 +152,22 @@ func (o *SharedOptions) Validate() error {
 	return nil
 }
 
-// ValidateCheckSelector validates the check selector pattern.
+// ValidateCheckSelectors validates all check selector patterns.
+func ValidateCheckSelectors(selectors []string) error {
+	if len(selectors) == 0 {
+		return errors.New("at least one check selector is required")
+	}
+
+	for _, s := range selectors {
+		if err := ValidateCheckSelector(s); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ValidateCheckSelector validates a single check selector pattern.
 func ValidateCheckSelector(selector string) error {
 	if selector == "" {
 		return errors.New("check selector cannot be empty")

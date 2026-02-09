@@ -40,16 +40,16 @@ func (e *Executor) ExecuteAll(ctx context.Context, target Target) []CheckExecuti
 	return e.executeChecks(ctx, target, checks)
 }
 
-// ExecuteSelective runs checks matching the pattern and group
+// ExecuteSelective runs checks matching any of the patterns and group
 // Returns results for matching checks only.
 // TargetVersion filtering is done via CanApply during execution.
 func (e *Executor) ExecuteSelective(
 	ctx context.Context,
 	target Target,
-	pattern string,
+	patterns []string,
 	group CheckGroup,
 ) ([]CheckExecution, error) {
-	checks, err := e.registry.ListByPattern(pattern, group)
+	checks, err := e.registry.ListByPatterns(patterns, group)
 	if err != nil {
 		return nil, fmt.Errorf("selecting checks: %w", err)
 	}

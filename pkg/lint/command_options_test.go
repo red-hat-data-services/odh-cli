@@ -8,6 +8,64 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+func TestValidateCheckSelectors(t *testing.T) {
+	g := NewWithT(t)
+
+	tests := []struct {
+		name      string
+		selectors []string
+		wantErr   bool
+	}{
+		{
+			name:      "single wildcard valid",
+			selectors: []string{"*"},
+			wantErr:   false,
+		},
+		{
+			name:      "multiple patterns valid",
+			selectors: []string{"components.*", "services.*"},
+			wantErr:   false,
+		},
+		{
+			name:      "mixed patterns valid",
+			selectors: []string{"components", "*dashboard*", "services.oauth"},
+			wantErr:   false,
+		},
+		{
+			name:      "empty slice invalid",
+			selectors: []string{},
+			wantErr:   true,
+		},
+		{
+			name:      "nil slice invalid",
+			selectors: nil,
+			wantErr:   true,
+		},
+		{
+			name:      "one invalid pattern fails all",
+			selectors: []string{"components.*", "["},
+			wantErr:   true,
+		},
+		{
+			name:      "empty string in slice invalid",
+			selectors: []string{"components.*", ""},
+			wantErr:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := lint.ValidateCheckSelectors(tt.selectors)
+
+			if tt.wantErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+			}
+		})
+	}
+}
+
 func TestValidateCheckSelector(t *testing.T) {
 	g := NewWithT(t)
 
