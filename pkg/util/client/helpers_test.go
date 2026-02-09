@@ -2,11 +2,14 @@
 package client
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/onsi/gomega/types"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -508,3 +511,203 @@ func TestGetApplicationsNamespace_EmptyNamespace(t *testing.T) {
 	g.Expect(err).To(Satisfy(apierrors.IsNotFound))
 	g.Expect(namespace).To(BeEmpty())
 }
+
+// --- List[T] tests ---
+
+func configMapResourceType() resources.ResourceType {
+	return resources.ResourceType{
+		Group:    "",
+		Version:  "v1",
+		Resource: "configmaps",
+		Kind:     "ConfigMap",
+	}
+}
+
+func TestList_WithFilter(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	objects := createTestObjects(3)
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
+
+	c := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
+	}
+
+	// Filter: only items named "test-cm-1".
+	filter := func(obj *unstructured.Unstructured) (bool, error) {
+		return obj.GetName() == "test-cm-1", nil
+	}
+
+	results, err := List[*unstructured.Unstructured](ctx, c, configMapResourceType(), filter)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(results).To(HaveLen(1))
+	g.Expect(results[0].GetName()).To(Equal("test-cm-1"))
+	g.Expect(results[0].GetNamespace()).To(Equal(testNamespace))
+}
+
+func TestList_NilFilter(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	objects := createTestObjects(3)
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
+
+	c := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
+	}
+
+	results, err := List[*unstructured.Unstructured](ctx, c, configMapResourceType(), nil)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(results).To(HaveLen(3))
+}
+
+func TestList_EmptyList(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+
+	gvrListMap := map[schema.GroupVersionResource]string{
+		configMapResourceType().GVR(): "ConfigMapList",
+	}
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, gvrListMap)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
+
+	c := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
+	}
+
+	results, err := List[*unstructured.Unstructured](ctx, c, configMapResourceType(), nil)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(results).To(BeEmpty())
+}
+
+func TestList_CRDNotFound(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	// Use a resource type whose CRD does not exist.
+	notebookResource := resources.Notebook
+
+	c := &errorReader{
+		listErr: &meta.NoResourceMatchError{PartialResource: notebookResource.GVR()},
+	}
+
+	results, err := List[*unstructured.Unstructured](ctx, c, notebookResource, nil)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(results).To(BeNil())
+}
+
+func TestList_FilterErrorPropagation(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	objects := createTestObjects(2)
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, objects...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, objects...)
+
+	c := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
+	}
+
+	filterErr := errors.New("filter failed")
+
+	filter := func(_ *unstructured.Unstructured) (bool, error) {
+		return false, filterErr
+	}
+
+	results, err := List[*unstructured.Unstructured](ctx, c, configMapResourceType(), filter)
+
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(err).To(MatchError(ContainSubstring("filter failed")))
+	g.Expect(results).To(BeNil())
+}
+
+// errorReader is a minimal Reader that returns a preconfigured error from all methods.
+type errorReader struct {
+	listErr error
+}
+
+func (r *errorReader) List(
+	_ context.Context,
+	_ resources.ResourceType,
+	_ ...ListResourcesOption,
+) ([]*unstructured.Unstructured, error) {
+	return nil, r.listErr
+}
+
+func (r *errorReader) ListMetadata(
+	_ context.Context,
+	_ resources.ResourceType,
+	_ ...ListResourcesOption,
+) ([]*metav1.PartialObjectMetadata, error) {
+	return nil, r.listErr
+}
+
+func (r *errorReader) ListResources(
+	_ context.Context,
+	_ schema.GroupVersionResource,
+	_ ...ListResourcesOption,
+) ([]*unstructured.Unstructured, error) {
+	return nil, r.listErr
+}
+
+func (r *errorReader) Get(
+	_ context.Context,
+	_ schema.GroupVersionResource,
+	_ string,
+	_ ...GetOption,
+) (*unstructured.Unstructured, error) {
+	return nil, r.listErr
+}
+
+func (r *errorReader) GetResource(
+	_ context.Context,
+	_ resources.ResourceType,
+	_ string,
+	_ ...GetOption,
+) (*unstructured.Unstructured, error) {
+	return nil, r.listErr
+}
+
+func (r *errorReader) GetResourceMetadata(
+	_ context.Context,
+	_ resources.ResourceType,
+	_ string,
+	_ ...GetOption,
+) (*metav1.PartialObjectMetadata, error) {
+	return nil, r.listErr
+}
+
+func (r *errorReader) OLM() OLMReader {
+	return newOLMReader(nil)
+}
+
+// Compile-time check that errorReader implements Reader.
+var _ Reader = (*errorReader)(nil)

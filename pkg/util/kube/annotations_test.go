@@ -150,12 +150,14 @@ func TestHasAnnotation(t *testing.T) {
 		name        string
 		annotations map[string]string
 		key         string
+		value       string
 		expected    bool
 	}{
 		{
 			name:        "nil annotations returns false",
 			annotations: nil,
 			key:         "test.key",
+			value:       "test-value",
 			expected:    false,
 		},
 		{
@@ -164,23 +166,35 @@ func TestHasAnnotation(t *testing.T) {
 				"other.key": "value",
 			},
 			key:      "test.key",
+			value:    "test-value",
 			expected: false,
 		},
 		{
-			name: "key present with value returns true",
+			name: "key present with matching value returns true",
 			annotations: map[string]string{
 				"test.key": "test-value",
 			},
 			key:      "test.key",
+			value:    "test-value",
 			expected: true,
 		},
 		{
-			name: "key present with empty value returns false",
+			name: "key present with different value returns false",
+			annotations: map[string]string{
+				"test.key": "other-value",
+			},
+			key:      "test.key",
+			value:    "test-value",
+			expected: false,
+		},
+		{
+			name: "key present with empty value matches empty",
 			annotations: map[string]string{
 				"test.key": "",
 			},
 			key:      "test.key",
-			expected: false,
+			value:    "",
+			expected: true,
 		},
 	}
 
@@ -196,7 +210,7 @@ func TestHasAnnotation(t *testing.T) {
 				},
 			}
 
-			result := kube.HasAnnotation(configMap, tt.key)
+			result := kube.HasAnnotation(configMap, tt.key, tt.value)
 			g.Expect(result).To(Equal(tt.expected))
 		})
 	}

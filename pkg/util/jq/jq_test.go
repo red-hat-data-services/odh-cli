@@ -401,6 +401,64 @@ func TestQuery_IncompatibleType(t *testing.T) {
 	g.Expect(err.Error()).To(ContainSubstring("unmarshaling to type int"))
 }
 
+func TestPredicate(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should return true when expression evaluates to true", func(t *testing.T) {
+		obj := &unstructured.Unstructured{
+			Object: map[string]any{
+				"spec": map[string]any{
+					"multiModel": true,
+				},
+			},
+		}
+
+		match, err := jq.Predicate(".spec.multiModel")(obj)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(match).To(BeTrue())
+	})
+
+	t.Run("should return false when expression evaluates to false", func(t *testing.T) {
+		obj := &unstructured.Unstructured{
+			Object: map[string]any{
+				"spec": map[string]any{
+					"multiModel": false,
+				},
+			},
+		}
+
+		match, err := jq.Predicate(".spec.multiModel")(obj)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(match).To(BeFalse())
+	})
+
+	t.Run("should return false when field does not exist", func(t *testing.T) {
+		obj := &unstructured.Unstructured{
+			Object: map[string]any{
+				"spec": map[string]any{},
+			},
+		}
+
+		match, err := jq.Predicate(".spec.multiModel")(obj)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(match).To(BeFalse())
+	})
+
+	t.Run("should return false when field is null", func(t *testing.T) {
+		obj := &unstructured.Unstructured{
+			Object: map[string]any{
+				"spec": map[string]any{
+					"multiModel": nil,
+				},
+			},
+		}
+
+		match, err := jq.Predicate(".spec.multiModel")(obj)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(match).To(BeFalse())
+	})
+}
+
 // TestQuery_NestedStructConversion tests deep nested structure conversion.
 func TestQuery_NestedStructConversion(t *testing.T) {
 	g := NewWithT(t)

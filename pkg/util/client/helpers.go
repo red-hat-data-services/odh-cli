@@ -16,6 +16,12 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
+// namespacedNamer is satisfied by both *unstructured.Unstructured and *metav1.PartialObjectMetadata.
+type namespacedNamer interface {
+	GetName() string
+	GetNamespace() string
+}
+
 // DiscoverGVRsConfig configures CRD discovery.
 type DiscoverGVRsConfig struct {
 	LabelSelector string
@@ -357,6 +363,93 @@ func GetApplicationsNamespace(ctx context.Context, r Reader) (string, error) {
 	}
 
 	return namespace, nil
+}
+
+// List lists resources of the given type, applies an optional filter, and returns matching items.
+// CRD-not-found errors are treated as an empty list. Pass nil filter to return all.
+// T must be *unstructured.Unstructured (dispatches to Reader.List) or *metav1.PartialObjectMetadata
+// (dispatches to Reader.ListMetadata).
+func List[T namespacedNamer](
+	ctx context.Context,
+	r Reader,
+	resourceType resources.ResourceType,
+	filter func(T) (bool, error),
+) ([]T, error) {
+	items, err := listItems[T](ctx, r, resourceType)
+	if err != nil {
+		if IsResourceTypeNotFound(err) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	result := make([]T, 0, len(items))
+
+	for _, item := range items {
+		if filter != nil {
+			match, ferr := filter(item)
+			if ferr != nil {
+				return nil, fmt.Errorf("filtering %s resources: %w", resourceType.Kind, ferr)
+			}
+
+			if !match {
+				continue
+			}
+		}
+
+		result = append(result, item)
+	}
+
+	return result, nil
+}
+
+// listItems dispatches to Reader.List or Reader.ListMetadata based on the concrete type of T.
+func listItems[T namespacedNamer](
+	ctx context.Context,
+	r Reader,
+	resourceType resources.ResourceType,
+) ([]T, error) {
+	var zero T
+
+	switch any(zero).(type) {
+	case *unstructured.Unstructured:
+		items, err := r.List(ctx, resourceType)
+		if err != nil {
+			return nil, fmt.Errorf("listing %s: %w", resourceType.Kind, err)
+		}
+
+		result := make([]T, len(items))
+		for i, item := range items {
+			v, ok := any(item).(T)
+			if !ok {
+				return nil, fmt.Errorf("unexpected type for %s item", resourceType.Kind)
+			}
+
+			result[i] = v
+		}
+
+		return result, nil
+	case *metav1.PartialObjectMetadata:
+		items, err := r.ListMetadata(ctx, resourceType)
+		if err != nil {
+			return nil, fmt.Errorf("listing %s metadata: %w", resourceType.Kind, err)
+		}
+
+		result := make([]T, len(items))
+		for i, item := range items {
+			v, ok := any(item).(T)
+			if !ok {
+				return nil, fmt.Errorf("unexpected type for %s metadata item", resourceType.Kind)
+			}
+
+			result[i] = v
+		}
+
+		return result, nil
+	default:
+		return nil, fmt.Errorf("unsupported type %T for List", zero)
+	}
 }
 
 // Helper functions for CRD discovery

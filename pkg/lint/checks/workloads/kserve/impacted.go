@@ -2,10 +2,10 @@ package kserve
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
-	"k8s.io/apimachinery/pkg/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
@@ -27,11 +27,6 @@ const (
 	ConditionTypeModelMeshISVCCompatible  = "ModelMeshInferenceServicesCompatible"
 	ConditionTypeModelMeshSRCompatible    = "ModelMeshServingRuntimesCompatible"
 )
-
-type impactedInferenceServices struct {
-	serverless []types.NamespacedName
-	modelMesh  []types.NamespacedName
-}
 
 // ImpactedWorkloadsCheck lists InferenceServices and ServingRuntimes using deprecated deployment modes.
 type ImpactedWorkloadsCheck struct {
@@ -68,98 +63,28 @@ func (c *ImpactedWorkloadsCheck) Validate(
 		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
 	}
 
-	// Find impacted workloads by category
-	isvcsByMode, err := c.findImpactedInferenceServices(ctx, target)
-	if err != nil {
-		return nil, err
-	}
-
-	impactedSRs, err := c.findImpactedServingRuntimes(ctx, target)
-	if err != nil {
-		return nil, err
-	}
-
-	// Calculate totals
-	totalImpacted := len(isvcsByMode.serverless) + len(isvcsByMode.modelMesh) + len(impactedSRs)
-	dr.Annotations[check.AnnotationImpactedWorkloadCount] = strconv.Itoa(totalImpacted)
-
-	// ALWAYS add all three conditions (even for zero counts per user requirement)
-	dr.Status.Conditions = append(dr.Status.Conditions,
-		newServerlessISVCCondition(len(isvcsByMode.serverless)),
-		newModelMeshISVCCondition(len(isvcsByMode.modelMesh)),
-		newModelMeshSRCondition(len(impactedSRs)),
+	// Fetch InferenceServices with impacted deployment modes (Serverless or ModelMesh)
+	allISVCs, err := client.List[*metav1.PartialObjectMetadata](
+		ctx, target.Client, resources.InferenceService, isImpactedISVC,
 	)
-
-	// Populate ImpactedObjects if any workloads found
-	if totalImpacted > 0 {
-		populateImpactedObjects(dr, isvcsByMode, impactedSRs)
+	if err != nil {
+		return nil, err
 	}
+
+	// Fetch ServingRuntimes with multi-model enabled
+	impactedSRs, err := client.List[*unstructured.Unstructured](
+		ctx, target.Client, resources.ServingRuntime, jq.Predicate(".spec.multiModel == true"),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Each function appends its condition and impacted objects to the result
+	appendServerlessISVCCondition(dr, allISVCs)
+	appendModelMeshISVCCondition(dr, allISVCs)
+	appendModelMeshSRCondition(dr, impactedSRs)
+
+	dr.Annotations[check.AnnotationImpactedWorkloadCount] = strconv.Itoa(len(dr.ImpactedObjects))
 
 	return dr, nil
-}
-
-func (c *ImpactedWorkloadsCheck) findImpactedInferenceServices(
-	ctx context.Context,
-	target check.Target,
-) (impactedInferenceServices, error) {
-	inferenceServices, err := target.Client.ListMetadata(ctx, resources.InferenceService)
-	if err != nil {
-		if client.IsResourceTypeNotFound(err) {
-			return impactedInferenceServices{}, nil
-		}
-
-		return impactedInferenceServices{}, fmt.Errorf("listing InferenceServices: %w", err)
-	}
-
-	var isvcs impactedInferenceServices
-
-	for _, isvc := range inferenceServices {
-		annotations := isvc.GetAnnotations()
-		mode := annotations[annotationDeploymentMode]
-
-		namespacedName := types.NamespacedName{
-			Namespace: isvc.GetNamespace(),
-			Name:      isvc.GetName(),
-		}
-
-		switch mode {
-		case deploymentModeServerless:
-			isvcs.serverless = append(isvcs.serverless, namespacedName)
-		case deploymentModeModelMesh:
-			isvcs.modelMesh = append(isvcs.modelMesh, namespacedName)
-		}
-	}
-
-	return isvcs, nil
-}
-
-func (c *ImpactedWorkloadsCheck) findImpactedServingRuntimes(
-	ctx context.Context,
-	target check.Target,
-) ([]types.NamespacedName, error) {
-	servingRuntimes, err := target.Client.List(ctx, resources.ServingRuntime)
-	if err != nil {
-		if client.IsResourceTypeNotFound(err) {
-			return nil, nil
-		}
-
-		return nil, fmt.Errorf("listing ServingRuntimes: %w", err)
-	}
-
-	impacted := make([]types.NamespacedName, 0, len(servingRuntimes))
-
-	for _, sr := range servingRuntimes {
-		// Check for ModelMesh using .spec.multiModel field
-		multiModel, err := jq.Query[bool](sr, ".spec.multiModel")
-		if err != nil || !multiModel {
-			continue
-		}
-
-		impacted = append(impacted, types.NamespacedName{
-			Namespace: sr.GetNamespace(),
-			Name:      sr.GetName(),
-		})
-	}
-
-	return impacted, nil
 }

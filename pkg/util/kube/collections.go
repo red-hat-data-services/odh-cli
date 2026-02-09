@@ -5,10 +5,7 @@ import (
 )
 
 // ToNamespacedNames converts objects with metadata to a slice of NamespacedName.
-func ToNamespacedNames[T interface {
-	GetName() string
-	GetNamespace() string
-}](items []T) []types.NamespacedName {
+func ToNamespacedNames[T NamespacedNamer](items []T) []types.NamespacedName {
 	result := make([]types.NamespacedName, 0, len(items))
 
 	for _, item := range items {

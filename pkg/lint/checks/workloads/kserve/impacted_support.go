@@ -2,12 +2,19 @@ package kserve
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
+	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 )
+
+// isImpactedISVC returns true for InferenceServices with Serverless or ModelMesh deployment mode.
+func isImpactedISVC(obj *metav1.PartialObjectMetadata) (bool, error) {
+	return kube.HasAnnotation(obj, annotationDeploymentMode, deploymentModeServerless) ||
+		kube.HasAnnotation(obj, annotationDeploymentMode, deploymentModeModelMesh), nil
+}
 
 // newWorkloadCompatibilityCondition creates a compatibility condition based on workload count.
 // When count > 0, returns a failure condition indicating impacted workloads.
@@ -37,77 +44,88 @@ func newWorkloadCompatibilityCondition(
 	)
 }
 
-func newServerlessISVCCondition(count int) result.Condition {
-	return newWorkloadCompatibilityCondition(
+// appendServerlessISVCCondition filters Serverless InferenceServices and appends
+// the condition and impacted objects to the result.
+func appendServerlessISVCCondition(
+	dr *result.DiagnosticResult,
+	allISVCs []*metav1.PartialObjectMetadata,
+) {
+	appendISVCCondition(dr, allISVCs,
 		ConditionTypeServerlessISVCCompatible,
-		count,
+		deploymentModeServerless,
 		"Serverless InferenceService(s)",
 	)
 }
 
-func newModelMeshISVCCondition(count int) result.Condition {
-	return newWorkloadCompatibilityCondition(
+// appendModelMeshISVCCondition filters ModelMesh InferenceServices and appends
+// the condition and impacted objects to the result.
+func appendModelMeshISVCCondition(
+	dr *result.DiagnosticResult,
+	allISVCs []*metav1.PartialObjectMetadata,
+) {
+	appendISVCCondition(dr, allISVCs,
 		ConditionTypeModelMeshISVCCompatible,
-		count,
+		deploymentModeModelMesh,
 		"ModelMesh InferenceService(s)",
 	)
 }
 
-func newModelMeshSRCondition(count int) result.Condition {
-	return newWorkloadCompatibilityCondition(
-		ConditionTypeModelMeshSRCompatible,
-		count,
-		"ModelMesh ServingRuntime(s)",
+// appendISVCCondition filters ISVCs by deployment mode and appends the condition
+// and impacted objects to the result.
+func appendISVCCondition(
+	dr *result.DiagnosticResult,
+	allISVCs []*metav1.PartialObjectMetadata,
+	conditionType string,
+	deploymentMode string,
+	workloadDescription string,
+) {
+	var filtered []*metav1.PartialObjectMetadata
+
+	for _, isvc := range allISVCs {
+		if kube.HasAnnotation(isvc, annotationDeploymentMode, deploymentMode) {
+			filtered = append(filtered, isvc)
+		}
+	}
+
+	dr.Status.Conditions = append(dr.Status.Conditions,
+		newWorkloadCompatibilityCondition(conditionType, len(filtered), workloadDescription),
 	)
+
+	for _, r := range filtered {
+		dr.ImpactedObjects = append(dr.ImpactedObjects, metav1.PartialObjectMetadata{
+			TypeMeta: resources.InferenceService.TypeMeta(),
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: r.GetNamespace(),
+				Name:      r.GetName(),
+				Annotations: map[string]string{
+					annotationDeploymentMode: deploymentMode,
+				},
+			},
+		})
+	}
 }
 
-func populateImpactedObjects(
+// appendModelMeshSRCondition appends the condition and impacted objects for
+// multi-model ServingRuntimes to the result.
+func appendModelMeshSRCondition(
 	dr *result.DiagnosticResult,
-	isvcsByMode impactedInferenceServices,
-	impactedSRs []types.NamespacedName,
+	impactedSRs []*unstructured.Unstructured,
 ) {
-	totalCount := len(isvcsByMode.serverless) + len(isvcsByMode.modelMesh) + len(impactedSRs)
-	dr.ImpactedObjects = make([]metav1.PartialObjectMetadata, 0, totalCount)
+	dr.Status.Conditions = append(dr.Status.Conditions,
+		newWorkloadCompatibilityCondition(
+			ConditionTypeModelMeshSRCompatible,
+			len(impactedSRs),
+			"ModelMesh ServingRuntime(s)",
+		),
+	)
 
-	// Add Serverless InferenceServices
-	for _, r := range isvcsByMode.serverless {
-		obj := metav1.PartialObjectMetadata{
-			TypeMeta: resources.InferenceService.TypeMeta(),
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: r.Namespace,
-				Name:      r.Name,
-				Annotations: map[string]string{
-					annotationDeploymentMode: deploymentModeServerless,
-				},
-			},
-		}
-		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
-	}
-
-	// Add ModelMesh InferenceServices
-	for _, r := range isvcsByMode.modelMesh {
-		obj := metav1.PartialObjectMetadata{
-			TypeMeta: resources.InferenceService.TypeMeta(),
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: r.Namespace,
-				Name:      r.Name,
-				Annotations: map[string]string{
-					annotationDeploymentMode: deploymentModeModelMesh,
-				},
-			},
-		}
-		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
-	}
-
-	// Add ServingRuntimes (no annotations - they use .spec.multiModel)
 	for _, r := range impactedSRs {
-		obj := metav1.PartialObjectMetadata{
+		dr.ImpactedObjects = append(dr.ImpactedObjects, metav1.PartialObjectMetadata{
 			TypeMeta: resources.ServingRuntime.TypeMeta(),
 			ObjectMeta: metav1.ObjectMeta{
-				Namespace: r.Namespace,
-				Name:      r.Name,
+				Namespace: r.GetNamespace(),
+				Name:      r.GetName(),
 			},
-		}
-		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
+		})
 	}
 }

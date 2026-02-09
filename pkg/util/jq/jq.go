@@ -123,6 +123,20 @@ func Query[T any](value any, jqQuery string) (T, error) {
 	return convertedResult, nil
 }
 
+// Predicate returns a filter function that evaluates a JQ boolean expression against an
+// unstructured object. Returns true when the expression evaluates to true, false otherwise.
+// Field-not-found and type mismatch errors are treated as false (no match), not as errors.
+func Predicate(expression string) func(*unstructured.Unstructured) (bool, error) {
+	return func(obj *unstructured.Unstructured) (bool, error) {
+		result, err := Query[bool](obj, expression)
+		if err != nil {
+			return false, nil //nolint:nilerr // Missing field means no match.
+		}
+
+		return result, nil
+	}
+}
+
 // Transform applies a JQ update expression to the object, modifying it in place.
 // Supports printf-style formatting with variadic arguments.
 //

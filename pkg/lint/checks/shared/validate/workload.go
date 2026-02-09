@@ -16,12 +16,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 )
 
-// namespacedNamer is satisfied by both *unstructured.Unstructured and *metav1.PartialObjectMetadata.
-type namespacedNamer interface {
-	GetName() string
-	GetNamespace() string
-}
-
 // WorkloadRequest contains the pre-fetched data passed to the workload validation function.
 type WorkloadRequest[T any] struct {
 	// Result is the pre-created DiagnosticResult with auto-populated annotations.
@@ -44,7 +38,7 @@ type WorkloadConditionFn[T any] func(ctx context.Context, req *WorkloadRequest[T
 // WorkloadBuilder provides a fluent API for workload-based lint checks.
 // It handles resource listing, CRD-not-found handling, filtering, annotation population,
 // and auto-populating ImpactedObjects.
-type WorkloadBuilder[T namespacedNamer] struct {
+type WorkloadBuilder[T kube.NamespacedNamer] struct {
 	check        check.Check
 	target       check.Target
 	resourceType resources.ResourceType

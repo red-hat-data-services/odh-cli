@@ -33,7 +33,7 @@ func GetAnnotation(obj client.Object, key string) string {
 	return annotations[key]
 }
 
-// HasAnnotation checks if a Kubernetes object has a specific annotation with a non-empty value.
-func HasAnnotation(obj client.Object, key string) bool {
-	return GetAnnotation(obj, key) != ""
+// HasAnnotation checks if a Kubernetes object has a specific annotation matching the given value.
+func HasAnnotation(obj client.Object, key string, value string) bool {
+	return GetAnnotation(obj, key) == value
 }
