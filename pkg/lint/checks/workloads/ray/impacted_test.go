@@ -17,6 +17,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/ray"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -29,28 +30,6 @@ const (
 //nolint:gochecknoglobals // Test fixture - shared across test functions
 var listKinds = map[schema.GroupVersionResource]string{
 	resources.RayCluster.GVR(): resources.RayCluster.ListKind(),
-}
-
-func toPartialObjectMetadata(objs ...*unstructured.Unstructured) []runtime.Object {
-	result := make([]runtime.Object, 0, len(objs))
-	for _, obj := range objs {
-		pom := &metav1.PartialObjectMetadata{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: obj.GetAPIVersion(),
-				Kind:       obj.GetKind(),
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        obj.GetName(),
-				Namespace:   obj.GetNamespace(),
-				Labels:      obj.GetLabels(),
-				Annotations: obj.GetAnnotations(),
-				Finalizers:  obj.GetFinalizers(),
-			},
-		}
-		result = append(result, pom)
-	}
-
-	return result
 }
 
 func TestImpactedWorkloadsCheck_NoResources(t *testing.T) {
@@ -108,7 +87,7 @@ func TestImpactedWorkloadsCheck_WithCodeFlareFinalizer(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, rayCluster)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(rayCluster)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(rayCluster)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
@@ -159,7 +138,7 @@ func TestImpactedWorkloadsCheck_WithoutCodeFlareFinalizer(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, rayCluster)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(rayCluster)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(rayCluster)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
@@ -202,7 +181,7 @@ func TestImpactedWorkloadsCheck_NoFinalizers(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, rayCluster)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(rayCluster)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(rayCluster)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
@@ -280,7 +259,7 @@ func TestImpactedWorkloadsCheck_MultipleClusters(t *testing.T) {
 		cluster2,
 		cluster3,
 	)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(cluster1, cluster2, cluster3)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(cluster1, cluster2, cluster3)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,

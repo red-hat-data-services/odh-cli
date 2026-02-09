@@ -18,6 +18,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/notebook"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -26,28 +27,6 @@ import (
 //nolint:gochecknoglobals
 var listKinds = map[schema.GroupVersionResource]string{
 	resources.Notebook.GVR(): resources.Notebook.ListKind(),
-}
-
-func toPartialObjectMetadata(objs ...*unstructured.Unstructured) []runtime.Object {
-	result := make([]runtime.Object, 0, len(objs))
-	for _, obj := range objs {
-		pom := &metav1.PartialObjectMetadata{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: obj.GetAPIVersion(),
-				Kind:       obj.GetKind(),
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        obj.GetName(),
-				Namespace:   obj.GetNamespace(),
-				Labels:      obj.GetLabels(),
-				Annotations: obj.GetAnnotations(),
-				Finalizers:  obj.GetFinalizers(),
-			},
-		}
-		result = append(result, pom)
-	}
-
-	return result
 }
 
 func TestImpactedWorkloadsCheck_NoNotebooks(t *testing.T) {
@@ -105,7 +84,7 @@ func TestImpactedWorkloadsCheck_SingleNotebook(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, notebook1)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(notebook1)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(notebook1)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
@@ -184,7 +163,7 @@ func TestImpactedWorkloadsCheck_MultipleNotebooks(t *testing.T) {
 		notebook2,
 		notebook3,
 	)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(notebook1, notebook2, notebook3)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(notebook1, notebook2, notebook3)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,

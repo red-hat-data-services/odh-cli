@@ -17,6 +17,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/notebook"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -85,7 +86,7 @@ func TestAcceleratorMigrationCheck_NotebookWithoutAcceleratorProfile(t *testing.
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, nb)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(nb)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(nb)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
@@ -150,7 +151,7 @@ func TestAcceleratorMigrationCheck_NotebookWithExistingAcceleratorProfile(t *tes
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, nb, profile)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(nb, profile)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(nb, profile)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
@@ -209,7 +210,7 @@ func TestAcceleratorMigrationCheck_NotebookWithMissingAcceleratorProfile(t *test
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, nb)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(nb)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(nb)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
@@ -316,7 +317,7 @@ func TestAcceleratorMigrationCheck_MixedNotebooks(t *testing.T) {
 	)
 	metadataClient := metadatafake.NewSimpleMetadataClient(
 		scheme,
-		toPartialObjectMetadata(nb1, nb2, nb3, profile)...,
+		kube.ToPartialObjectMetadata(nb1, nb2, nb3, profile)...,
 	)
 
 	c := client.NewForTesting(client.TestClientConfig{
@@ -488,7 +489,7 @@ func TestAcceleratorMigrationCheck_DefaultNamespace(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, acceleratorListKinds, nb, profile)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, toPartialObjectMetadata(nb, profile)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(nb, profile)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,

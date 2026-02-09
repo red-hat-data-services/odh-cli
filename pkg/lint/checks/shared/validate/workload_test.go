@@ -21,6 +21,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
+	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
 
 	. "github.com/onsi/gomega"
 )
@@ -48,28 +49,6 @@ func newWorkloadTestCheck() *testCheck {
 	}
 }
 
-func wlToPartialObjectMetadata(objs ...*unstructured.Unstructured) []runtime.Object {
-	result := make([]runtime.Object, 0, len(objs))
-	for _, obj := range objs {
-		pom := &metav1.PartialObjectMetadata{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: obj.GetAPIVersion(),
-				Kind:       obj.GetKind(),
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:        obj.GetName(),
-				Namespace:   obj.GetNamespace(),
-				Labels:      obj.GetLabels(),
-				Annotations: obj.GetAnnotations(),
-				Finalizers:  obj.GetFinalizers(),
-			},
-		}
-		result = append(result, pom)
-	}
-
-	return result
-}
-
 func TestWorkloadBuilder_MetadataListing_NoFilter_AutoPopulate(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
@@ -93,7 +72,7 @@ func TestWorkloadBuilder_MetadataListing_NoFilter_AutoPopulate(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, notebookListKinds, nb1, nb2)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, wlToPartialObjectMetadata(nb1, nb2)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(nb1, nb2)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
@@ -280,7 +259,7 @@ func TestWorkloadBuilder_CustomImpactedObjects_SkipsAutoPopulate(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, notebookListKinds, nb)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, wlToPartialObjectMetadata(nb)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(nb)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,
@@ -498,7 +477,7 @@ func TestWorkloadBuilder_Complete_SetsConditions(t *testing.T) {
 	scheme := runtime.NewScheme()
 	_ = metav1.AddMetaToScheme(scheme)
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, notebookListKinds, nb)
-	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, wlToPartialObjectMetadata(nb)...)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, kube.ToPartialObjectMetadata(nb)...)
 
 	c := client.NewForTesting(client.TestClientConfig{
 		Dynamic:  dynamicClient,

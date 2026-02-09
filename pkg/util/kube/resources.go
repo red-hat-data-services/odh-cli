@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 
@@ -18,6 +19,31 @@ func ToUnstructured(obj runtime.Object) (*unstructured.Unstructured, error) {
 	}
 
 	return &unstructured.Unstructured{Object: unstructuredObj}, nil
+}
+
+// ToPartialObjectMetadata converts unstructured objects to runtime.Object slice
+// containing PartialObjectMetadata. This is useful for populating metadata fake
+// clients in tests.
+func ToPartialObjectMetadata(objs ...*unstructured.Unstructured) []runtime.Object {
+	result := make([]runtime.Object, 0, len(objs))
+	for _, obj := range objs {
+		pom := &metav1.PartialObjectMetadata{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: obj.GetAPIVersion(),
+				Kind:       obj.GetKind(),
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:        obj.GetName(),
+				Namespace:   obj.GetNamespace(),
+				Labels:      obj.GetLabels(),
+				Annotations: obj.GetAnnotations(),
+				Finalizers:  obj.GetFinalizers(),
+			},
+		}
+		result = append(result, pom)
+	}
+
+	return result
 }
 
 // StripFields removes specified fields from a resource using JQ.

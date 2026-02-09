@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
@@ -329,4 +330,123 @@ func TestConvertToTyped(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestToPartialObjectMetadata_SingleObject(t *testing.T) {
+	g := NewWithT(t)
+
+	obj := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "v1",
+			"kind":       "ConfigMap",
+			"metadata": map[string]any{
+				"name":      "test-cm",
+				"namespace": "default",
+				"labels": map[string]any{
+					"app": "test",
+				},
+				"annotations": map[string]any{
+					"note": "value",
+				},
+				"finalizers": []any{
+					"my-finalizer",
+				},
+			},
+		},
+	}
+
+	result := kube.ToPartialObjectMetadata(obj)
+
+	g.Expect(result).To(HaveLen(1))
+
+	pom, ok := result[0].(*metav1.PartialObjectMetadata)
+	g.Expect(ok).To(BeTrue())
+	g.Expect(pom).To(PointTo(MatchFields(IgnoreExtras, Fields{
+		"TypeMeta": MatchFields(IgnoreExtras, Fields{
+			"APIVersion": Equal("v1"),
+			"Kind":       Equal("ConfigMap"),
+		}),
+		"ObjectMeta": MatchFields(IgnoreExtras, Fields{
+			"Name":        Equal("test-cm"),
+			"Namespace":   Equal("default"),
+			"Labels":      HaveKeyWithValue("app", "test"),
+			"Annotations": HaveKeyWithValue("note", "value"),
+			"Finalizers":  ConsistOf("my-finalizer"),
+		}),
+	})))
+}
+
+func TestToPartialObjectMetadata_MultipleObjects(t *testing.T) {
+	g := NewWithT(t)
+
+	obj1 := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "apps/v1",
+			"kind":       "Deployment",
+			"metadata": map[string]any{
+				"name":      "deploy-1",
+				"namespace": "ns1",
+			},
+		},
+	}
+
+	obj2 := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "v1",
+			"kind":       "Service",
+			"metadata": map[string]any{
+				"name":      "svc-1",
+				"namespace": "ns2",
+			},
+		},
+	}
+
+	result := kube.ToPartialObjectMetadata(obj1, obj2)
+
+	g.Expect(result).To(HaveLen(2))
+
+	pom0, ok := result[0].(*metav1.PartialObjectMetadata)
+	g.Expect(ok).To(BeTrue())
+	g.Expect(pom0.Name).To(Equal("deploy-1"))
+	g.Expect(pom0.Kind).To(Equal("Deployment"))
+
+	pom1, ok := result[1].(*metav1.PartialObjectMetadata)
+	g.Expect(ok).To(BeTrue())
+	g.Expect(pom1.Name).To(Equal("svc-1"))
+	g.Expect(pom1.Kind).To(Equal("Service"))
+}
+
+func TestToPartialObjectMetadata_EmptyInput(t *testing.T) {
+	g := NewWithT(t)
+
+	result := kube.ToPartialObjectMetadata()
+
+	g.Expect(result).To(BeEmpty())
+}
+
+func TestToPartialObjectMetadata_NilMetadataFields(t *testing.T) {
+	g := NewWithT(t)
+
+	// Object with no labels, annotations, or finalizers.
+	obj := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "v1",
+			"kind":       "Pod",
+			"metadata": map[string]any{
+				"name":      "bare-pod",
+				"namespace": "default",
+			},
+		},
+	}
+
+	result := kube.ToPartialObjectMetadata(obj)
+
+	g.Expect(result).To(HaveLen(1))
+
+	pom, ok := result[0].(*metav1.PartialObjectMetadata)
+	g.Expect(ok).To(BeTrue())
+	g.Expect(pom.Name).To(Equal("bare-pod"))
+	g.Expect(pom.Labels).To(BeNil())
+	g.Expect(pom.Annotations).To(BeNil())
+	g.Expect(pom.Finalizers).To(BeNil())
 }
