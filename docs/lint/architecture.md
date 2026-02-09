@@ -184,8 +184,10 @@ Each condition has an `Impact` field indicating the upgrade impact:
 
 Impact is auto-derived from Status unless explicitly overridden:
 - Status=True → Impact=None
-- Status=False → Impact=Blocking
+- Status=False → Impact=Advisory
 - Status=Unknown → Impact=Advisory
+
+Checks that truly block upgrades must explicitly opt in via `WithImpact(result.ImpactBlocking)`.
 
 Validation ensures valid Status/Impact combinations:
 - Status=True MUST have Impact=None

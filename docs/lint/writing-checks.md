@@ -274,7 +274,7 @@ condition := check.NewCondition(
     "Dashboard component is ready",
 )
 
-// Failure: Status=False → Impact=Blocking (auto-derived)
+// Failure: Status=False → Impact=Advisory (auto-derived)
 condition := check.NewCondition(
     check.ConditionTypeConfigured,
     metav1.ConditionFalse,
@@ -282,13 +282,13 @@ condition := check.NewCondition(
     "Required configuration parameter 'replicas' not set",
 )
 
-// Override impact: Status=False but non-blocking
+// Override impact: Status=False and blocking
 condition := check.NewCondition(
     check.ConditionTypeCompatible,
     metav1.ConditionFalse,
     check.ReasonDeprecated,
     "TrainingOperator is deprecated in RHOAI 3.3",
-    check.WithImpact(result.ImpactAdvisory),  // Override to advisory
+    check.WithImpact(result.ImpactBlocking),  // Override to blocking
 )
 
 // Printf-style formatting
@@ -304,13 +304,14 @@ condition := check.NewCondition(
 
 **Impact Auto-Derivation Rules:**
 - Status=True → Impact=None (requirement met, no issues)
-- Status=False → Impact=Blocking (requirement not met, blocks upgrade)
+- Status=False → Impact=Advisory (requirement not met, warning)
 - Status=Unknown → Impact=Advisory (unable to determine, proceed with caution)
+
+Checks that truly block upgrades must explicitly opt in via `WithImpact(result.ImpactBlocking)`.
 
 **Overriding Impact:**
 Use `check.WithImpact()` functional option when the default impact is not appropriate:
-- Deprecation warnings (Status=False but non-blocking)
-- Advisory notices (Status=False but upgrade can proceed)
+- Blocking issues (Status=False but must prevent upgrade)
 
 **Validation:**
 Conditions are validated at creation time. Invalid combinations will panic:
