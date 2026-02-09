@@ -2,6 +2,7 @@ package trainingoperator
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -55,7 +56,12 @@ func (c *ImpactedWorkloadsCheck) Validate(
 					Name:      job.GetName(),
 				}
 
-				if isJobCompleted(job) {
+				done, err := isJobCompleted(job)
+				if err != nil {
+					return fmt.Errorf("checking job %s/%s completion: %w", nsName.Namespace, nsName.Name, err)
+				}
+
+				if done {
 					completed = append(completed, nsName)
 				} else {
 					active = append(active, nsName)
@@ -63,11 +69,6 @@ func (c *ImpactedWorkloadsCheck) Validate(
 			}
 
 			results.SetCondition(req.Result, newPyTorchJobCondition(len(active), len(completed)))
-
-			// Custom ImpactedObjects with status annotations — prevents auto-population.
-			if len(active)+len(completed) > 0 {
-				populateImpactedObjects(req.Result, active, completed)
-			}
 
 			return nil
 		})

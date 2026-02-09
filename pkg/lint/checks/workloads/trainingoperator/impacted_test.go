@@ -108,7 +108,6 @@ func TestImpactedWorkloadsCheck_ActiveJobs(t *testing.T) {
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
-	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "active"))
 }
 
 func TestImpactedWorkloadsCheck_CompletedJobsSucceeded(t *testing.T) {
@@ -160,7 +159,6 @@ func TestImpactedWorkloadsCheck_CompletedJobsSucceeded(t *testing.T) {
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
-	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "completed"))
 }
 
 func TestImpactedWorkloadsCheck_CompletedJobsFailed(t *testing.T) {
@@ -212,7 +210,6 @@ func TestImpactedWorkloadsCheck_CompletedJobsFailed(t *testing.T) {
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
-	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "completed"))
 }
 
 func TestImpactedWorkloadsCheck_MixedActiveAndCompleted(t *testing.T) {
@@ -351,7 +348,6 @@ func TestImpactedWorkloadsCheck_JobWithoutStatus(t *testing.T) {
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
-	g.Expect(result.ImpactedObjects[0].Annotations).To(HaveKeyWithValue("status", "active"))
 }
 
 func TestImpactedWorkloadsCheck_Metadata(t *testing.T) {

@@ -1,13 +1,14 @@
 package trainingoperator
 
 import (
+	"errors"
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 )
 
@@ -59,47 +60,18 @@ func newPyTorchJobCondition(
 	)
 }
 
-func populateImpactedObjects(
-	dr *result.DiagnosticResult,
-	activeJobs []types.NamespacedName,
-	completedJobs []types.NamespacedName,
-) {
-	totalCount := len(activeJobs) + len(completedJobs)
-	dr.ImpactedObjects = make([]metav1.PartialObjectMetadata, 0, totalCount)
-
-	for _, job := range activeJobs {
-		obj := metav1.PartialObjectMetadata{
-			TypeMeta: resources.PyTorchJob.TypeMeta(),
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: job.Namespace,
-				Name:      job.Name,
-				Annotations: map[string]string{
-					"status": "active",
-				},
-			},
-		}
-		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
-	}
-
-	for _, job := range completedJobs {
-		obj := metav1.PartialObjectMetadata{
-			TypeMeta: resources.PyTorchJob.TypeMeta(),
-			ObjectMeta: metav1.ObjectMeta{
-				Namespace: job.Namespace,
-				Name:      job.Name,
-				Annotations: map[string]string{
-					"status": "completed",
-				},
-			},
-		}
-		dr.ImpactedObjects = append(dr.ImpactedObjects, obj)
-	}
-}
-
-func isJobCompleted(job *unstructured.Unstructured) bool {
+func isJobCompleted(job *unstructured.Unstructured) (bool, error) {
 	conditions, err := jq.Query[[]any](job, ".status.conditions")
-	if err != nil || len(conditions) == 0 {
-		return false
+	if errors.Is(err, jq.ErrNotFound) {
+		return false, nil
+	}
+
+	if err != nil {
+		return false, fmt.Errorf("querying job conditions: %w", err)
+	}
+
+	if len(conditions) == 0 {
+		return false, nil
 	}
 
 	for _, conditionAny := range conditions {
@@ -112,9 +84,9 @@ func isJobCompleted(job *unstructured.Unstructured) bool {
 		status, _ := condition["status"].(string)
 
 		if (condType == "Succeeded" || condType == "Failed") && status == "True" {
-			return true
+			return true, nil
 		}
 	}
 
-	return false
+	return false, nil
 }
