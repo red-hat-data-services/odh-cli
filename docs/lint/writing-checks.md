@@ -18,7 +18,7 @@ type Check interface {
     Group() CheckGroup
     CheckKind() string
     CheckType() string
-    CanApply(ctx context.Context, target Target) bool
+    CanApply(ctx context.Context, target Target) (bool, error)
     Validate(ctx context.Context, target Target) (*result.DiagnosticResult, error)
 }
 ```
@@ -65,9 +65,9 @@ func NewCheck() *Check {
 }
 
 // CanApply determines if this check should run.
-func (c *Check) CanApply(_ context.Context, _ check.Target) bool {
+func (c *Check) CanApply(_ context.Context, _ check.Target) (bool, error) {
     // Check applies to all versions
-    return true
+    return true, nil
 }
 
 // Validate executes the check and returns (result, error).
@@ -176,14 +176,14 @@ The `CanApply` method determines if a lint check is applicable based on version 
 Lint checks detect their execution mode by comparing versions:
 
 ```go
-func (c *Check) CanApply(_ context.Context, target check.Target) bool {
+func (c *Check) CanApply(_ context.Context, target check.Target) (bool, error) {
     // Version fields are *semver.Version
     currentVer := target.CurrentVersion
     targetVer := target.TargetVersion
 
     // Handle nil versions
     if currentVer == nil || targetVer == nil {
-        return false
+        return false, nil
     }
 
     // Lint mode: validating current cluster state
@@ -194,10 +194,10 @@ func (c *Check) CanApply(_ context.Context, target check.Target) bool {
 
     // Example: check only applies when upgrading to 3.x
     if isUpgradeMode && targetVer.Major == 3 {
-        return true
+        return true, nil
     }
 
-    return false
+    return false, nil
 }
 ```
 
@@ -205,26 +205,26 @@ func (c *Check) CanApply(_ context.Context, target check.Target) bool {
 
 **Check applies to all versions:**
 ```go
-func (c *Check) CanApply(_ context.Context, _ check.Target) bool {
-    return true
+func (c *Check) CanApply(_ context.Context, _ check.Target) (bool, error) {
+    return true, nil
 }
 ```
 
 **Check applies only in upgrade mode:**
 ```go
-func (c *Check) CanApply(_ context.Context, target check.Target) bool {
+func (c *Check) CanApply(_ context.Context, target check.Target) (bool, error) {
     if target.CurrentVersion == nil || target.TargetVersion == nil {
-        return false
+        return false, nil
     }
-    return !target.CurrentVersion.EQ(*target.TargetVersion)
+    return !target.CurrentVersion.EQ(*target.TargetVersion), nil
 }
 ```
 
 **Check applies when upgrading to specific version:**
 ```go
-func (c *Check) CanApply(_ context.Context, target check.Target) bool {
+func (c *Check) CanApply(_ context.Context, target check.Target) (bool, error) {
     // Use version helper for clean version checks
-    return version.IsVersionAtLeast(target.TargetVersion, 3, 0)
+    return version.IsVersionAtLeast(target.TargetVersion, 3, 0), nil
 }
 ```
 
@@ -828,8 +828,8 @@ func NewRemovalCheck() *RemovalCheck {
 }
 
 // CanApply returns whether this check should run for the given target.
-func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) bool {
-    return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion)
+func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) (bool, error) {
+    return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion), nil
 }
 
 // Validate executes the check against the provided target.
