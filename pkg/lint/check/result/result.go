@@ -21,7 +21,6 @@ const (
 	errMsgConditionReasonEmpty    = "condition %q has empty reason"
 	errMsgConditionInvalidStatus  = "condition %q has invalid status (must be True, False, or Unknown)"
 	errMsgAnnotationInvalidFormat = "annotation key %q must be in domain/key format (e.g., openshiftai.io/version)"
-	errMsgConditionInvalidImpact  = "condition %q has invalid impact (must be blocking or advisory)"
 )
 
 // Impact represents the upgrade impact level of a diagnostic condition.

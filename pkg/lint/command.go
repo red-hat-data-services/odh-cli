@@ -126,8 +126,8 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescTimeout)
 
 	// Throttling settings
-	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
-	fs.IntVar(&c.Burst, "burst", c.Burst, "Kubernetes API burst capacity")
+	fs.Float32Var(&c.QPS, "qps", c.QPS, flagDescQPS)
+	fs.IntVar(&c.Burst, "burst", c.Burst, flagDescBurst)
 }
 
 // Complete populates Options and performs pre-validation setup.

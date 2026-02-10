@@ -22,7 +22,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/util/iostreams"
 )
 
-// OutputFormat represents the output format for doctor commands.
+// OutputFormat represents the output format for lint commands.
 type OutputFormat string
 
 const (
@@ -30,7 +30,7 @@ const (
 	OutputFormatJSON  OutputFormat = "json"
 	OutputFormatYAML  OutputFormat = "yaml"
 
-	// DefaultTimeout is the default timeout for doctor commands.
+	// DefaultTimeout is the default timeout for lint commands.
 	DefaultTimeout = 5 * time.Minute
 )
 
@@ -60,7 +60,7 @@ func (o OutputFormat) Validate() error {
 	}
 }
 
-// SharedOptions contains options common to all doctor subcommands.
+// SharedOptions contains options common to all lint subcommands.
 type SharedOptions struct {
 	// IO provides structured access to stdin, stdout, stderr with convenience methods
 	IO iostreams.Interface

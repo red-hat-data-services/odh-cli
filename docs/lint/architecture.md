@@ -22,7 +22,7 @@ type Check interface {
     Group() CheckGroup
     CheckKind() string
     CheckType() string
-    CanApply(ctx context.Context, target Target) bool
+    CanApply(ctx context.Context, target Target) (bool, error)
     Validate(ctx context.Context, target Target) (*result.DiagnosticResult, error)
 }
 ```
@@ -107,7 +107,8 @@ func NewCommand(
     // Services (1)
     registry.MustRegister(servicemesh.NewRemovalCheck())
 
-    // Workloads (7)
+    // Workloads (8)
+    registry.MustRegister(guardrails.NewImpactedWorkloadsCheck())
     registry.MustRegister(guardrails.NewOtelMigrationCheck())
     registry.MustRegister(kserveworkloads.NewAcceleratorMigrationCheck())
     registry.MustRegister(kserveworkloads.NewImpactedWorkloadsCheck())

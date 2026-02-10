@@ -8,6 +8,8 @@ const (
 	flagDescFailWarning   = "exit with error if warning or critical findings are detected"
 	flagDescVerbose       = "show detailed output"
 	flagDescTimeout       = "operation timeout (e.g., 10m, 30m)"
+	flagDescQPS           = "Kubernetes API QPS limit (queries per second)"
+	flagDescBurst         = "Kubernetes API burst capacity"
 )
 
 const flagDescChecks = `check selector patterns (glob patterns or categories):
