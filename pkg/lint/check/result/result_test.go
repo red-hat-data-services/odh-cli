@@ -4,11 +4,14 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/resources"
 
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 )
 
 // T014: DiagnosticResult struct creation tests
@@ -727,4 +730,122 @@ func TestDiagnosticResult_ValidateRequiredFieldsWithAnnotations(t *testing.T) {
 			g.Expect(err.Error()).To(Equal(tt.errorMsg))
 		})
 	}
+}
+
+// SetCondition method tests
+
+func TestSetCondition_AddNew(t *testing.T) {
+	g := NewWithT(t)
+
+	dr := result.New("component", "test", "check", "description")
+	dr.SetCondition(check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, check.WithReason("TestReason"), check.WithMessage("test message")))
+
+	g.Expect(dr.Status.Conditions).To(HaveLen(1))
+	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":    Equal(check.ConditionTypeCompatible),
+		"Status":  Equal(metav1.ConditionTrue),
+		"Reason":  Equal("TestReason"),
+		"Message": Equal("test message"),
+	}))
+}
+
+func TestSetCondition_UpdateExisting(t *testing.T) {
+	g := NewWithT(t)
+
+	dr := result.New("component", "test", "check", "description")
+
+	dr.SetCondition(check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, check.WithReason("reason1"), check.WithMessage("message1")))
+	g.Expect(dr.Status.Conditions).To(HaveLen(1))
+
+	dr.SetCondition(check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionFalse, check.WithReason("reason2"), check.WithMessage("message2")))
+	g.Expect(dr.Status.Conditions).To(HaveLen(1))
+	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal("reason2"),
+		"Message": Equal("message2"),
+	}))
+}
+
+func TestSetCondition_MultipleConditionTypes(t *testing.T) {
+	g := NewWithT(t)
+
+	dr := result.New("component", "test", "check", "description")
+
+	dr.SetCondition(check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionTrue, check.WithReason("reason1"), check.WithMessage("message1")))
+	g.Expect(dr.Status.Conditions).To(HaveLen(1))
+
+	dr.SetCondition(check.NewCondition(check.ConditionTypeAvailable, metav1.ConditionTrue, check.WithReason("reason2"), check.WithMessage("message2")))
+	g.Expect(dr.Status.Conditions).To(HaveLen(2))
+
+	dr.SetCondition(check.NewCondition(check.ConditionTypeCompatible, metav1.ConditionFalse, check.WithReason("reason3"), check.WithMessage("message3")))
+	g.Expect(dr.Status.Conditions).To(HaveLen(2))
+
+	g.Expect(dr.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(check.ConditionTypeCompatible),
+		"Status": Equal(metav1.ConditionFalse),
+	}))
+	g.Expect(dr.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(check.ConditionTypeAvailable),
+		"Status": Equal(metav1.ConditionTrue),
+	}))
+}
+
+// SetImpactedObjects and AddImpactedObjects tests
+
+func TestSetImpactedObjects(t *testing.T) {
+	g := NewWithT(t)
+
+	dr := result.New("component", "test", "check", "description")
+
+	names := []types.NamespacedName{
+		{Namespace: "ns1", Name: "obj1"},
+		{Namespace: "ns2", Name: "obj2"},
+	}
+
+	dr.SetImpactedObjects(resources.Notebook, names)
+
+	g.Expect(dr.ImpactedObjects).To(HaveLen(2))
+	g.Expect(dr.ImpactedObjects[0].Name).To(Equal("obj1"))
+	g.Expect(dr.ImpactedObjects[0].Namespace).To(Equal("ns1"))
+	g.Expect(dr.ImpactedObjects[1].Name).To(Equal("obj2"))
+	g.Expect(dr.ImpactedObjects[1].Namespace).To(Equal("ns2"))
+}
+
+func TestSetImpactedObjects_Replaces(t *testing.T) {
+	g := NewWithT(t)
+
+	dr := result.New("component", "test", "check", "description")
+
+	dr.SetImpactedObjects(resources.Notebook, []types.NamespacedName{
+		{Namespace: "ns1", Name: "obj1"},
+	})
+	g.Expect(dr.ImpactedObjects).To(HaveLen(1))
+
+	dr.SetImpactedObjects(resources.Notebook, []types.NamespacedName{
+		{Namespace: "ns2", Name: "obj2"},
+		{Namespace: "ns3", Name: "obj3"},
+	})
+	g.Expect(dr.ImpactedObjects).To(HaveLen(2))
+	g.Expect(dr.ImpactedObjects[0].Name).To(Equal("obj2"))
+	g.Expect(dr.ImpactedObjects[1].Name).To(Equal("obj3"))
+}
+
+func TestAddImpactedObjects(t *testing.T) {
+	g := NewWithT(t)
+
+	dr := result.New("component", "test", "check", "description")
+
+	dr.AddImpactedObjects(resources.Notebook, []types.NamespacedName{
+		{Namespace: "ns1", Name: "obj1"},
+	})
+	g.Expect(dr.ImpactedObjects).To(HaveLen(1))
+
+	dr.AddImpactedObjects(resources.Notebook, []types.NamespacedName{
+		{Namespace: "ns2", Name: "obj2"},
+		{Namespace: "ns3", Name: "obj3"},
+	})
+	g.Expect(dr.ImpactedObjects).To(HaveLen(3))
+	g.Expect(dr.ImpactedObjects[0].Name).To(Equal("obj1"))
+	g.Expect(dr.ImpactedObjects[1].Name).To(Equal("obj2"))
+	g.Expect(dr.ImpactedObjects[2].Name).To(Equal("obj3"))
 }

@@ -14,7 +14,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 )
 
@@ -115,7 +114,7 @@ func Removal(format string, opts ...check.ConditionOption) ComponentValidateFn {
 			check.WithReason(check.ReasonVersionIncompatible),
 			check.WithMessage(format, req.ManagementState),
 		}, opts...)
-		results.SetCondition(req.Result, check.NewCondition(
+		req.Result.SetCondition(check.NewCondition(
 			check.ConditionTypeCompatible,
 			metav1.ConditionFalse,
 			allOpts...,
@@ -172,7 +171,7 @@ func (b *ComponentBuilder) Run(
 			b.check.CheckType(),
 			b.check.Description(),
 		)
-		results.SetCondition(dr, check.NewCondition(
+		dr.SetCondition(check.NewCondition(
 			check.ConditionTypeConfigured,
 			metav1.ConditionTrue,
 			check.WithReason(check.ReasonRequirementsMet),
@@ -207,7 +206,7 @@ func (b *ComponentBuilder) Run(
 		ns, nsErr := client.GetApplicationsNamespace(ctx, b.target.Client)
 		switch {
 		case apierrors.IsNotFound(nsErr):
-			results.SetCondition(dr, check.NewCondition(
+			dr.SetCondition(check.NewCondition(
 				check.ConditionTypeAvailable,
 				metav1.ConditionFalse,
 				check.WithReason(check.ReasonResourceNotFound),
@@ -243,7 +242,7 @@ func (b *ComponentBuilder) Complete(
 		}
 
 		for _, c := range conditions {
-			results.SetCondition(req.Result, c)
+			req.Result.SetCondition(c)
 		}
 
 		return nil

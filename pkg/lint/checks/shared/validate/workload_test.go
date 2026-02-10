@@ -17,7 +17,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	checkbase "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -89,7 +88,7 @@ func TestWorkloadBuilder_MetadataListing_NoFilter_AutoPopulate(t *testing.T) {
 	dr, err := validate.WorkloadsMetadata(chk, target, resources.Notebook).
 		Run(ctx, func(_ context.Context, req *validate.WorkloadRequest[*metav1.PartialObjectMetadata]) error {
 			g.Expect(req.Items).To(HaveLen(2))
-			results.SetCondition(req.Result, check.NewCondition(
+			req.Result.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),
@@ -157,7 +156,7 @@ func TestWorkloadBuilder_FullObjectListing_WithFilter(t *testing.T) {
 		Run(ctx, func(_ context.Context, req *validate.WorkloadRequest[*unstructured.Unstructured]) error {
 			g.Expect(req.Items).To(HaveLen(1))
 			g.Expect(req.Items[0].GetName()).To(Equal("job-match"))
-			results.SetCondition(req.Result, check.NewCondition(
+			req.Result.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),
@@ -242,7 +241,7 @@ func TestWorkloadBuilder_CRDNotFound_EmptyItems(t *testing.T) {
 		Run(ctx, func(_ context.Context, req *validate.WorkloadRequest[*metav1.PartialObjectMetadata]) error {
 			validationCalled = true
 			g.Expect(req.Items).To(BeEmpty())
-			results.SetCondition(req.Result, check.NewCondition(
+			req.Result.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),
@@ -290,7 +289,7 @@ func TestWorkloadBuilder_CustomImpactedObjects_SkipsAutoPopulate(t *testing.T) {
 
 	dr, err := validate.WorkloadsMetadata(chk, target, resources.Notebook).
 		Run(ctx, func(_ context.Context, req *validate.WorkloadRequest[*metav1.PartialObjectMetadata]) error {
-			results.SetCondition(req.Result, check.NewCondition(
+			req.Result.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),
@@ -371,7 +370,7 @@ func TestWorkloadBuilder_NoTargetVersion_AnnotationNotSet(t *testing.T) {
 
 	dr, err := validate.WorkloadsMetadata(chk, target, resources.Notebook).
 		Run(ctx, func(_ context.Context, req *validate.WorkloadRequest[*metav1.PartialObjectMetadata]) error {
-			results.SetCondition(req.Result, check.NewCondition(
+			req.Result.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),
@@ -410,7 +409,7 @@ func TestWorkloadBuilder_EmptyItems_NoAutoPopulate(t *testing.T) {
 	dr, err := validate.WorkloadsMetadata(chk, target, resources.Notebook).
 		Run(ctx, func(_ context.Context, req *validate.WorkloadRequest[*metav1.PartialObjectMetadata]) error {
 			g.Expect(req.Items).To(BeEmpty())
-			results.SetCondition(req.Result, check.NewCondition(
+			req.Result.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),
@@ -447,7 +446,7 @@ func TestWorkloadBuilder_ClientIsPassedToRequest(t *testing.T) {
 	dr, err := validate.WorkloadsMetadata(chk, target, resources.Notebook).
 		Run(ctx, func(_ context.Context, req *validate.WorkloadRequest[*metav1.PartialObjectMetadata]) error {
 			g.Expect(req.Client).ToNot(BeNil())
-			results.SetCondition(req.Result, check.NewCondition(
+			req.Result.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),
@@ -482,7 +481,7 @@ func TestWorkloadBuilder_ResultMetadata(t *testing.T) {
 
 	dr, err := validate.WorkloadsMetadata(chk, target, resources.Notebook).
 		Run(ctx, func(_ context.Context, req *validate.WorkloadRequest[*metav1.PartialObjectMetadata]) error {
-			results.SetCondition(req.Result, check.NewCondition(
+			req.Result.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),

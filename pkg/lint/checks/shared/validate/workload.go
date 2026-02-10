@@ -10,7 +10,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
@@ -145,7 +144,7 @@ func (b *WorkloadBuilder[T]) Run(
 
 	// Auto-populate ImpactedObjects if the mapper did not set them.
 	if dr.ImpactedObjects == nil && len(items) > 0 {
-		results.PopulateImpactedObjects(dr, b.resourceType, kube.ToNamespacedNames(items))
+		dr.SetImpactedObjects(b.resourceType, kube.ToNamespacedNames(items))
 	}
 
 	return dr, nil
@@ -164,7 +163,7 @@ func (b *WorkloadBuilder[T]) Complete(
 		}
 
 		for _, c := range conditions {
-			results.SetCondition(req.Result, c)
+			req.Result.SetCondition(c)
 		}
 
 		return nil

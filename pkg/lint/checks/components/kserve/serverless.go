@@ -10,7 +10,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
@@ -51,7 +50,7 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Targ
 
 			switch {
 			case errors.Is(err, jq.ErrNotFound):
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
 					check.WithReason(check.ReasonVersionCompatible),
@@ -60,7 +59,7 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Targ
 			case err != nil:
 				return fmt.Errorf("querying kserve serving managementState: %w", err)
 			case state == check.ManagementStateManaged || state == check.ManagementStateUnmanaged:
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionFalse,
 					check.WithReason(check.ReasonVersionIncompatible),
@@ -68,7 +67,7 @@ func (c *ServerlessRemovalCheck) Validate(ctx context.Context, target check.Targ
 					check.WithRemediation(c.CheckRemediation),
 				))
 			default:
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
 					check.WithReason(check.ReasonVersionCompatible),

@@ -10,7 +10,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -61,7 +60,7 @@ func (c *InferenceServiceConfigCheck) Validate(ctx context.Context, target check
 
 			switch {
 			case apierrors.IsNotFound(err):
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
 					check.WithReason(check.ReasonVersionCompatible),
@@ -71,14 +70,14 @@ func (c *InferenceServiceConfigCheck) Validate(ctx context.Context, target check
 			case err != nil:
 				return fmt.Errorf("getting inferenceservice-config ConfigMap: %w", err)
 			case kube.IsManaged(res):
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
 					check.WithReason(check.ReasonVersionCompatible),
 					check.WithMessage("inferenceservice-config ConfigMap is managed by operator - ready for RHOAI 3.x upgrade"),
 				))
 			default:
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeConfigured,
 					metav1.ConditionFalse,
 					check.WithReason(check.ReasonConfigurationInvalid),

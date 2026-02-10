@@ -10,7 +10,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/kube"
@@ -58,7 +57,7 @@ func ValidateResources(
 
 	// Add condition based on findings.
 	if totalCount == 0 {
-		results.SetCondition(dr, check.NewCondition(
+		dr.SetCondition(check.NewCondition(
 			check.ConditionTypeMigrationRequired,
 			metav1.ConditionTrue,
 			check.WithReason(check.ReasonNoMigrationRequired),
@@ -80,14 +79,14 @@ func ValidateResources(
 		opts = append(opts, check.WithRemediation(cfg.Remediation))
 	}
 
-	results.SetCondition(dr, check.NewCondition(
+	dr.SetCondition(check.NewCondition(
 		check.ConditionTypeMigrationRequired,
 		metav1.ConditionFalse,
 		opts...,
 	))
 
 	// Populate ImpactedObjects.
-	results.PopulateImpactedObjects(dr, cfg.ResourceType, profileNames)
+	dr.SetImpactedObjects(cfg.ResourceType, profileNames)
 
 	return nil
 }

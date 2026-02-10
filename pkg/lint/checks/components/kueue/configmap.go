@@ -10,7 +10,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -62,7 +61,7 @@ func (c *ConfigMapManagedCheck) Validate(ctx context.Context, target check.Targe
 
 			switch {
 			case apierrors.IsNotFound(err):
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
 					check.WithReason(check.ReasonVersionCompatible),
@@ -71,7 +70,7 @@ func (c *ConfigMapManagedCheck) Validate(ctx context.Context, target check.Targe
 			case err != nil:
 				return fmt.Errorf("getting ConfigMap %s/%s: %w", req.ApplicationsNamespace, configMapName, err)
 			case kube.IsManaged(res):
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
 					check.WithReason(check.ReasonVersionCompatible),
@@ -79,7 +78,7 @@ func (c *ConfigMapManagedCheck) Validate(ctx context.Context, target check.Targe
 						req.ApplicationsNamespace, configMapName, kube.AnnotationManaged),
 				))
 			default:
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeConfigured,
 					metav1.ConditionFalse,
 					check.WithReason(check.ReasonConfigurationInvalid),

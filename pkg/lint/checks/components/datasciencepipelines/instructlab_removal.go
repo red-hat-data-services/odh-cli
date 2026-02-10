@@ -13,7 +13,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -80,7 +79,7 @@ func (c *InstructLabRemovalCheck) Validate(ctx context.Context, target check.Tar
 			req.Result.Annotations[check.AnnotationImpactedWorkloadCount] = strconv.Itoa(len(impactedDSPAs))
 
 			if len(impactedDSPAs) > 0 {
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionFalse,
 					check.WithReason(check.ReasonFeatureRemoved),
@@ -89,12 +88,12 @@ func (c *InstructLabRemovalCheck) Validate(ctx context.Context, target check.Tar
 					check.WithRemediation(c.CheckRemediation),
 				))
 
-				results.PopulateImpactedObjects(req.Result, usedResourceType, impactedDSPAs)
+				req.Result.SetImpactedObjects(usedResourceType, impactedDSPAs)
 
 				return nil
 			}
 
-			results.SetCondition(req.Result, check.NewCondition(
+			req.Result.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),

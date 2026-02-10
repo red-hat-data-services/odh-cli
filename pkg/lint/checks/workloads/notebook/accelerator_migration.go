@@ -11,7 +11,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/accelerator"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
@@ -69,7 +68,7 @@ func (c *AcceleratorMigrationCheck) Validate(
 	)
 
 	if totalImpacted > 0 {
-		results.PopulateImpactedObjects(dr, resources.Notebook, impacted)
+		dr.SetImpactedObjects(resources.Notebook, impacted)
 	}
 
 	return dr, nil

@@ -6,6 +6,9 @@ import (
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/lburgazzoli/odh-cli/pkg/resources"
 )
 
 const (
@@ -304,6 +307,55 @@ func (r *DiagnosticResult) GetStatusString() string {
 	}
 
 	return "Pass"
+}
+
+// SetCondition updates or adds a condition to the diagnostic result.
+// If a condition with the same type already exists, it updates it.
+// If no condition with that type exists, it adds a new one.
+func (r *DiagnosticResult) SetCondition(condition Condition) {
+	for i := range r.Status.Conditions {
+		if r.Status.Conditions[i].Type == condition.Type {
+			r.Status.Conditions[i] = condition
+
+			return
+		}
+	}
+
+	r.Status.Conditions = append(r.Status.Conditions, condition)
+}
+
+// SetImpactedObjects replaces all impacted objects from a list of NamespacedNames.
+func (r *DiagnosticResult) SetImpactedObjects(
+	resourceType resources.ResourceType,
+	names []types.NamespacedName,
+) {
+	r.ImpactedObjects = make([]metav1.PartialObjectMetadata, 0, len(names))
+
+	for _, n := range names {
+		r.ImpactedObjects = append(r.ImpactedObjects, metav1.PartialObjectMetadata{
+			TypeMeta: resourceType.TypeMeta(),
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: n.Namespace,
+				Name:      n.Name,
+			},
+		})
+	}
+}
+
+// AddImpactedObjects appends impacted objects from a list of NamespacedNames.
+func (r *DiagnosticResult) AddImpactedObjects(
+	resourceType resources.ResourceType,
+	names []types.NamespacedName,
+) {
+	for _, n := range names {
+		r.ImpactedObjects = append(r.ImpactedObjects, metav1.PartialObjectMetadata{
+			TypeMeta: resourceType.TypeMeta(),
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: n.Namespace,
+				Name:      n.Name,
+			},
+		})
+	}
 }
 
 // DiagnosticResultList represents a list of diagnostic results.

@@ -10,7 +10,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -55,21 +54,21 @@ func (c *Check) Validate(
 
 	switch {
 	case err != nil:
-		results.SetCondition(dr, check.NewCondition(
+		dr.SetCondition(check.NewCondition(
 			check.ConditionTypeCompatible,
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonInsufficientData),
 			check.WithMessage("Unable to detect OpenShift version: %s. RHOAI 3.x requires OpenShift %s or later", err.Error(), minVersion.String()),
 		))
 	case ver.GTE(minVersion):
-		results.SetCondition(dr, check.NewCondition(
+		dr.SetCondition(check.NewCondition(
 			check.ConditionTypeCompatible,
 			metav1.ConditionTrue,
 			check.WithReason(check.ReasonVersionCompatible),
 			check.WithMessage("OpenShift %s meets RHOAI 3.x minimum version requirement (%s+)", ver.String(), minVersion.String()),
 		))
 	default:
-		results.SetCondition(dr, check.NewCondition(
+		dr.SetCondition(check.NewCondition(
 			check.ConditionTypeCompatible,
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonVersionIncompatible),

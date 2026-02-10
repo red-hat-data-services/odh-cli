@@ -18,7 +18,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -146,7 +145,7 @@ func TestComponentBuilder(t *testing.T) {
 				g.Expect(req.ManagementState).To(Equal(check.ManagementStateManaged))
 				g.Expect(req.DSC).ToNot(BeNil())
 				g.Expect(req.Client).ToNot(BeNil())
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
 					check.WithReason(check.ReasonVersionCompatible),
@@ -187,7 +186,7 @@ func TestComponentBuilder(t *testing.T) {
 			Run(ctx, func(_ context.Context, req *validate.ComponentRequest) error {
 				validationCalled = true
 				g.Expect(req.ManagementState).To(Equal(check.ManagementStateRemoved))
-				results.SetCondition(req.Result, check.NewCondition(
+				req.Result.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
 					check.WithReason(check.ReasonVersionCompatible),
@@ -346,7 +345,7 @@ func TestDSCIBuilder(t *testing.T) {
 		dr, err := validate.DSCI(chk).
 			Run(ctx, target, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
 				validationCalled = true
-				results.SetCondition(dr, check.NewCondition(
+				dr.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
 					metav1.ConditionTrue,
 					check.WithReason(check.ReasonVersionCompatible),

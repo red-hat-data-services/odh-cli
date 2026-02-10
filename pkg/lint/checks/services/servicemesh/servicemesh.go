@@ -11,7 +11,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/results"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/jq"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
@@ -50,7 +49,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 
 		switch {
 		case errors.Is(err, jq.ErrNotFound):
-			results.SetCondition(dr, check.NewCondition(
+			dr.SetCondition(check.NewCondition(
 				check.ConditionTypeConfigured,
 				metav1.ConditionFalse,
 				check.WithReason(check.ReasonResourceNotFound),
@@ -59,7 +58,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 		case err != nil:
 			return fmt.Errorf("querying servicemesh managementState: %w", err)
 		case managementState == check.ManagementStateManaged || managementState == check.ManagementStateUnmanaged:
-			results.SetCondition(dr, check.NewCondition(
+			dr.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionFalse,
 				check.WithReason(check.ReasonVersionIncompatible),
@@ -67,7 +66,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 				check.WithRemediation(c.CheckRemediation),
 			))
 		default:
-			results.SetCondition(dr, check.NewCondition(
+			dr.SetCondition(check.NewCondition(
 				check.ConditionTypeCompatible,
 				metav1.ConditionTrue,
 				check.WithReason(check.ReasonVersionCompatible),
