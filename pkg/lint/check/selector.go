@@ -5,6 +5,15 @@ import (
 	"path"
 )
 
+// Selector shortcut names used in CLI --checks flag.
+// These are plural user-facing names that map to internal CheckGroup values.
+const (
+	SelectorComponents   = "components"
+	SelectorServices     = "services"
+	SelectorWorkloads    = "workloads"
+	SelectorDependencies = "dependencies"
+)
+
 // matchesPattern returns true if the check matches the selector pattern
 // Pattern can be:
 //   - Wildcard: "*" matches all checks
@@ -19,13 +28,13 @@ func matchesPattern(check Check, pattern string) (bool, error) {
 
 	// Group shortcuts
 	switch pattern {
-	case "components":
+	case SelectorComponents:
 		return check.Group() == GroupComponent, nil
-	case "services":
+	case SelectorServices:
 		return check.Group() == GroupService, nil
-	case "workloads":
+	case SelectorWorkloads:
 		return check.Group() == GroupWorkload, nil
-	case "dependencies":
+	case SelectorDependencies:
 		return check.Group() == GroupDependency, nil
 	}
 
