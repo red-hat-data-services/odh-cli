@@ -186,7 +186,7 @@ func TestAcceleratorMigrationCheck_NotebookWithMissingAcceleratorProfile(t *test
 		"Type":    Equal(notebook.ConditionTypeAcceleratorProfileCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonResourceNotFound),
-		"Message": And(ContainSubstring("1 missing"), ContainSubstring("ensure AcceleratorProfiles exist")),
+		"Message": And(ContainSubstring("1 missing"), ContainSubstring("automatically migrated to HardwareProfiles")),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Status.Conditions[0].Remediation).To(ContainSubstring("HardwareProfiles"))

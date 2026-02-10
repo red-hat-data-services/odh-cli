@@ -20,7 +20,7 @@ import (
 const ConditionTypeAcceleratorProfileCompatible = "AcceleratorProfileCompatible"
 
 // AcceleratorMigrationCheck detects Notebook (workbench) CRs referencing AcceleratorProfiles
-// that need to be migrated to HardwareProfiles in RHOAI 3.x.
+// that will be auto-migrated to HardwareProfiles during RHOAI 3.x upgrade.
 type AcceleratorMigrationCheck struct {
 	base.BaseCheck
 }
@@ -33,8 +33,8 @@ func NewAcceleratorMigrationCheck() *AcceleratorMigrationCheck {
 			Type:             check.CheckTypeImpactedWorkloads,
 			CheckID:          "workloads.notebook.accelerator-migration",
 			CheckName:        "Workloads :: Notebook :: AcceleratorProfile Migration (3.x)",
-			CheckDescription: "Detects Notebook (workbench) CRs referencing AcceleratorProfiles that need migration to HardwareProfiles",
-			CheckRemediation: "Migrate AcceleratorProfiles to HardwareProfiles before upgrading to RHOAI 3.x",
+			CheckDescription: "Detects Notebook (workbench) CRs referencing AcceleratorProfiles that will be auto-migrated to HardwareProfiles during upgrade",
+			CheckRemediation: "AcceleratorProfiles will be automatically migrated to HardwareProfiles during upgrade - no manual action required",
 		},
 	}
 }
@@ -104,7 +104,7 @@ func (c *AcceleratorMigrationCheck) newAcceleratorMigrationCondition(
 			ConditionTypeAcceleratorProfileCompatible,
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonResourceNotFound),
-			check.WithMessage("Found %d Notebook(s) referencing AcceleratorProfiles (%d missing) - ensure AcceleratorProfiles exist and migrate to HardwareProfiles", totalImpacted, totalMissing),
+			check.WithMessage("Found %d Notebook(s) referencing AcceleratorProfiles (%d missing): AcceleratorProfiles and Notebook references are automatically migrated to HardwareProfiles during upgrade", totalImpacted, totalMissing),
 			check.WithImpact(result.ImpactAdvisory),
 			check.WithRemediation(c.CheckRemediation),
 		)
@@ -115,7 +115,7 @@ func (c *AcceleratorMigrationCheck) newAcceleratorMigrationCondition(
 		ConditionTypeAcceleratorProfileCompatible,
 		metav1.ConditionFalse,
 		check.WithReason(check.ReasonConfigurationInvalid),
-		check.WithMessage("Found %d Notebook(s) using AcceleratorProfiles - migrate to HardwareProfiles before upgrading", totalImpacted),
+		check.WithMessage("Found %d Notebook(s) using AcceleratorProfiles: AcceleratorProfiles and Notebook references are automatically migrated to HardwareProfiles during upgrade", totalImpacted),
 		check.WithImpact(result.ImpactAdvisory),
 		check.WithRemediation(c.CheckRemediation),
 	)
