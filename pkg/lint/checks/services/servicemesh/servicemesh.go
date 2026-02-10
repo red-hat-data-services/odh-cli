@@ -44,7 +44,7 @@ func (c *RemovalCheck) CanApply(_ context.Context, target check.Target) (bool, e
 
 // Validate executes the check against the provided target.
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
-	return validate.DSCI(c).Run(ctx, target, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
+	return validate.DSCI(c, target).Run(ctx, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
 		managementState, err := jq.Query[string](dsci, ".spec.serviceMesh.managementState")
 
 		switch {

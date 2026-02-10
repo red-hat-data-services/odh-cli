@@ -16,7 +16,8 @@ import (
 // DSCIBuilder provides a fluent API for DSCInitialization-based validation.
 // It handles DSCI fetching and annotation population automatically.
 type DSCIBuilder struct {
-	check check.Check
+	check  check.Check
+	target check.Target
 }
 
 // DSCI creates a builder for DSCInitialization-based validation.
@@ -24,13 +25,13 @@ type DSCIBuilder struct {
 //
 // Example:
 //
-//	validate.DSCI(c).
-//	    Run(ctx, target, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
+//	validate.DSCI(c, target).
+//	    Run(ctx, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
 //	        // Validation logic here
 //	        return nil
 //	    })
-func DSCI(c check.Check) *DSCIBuilder {
-	return &DSCIBuilder{check: c}
+func DSCI(c check.Check, target check.Target) *DSCIBuilder {
+	return &DSCIBuilder{check: c, target: target}
 }
 
 // DSCIValidateFn is the validation function called after DSCI is fetched.
@@ -47,11 +48,10 @@ type DSCIValidateFn func(dr *result.DiagnosticResult, dsci *unstructured.Unstruc
 // Returns (*result.DiagnosticResult, error) following the standard lint check signature.
 func (b *DSCIBuilder) Run(
 	ctx context.Context,
-	target check.Target,
 	fn DSCIValidateFn,
 ) (*result.DiagnosticResult, error) {
 	// Fetch the DSCInitialization singleton
-	dsci, err := client.GetDSCInitialization(ctx, target.Client)
+	dsci, err := client.GetDSCInitialization(ctx, b.target.Client)
 	switch {
 	case apierrors.IsNotFound(err):
 		dr := result.New(string(b.check.Group()), b.check.CheckKind(), b.check.CheckType(), b.check.Description())
@@ -77,8 +77,8 @@ func (b *DSCIBuilder) Run(
 		b.check.Description(),
 	)
 
-	if target.TargetVersion != nil {
-		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
+	if b.target.TargetVersion != nil {
+		dr.Annotations[check.AnnotationCheckTargetVersion] = b.target.TargetVersion.String()
 	}
 
 	// Execute the validation function

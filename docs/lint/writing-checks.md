@@ -680,7 +680,7 @@ type ComponentRequest struct {
 
 ```go
 func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
-    return validate.DSCI(c).Run(ctx, target, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
+    return validate.DSCI(c, target).Run(ctx, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
         managementState, err := jq.Query[string](dsci, ".spec.serviceMesh.managementState")
 
         switch {
@@ -715,8 +715,8 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 ```
 
 **Fluent API:**
-- `DSCI(c)` - Creates the builder
-- `.Run(ctx, target, fn)` - Fetches DSCI, populates annotations, and calls `fn` with the result and DSCI
+- `DSCI(c, target)` - Creates the builder
+- `.Run(ctx, fn)` - Fetches DSCI, populates annotations, and calls `fn` with the result and DSCI
 
 ### Operator Builder
 

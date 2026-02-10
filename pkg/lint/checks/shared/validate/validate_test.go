@@ -311,8 +311,8 @@ func TestDSCIBuilder(t *testing.T) {
 		}
 
 		chk := newTestCheck()
-		dr, err := validate.DSCI(chk).
-			Run(ctx, target, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
+		dr, err := validate.DSCI(chk, target).
+			Run(ctx, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
 				t.Fatal("validation function should not be called when DSCI not found")
 
 				return nil
@@ -342,8 +342,8 @@ func TestDSCIBuilder(t *testing.T) {
 
 		validationCalled := false
 		chk := newTestCheck()
-		dr, err := validate.DSCI(chk).
-			Run(ctx, target, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
+		dr, err := validate.DSCI(chk, target).
+			Run(ctx, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
 				validationCalled = true
 				dr.SetCondition(check.NewCondition(
 					check.ConditionTypeCompatible,
@@ -381,8 +381,8 @@ func TestDSCIBuilder(t *testing.T) {
 
 		expectedErr := errors.New("validation error")
 		chk := newTestCheck()
-		_, err := validate.DSCI(chk).
-			Run(ctx, target, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
+		_, err := validate.DSCI(chk, target).
+			Run(ctx, func(dr *result.DiagnosticResult, dsci *unstructured.Unstructured) error {
 				return expectedErr
 			})
 
