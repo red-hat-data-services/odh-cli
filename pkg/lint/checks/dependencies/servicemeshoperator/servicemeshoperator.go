@@ -17,7 +17,8 @@ const (
 	checkType = "upgrade"
 )
 
-// Check validates that Service Mesh Operator v2 is not installed when upgrading to 3.x.
+// Check validates that Service Mesh Operator v2 is not installed when upgrading to 3.x,
+// as it is no longer required by RHOAI 3.x (OpenShift 4.19+ handles service mesh internally).
 type Check struct {
 	base.BaseCheck
 }
@@ -31,7 +32,7 @@ func NewCheck() *Check {
 			Type:             checkType,
 			CheckID:          "dependencies.servicemeshoperator2.upgrade",
 			CheckName:        "Dependencies :: ServiceMeshOperator2 :: Upgrade (3.x)",
-			CheckDescription: "Validates that servicemeshoperator2 is not installed when upgrading to RHOAI 3.x (requires servicemeshoperator3)",
+			CheckDescription: "Validates that Service Mesh Operator v2 is not installed when upgrading to RHOAI 3.x (no longer required, OpenShift 4.19+ handles service mesh internally)",
 		},
 	}
 }
@@ -59,7 +60,7 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 				check.ConditionTypeCompatible,
 				metav1.ConditionFalse,
 				check.WithReason(check.ReasonVersionIncompatible),
-				check.WithMessage("Service Mesh Operator v2 (%s) is installed but RHOAI 3.x requires v3", version),
+				check.WithMessage("Service Mesh Operator v2 (%s) is installed but no longer required by RHOAI 3.x and should be removed. OpenShift 4.19+ handles service mesh internally", version),
 			)
 		}).
 		Run(ctx)

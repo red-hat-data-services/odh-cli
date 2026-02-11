@@ -105,7 +105,7 @@ func TestServiceMeshRemovalCheck_ManagedBlocking(t *testing.T) {
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
-		"Message": And(ContainSubstring("enabled"), ContainSubstring("removed in RHOAI 3.x")),
+		"Message": And(ContainSubstring("enabled"), ContainSubstring("no longer required by RHOAI 3.x")),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
 }

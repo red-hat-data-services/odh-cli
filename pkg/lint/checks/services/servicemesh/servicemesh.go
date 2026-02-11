@@ -30,7 +30,7 @@ func NewRemovalCheck() *RemovalCheck {
 			Type:             check.CheckTypeRemoval,
 			CheckID:          "services.servicemesh.removal",
 			CheckName:        "Services :: ServiceMesh :: Removal (3.x)",
-			CheckDescription: "Validates that ServiceMesh is disabled before upgrading from RHOAI 2.x to 3.x (service mesh will be removed)",
+			CheckDescription: "Validates that ServiceMesh is disabled before upgrading from RHOAI 2.x to 3.x (no longer required, OpenShift 4.19+ handles service mesh internally)",
 			CheckRemediation: "Disable ServiceMesh by setting managementState to 'Removed' in DSCInitialization before upgrading",
 		},
 	}
@@ -62,7 +62,7 @@ func (c *RemovalCheck) Validate(ctx context.Context, target check.Target) (*resu
 				check.ConditionTypeCompatible,
 				metav1.ConditionFalse,
 				check.WithReason(check.ReasonVersionIncompatible),
-				check.WithMessage("ServiceMesh is enabled (state: %s) but will be removed in RHOAI 3.x", managementState),
+				check.WithMessage("ServiceMesh is enabled (state: %s) but is no longer required by RHOAI 3.x. OpenShift 4.19+ handles service mesh internally", managementState),
 				check.WithImpact(result.ImpactBlocking),
 				check.WithRemediation(c.CheckRemediation),
 			))

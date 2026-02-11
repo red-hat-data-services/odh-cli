@@ -69,7 +69,7 @@ func TestServiceMeshOperator2Check_InstalledBlocking(t *testing.T) {
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonVersionIncompatible),
-		"Message": And(ContainSubstring("installed but RHOAI 3.x requires v3")),
+		"Message": And(ContainSubstring("no longer required by RHOAI 3.x"), ContainSubstring("should be removed")),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue("operator.opendatahub.io/installed-version", "servicemeshoperator.v2.5.0"))
 }
