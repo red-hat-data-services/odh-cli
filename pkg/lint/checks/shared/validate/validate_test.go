@@ -17,7 +17,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -38,7 +37,7 @@ var dsciListKinds = map[schema.GroupVersionResource]string{
 
 // testCheck implements check.Check for testing.
 type testCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 func (c *testCheck) CanApply(_ context.Context, _ check.Target) (bool, error) {
@@ -51,7 +50,7 @@ func (c *testCheck) Validate(_ context.Context, _ check.Target) (*result.Diagnos
 
 func newTestCheck() *testCheck {
 	return &testCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             "codeflare",
 			Type:             check.CheckTypeRemoval,
@@ -392,7 +391,7 @@ func TestDSCIBuilder(t *testing.T) {
 
 func newTestOperatorCheck() *testCheck {
 	return &testCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupDependency,
 			Kind:             "certmanager",
 			Type:             check.CheckTypeInstalled,

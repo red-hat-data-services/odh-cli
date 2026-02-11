@@ -16,7 +16,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	checkbase "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -37,7 +36,7 @@ var pytorchJobListKinds = map[schema.GroupVersionResource]string{
 
 func newWorkloadTestCheck() *testCheck {
 	return &testCheck{
-		BaseCheck: checkbase.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             "notebook",
 			Type:             check.CheckTypeImpactedWorkloads,

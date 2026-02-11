@@ -7,7 +7,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
@@ -18,13 +17,13 @@ const acceleratorProfileCheckType = "acceleratorprofile-migration"
 // AcceleratorProfileMigrationCheck detects legacy AcceleratorProfiles that will be auto-migrated to
 // HardwareProfiles (infrastructure.opendatahub.io) during upgrade to RHOAI 3.x.
 type AcceleratorProfileMigrationCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 // NewAcceleratorProfileMigrationCheck creates a new AcceleratorProfileMigrationCheck instance.
 func NewAcceleratorProfileMigrationCheck() *AcceleratorProfileMigrationCheck {
 	return &AcceleratorProfileMigrationCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentDashboard,
 			Type:             acceleratorProfileCheckType,

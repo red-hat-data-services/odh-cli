@@ -10,7 +10,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -39,12 +38,12 @@ const (
 
 // ImpactedWorkloadsCheck lists InferenceServices and ServingRuntimes using deprecated deployment modes.
 type ImpactedWorkloadsCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	return &ImpactedWorkloadsCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             check.ComponentKServe,
 			Type:             check.CheckTypeImpactedWorkloads,

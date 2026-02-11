@@ -43,16 +43,15 @@ import (
 
     "github.com/lburgazzoli/odh-cli/pkg/lint/check"
     "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-    "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 )
 
 type Check struct {
-    base.BaseCheck
+    check.BaseCheck
 }
 
 func NewCheck() *Check {
     return &Check{
-        BaseCheck: base.BaseCheck{
+        BaseCheck: check.BaseCheck{
             CheckGroup:       check.GroupComponent,
             Kind:             check.ComponentDashboard,
             Type:             check.CheckTypeInstalled,
@@ -820,18 +819,17 @@ import (
 
     "github.com/lburgazzoli/odh-cli/pkg/lint/check"
     "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-    "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
     "github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
     "github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
 type RemovalCheck struct {
-    base.BaseCheck
+    check.BaseCheck
 }
 
 func NewRemovalCheck() *RemovalCheck {
     return &RemovalCheck{
-        BaseCheck: base.BaseCheck{
+        BaseCheck: check.BaseCheck{
             CheckGroup:       check.GroupComponent,
             Kind:             "codeflare",
             Type:             check.CheckTypeRemoval,

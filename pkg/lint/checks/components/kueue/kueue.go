@@ -8,7 +8,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -25,12 +24,12 @@ const (
 // In RHOAI 3.x, the Managed option for Kueue is removed — users must migrate to the standalone
 // Kueue operator (RHBOK) and set managementState to Removed or Unmanaged.
 type ManagementStateCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 func NewManagementStateCheck() *ManagementStateCheck {
 	return &ManagementStateCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             kind,
 			Type:             checkTypeManagementState,

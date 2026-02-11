@@ -7,7 +7,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 )
 
@@ -15,12 +14,12 @@ const kind = "certmanager"
 
 // Check validates cert-manager operator installation.
 type Check struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 func NewCheck() *Check {
 	return &Check{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupDependency,
 			Kind:             kind,
 			Type:             check.CheckTypeInstalled,

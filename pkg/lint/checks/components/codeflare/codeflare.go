@@ -6,7 +6,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -17,12 +16,12 @@ const kind = "codeflare"
 
 // RemovalCheck validates that CodeFlare is disabled before upgrading to 3.x.
 type RemovalCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 func NewRemovalCheck() *RemovalCheck {
 	return &RemovalCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             kind,
 			Type:             check.CheckTypeRemoval,

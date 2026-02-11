@@ -9,7 +9,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -31,12 +30,12 @@ const (
 // ImpactedWorkloadsCheck detects GuardrailsOrchestrator CRs with configuration
 // that will be impacted in a RHOAI 2.x to 3.x upgrade.
 type ImpactedWorkloadsCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	return &ImpactedWorkloadsCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             kind,
 			Type:             check.CheckTypeImpactedWorkloads,

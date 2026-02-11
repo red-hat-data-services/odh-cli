@@ -9,7 +9,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -21,12 +20,12 @@ const checkType = "serverless-removal"
 
 // ServerlessRemovalCheck validates that KServe serverless is disabled before upgrading to 3.x.
 type ServerlessRemovalCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 func NewServerlessRemovalCheck() *ServerlessRemovalCheck {
 	return &ServerlessRemovalCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentKServe,
 			Type:             checkType,

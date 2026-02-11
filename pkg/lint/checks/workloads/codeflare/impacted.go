@@ -8,7 +8,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
@@ -22,12 +21,12 @@ const ConditionTypeAppWrapperCompatible = "AppWrapperCompatible" //nolint:gosec 
 
 // ImpactedWorkloadsCheck lists AppWrappers that will be impacted when CodeFlare is removed in RHOAI 3.x.
 type ImpactedWorkloadsCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 func NewImpactedWorkloadsCheck() *ImpactedWorkloadsCheck {
 	return &ImpactedWorkloadsCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             kind,
 			Type:             check.CheckTypeImpactedWorkloads,

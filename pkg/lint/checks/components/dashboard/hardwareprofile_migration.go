@@ -7,7 +7,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
@@ -18,13 +17,13 @@ const hardwareProfileCheckType = "hardwareprofile-migration"
 // HardwareProfileMigrationCheck detects legacy HardwareProfiles (opendatahub.io) that will be
 // auto-migrated to HardwareProfiles (infrastructure.opendatahub.io) during upgrade to RHOAI 3.x.
 type HardwareProfileMigrationCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 // NewHardwareProfileMigrationCheck creates a new HardwareProfileMigrationCheck instance.
 func NewHardwareProfileMigrationCheck() *HardwareProfileMigrationCheck {
 	return &HardwareProfileMigrationCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentDashboard,
 			Type:             hardwareProfileCheckType,

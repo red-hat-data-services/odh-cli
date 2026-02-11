@@ -1,4 +1,4 @@
-package base_test
+package check_test
 
 import (
 	"context"
@@ -8,7 +8,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 
 	. "github.com/onsi/gomega"
 )
@@ -17,7 +16,7 @@ func TestBaseCheck(t *testing.T) {
 	g := NewWithT(t)
 
 	t.Run("should provide all metadata fields", func(t *testing.T) {
-		bc := base.BaseCheck{
+		bc := check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             "test-component",
 			Type:             "test-type",
@@ -38,7 +37,7 @@ func TestBaseCheck(t *testing.T) {
 	})
 
 	t.Run("NewResult should create properly initialized result", func(t *testing.T) {
-		bc := base.BaseCheck{
+		bc := check.BaseCheck{
 			CheckGroup:       check.GroupComponent,
 			Kind:             check.ComponentKServe,
 			Type:             check.CheckTypeRemoval,
@@ -58,9 +57,8 @@ func TestBaseCheck(t *testing.T) {
 	})
 
 	t.Run("should satisfy Check interface via composition", func(t *testing.T) {
-		// MockCheck is defined at package level and implements full Check interface
-		tc := &MockCheck{
-			BaseCheck: base.BaseCheck{
+		tc := &mockCheck{
+			BaseCheck: check.BaseCheck{
 				CheckGroup:       check.GroupComponent,
 				Kind:             "test",
 				Type:             "type",
@@ -91,7 +89,7 @@ func TestBaseCheck(t *testing.T) {
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				bc := base.BaseCheck{
+				bc := check.BaseCheck{
 					CheckGroup:       tc.group,
 					Kind:             "test",
 					Type:             "test",
@@ -108,17 +106,17 @@ func TestBaseCheck(t *testing.T) {
 	})
 }
 
-type MockCheck struct {
-	base.BaseCheck
+type mockCheck struct {
+	check.BaseCheck
 }
 
-func (c *MockCheck) CanApply(_ context.Context, _ check.Target) (bool, error) {
+func (c *mockCheck) CanApply(_ context.Context, _ check.Target) (bool, error) {
 	return true, nil
 }
 
-func (c *MockCheck) Validate(
-	ctx context.Context,
-	target check.Target,
+func (c *mockCheck) Validate(
+	_ context.Context,
+	_ check.Target,
 ) (*result.DiagnosticResult, error) {
 	return c.NewResult(), nil
 }
@@ -127,8 +125,8 @@ func TestBaseCheckIntegration(t *testing.T) {
 	g := NewWithT(t)
 
 	t.Run("full check implementation with BaseCheck", func(t *testing.T) {
-		mockCheck := &MockCheck{
-			BaseCheck: base.BaseCheck{
+		mc := &mockCheck{
+			BaseCheck: check.BaseCheck{
 				CheckGroup:       check.GroupComponent,
 				Kind:             "modelmeshserving",
 				Type:             check.CheckTypeRemoval,
@@ -138,10 +136,10 @@ func TestBaseCheckIntegration(t *testing.T) {
 			},
 		}
 
-		g.Expect(mockCheck.ID()).To(Equal("components.modelmesh.removal"))
-		g.Expect(mockCheck.Name()).To(Equal("Components :: ModelMesh :: Removal (3.x)"))
-		g.Expect(mockCheck.Description()).To(Equal("Validates that ModelMesh is disabled"))
-		g.Expect(mockCheck.Group()).To(Equal(check.GroupComponent))
+		g.Expect(mc.ID()).To(Equal("components.modelmesh.removal"))
+		g.Expect(mc.Name()).To(Equal("Components :: ModelMesh :: Removal (3.x)"))
+		g.Expect(mc.Description()).To(Equal("Validates that ModelMesh is disabled"))
+		g.Expect(mc.Group()).To(Equal(check.GroupComponent))
 
 		v2 := semver.MustParse("2.15.0")
 		v3 := semver.MustParse("3.0.0")
@@ -149,11 +147,11 @@ func TestBaseCheckIntegration(t *testing.T) {
 			CurrentVersion: &v2,
 			TargetVersion:  &v3,
 		}
-		canApply, err := mockCheck.CanApply(t.Context(), target)
+		canApply, err := mc.CanApply(t.Context(), target)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(canApply).To(BeTrue())
 
-		dr, err := mockCheck.Validate(t.Context(), check.Target{})
+		dr, err := mc.Validate(t.Context(), check.Target{})
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(dr).ToNot(BeNil())
 		g.Expect(dr.Group).To(Equal("component"))

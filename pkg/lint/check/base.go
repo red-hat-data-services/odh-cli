@@ -1,7 +1,6 @@
-package base
+package check
 
 import (
-	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 )
 
@@ -11,12 +10,12 @@ import (
 // Example usage:
 //
 //	type RemovalCheck struct {
-//	    base.BaseCheck
+//	    check.BaseCheck
 //	}
 //
 //	func NewRemovalCheck() *RemovalCheck {
 //	    return &RemovalCheck{
-//	        BaseCheck: base.BaseCheck{
+//	        BaseCheck: check.BaseCheck{
 //	            CheckGroup:       check.GroupComponent,
 //	            Kind:             check.ComponentModelMesh,
 //	            Type:             check.CheckTypeRemoval,
@@ -28,7 +27,7 @@ import (
 //	    }
 //	}
 type BaseCheck struct {
-	CheckGroup       check.CheckGroup
+	CheckGroup       CheckGroup
 	Kind             string
 	Type             string
 	CheckID          string
@@ -62,7 +61,7 @@ func (b BaseCheck) Remediation() string {
 
 // Group returns the check group.
 // Required by check.Check interface.
-func (b BaseCheck) Group() check.CheckGroup {
+func (b BaseCheck) Group() CheckGroup {
 	return b.CheckGroup
 }
 

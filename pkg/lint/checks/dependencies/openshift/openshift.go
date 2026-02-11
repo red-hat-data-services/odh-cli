@@ -9,7 +9,6 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/util/version"
 )
 
@@ -23,13 +22,13 @@ var minVersion = semver.MustParse("4.19.9")
 
 // Check validates OpenShift version requirements for RHOAI 3.x upgrades.
 type Check struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 // NewCheck creates a new OpenShift version requirement check.
 func NewCheck() *Check {
 	return &Check{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupDependency,
 			Kind:             kind,
 			Type:             checkType,

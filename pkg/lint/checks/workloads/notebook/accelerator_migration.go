@@ -10,7 +10,6 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/accelerator"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/base"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/components"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
@@ -22,12 +21,12 @@ const ConditionTypeAcceleratorProfileCompatible = "AcceleratorProfileCompatible"
 // AcceleratorMigrationCheck detects Notebook (workbench) CRs referencing legacy AcceleratorProfiles
 // that will be auto-migrated to HardwareProfiles (infrastructure.opendatahub.io) during RHOAI 3.x upgrade.
 type AcceleratorMigrationCheck struct {
-	base.BaseCheck
+	check.BaseCheck
 }
 
 func NewAcceleratorMigrationCheck() *AcceleratorMigrationCheck {
 	return &AcceleratorMigrationCheck{
-		BaseCheck: base.BaseCheck{
+		BaseCheck: check.BaseCheck{
 			CheckGroup:       check.GroupWorkload,
 			Kind:             kind,
 			Type:             check.CheckTypeImpactedWorkloads,
