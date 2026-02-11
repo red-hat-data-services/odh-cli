@@ -9,8 +9,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/testutil"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/dependencies/servicemeshoperator"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/testutil"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"

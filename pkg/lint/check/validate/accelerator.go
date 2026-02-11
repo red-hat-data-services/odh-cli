@@ -1,4 +1,4 @@
-package accelerator
+package validate
 
 import (
 	"context"

@@ -9,7 +9,7 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	resultpkg "github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/testutil"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/testutil"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/guardrails"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 

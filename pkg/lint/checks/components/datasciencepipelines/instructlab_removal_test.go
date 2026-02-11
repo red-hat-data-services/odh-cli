@@ -9,8 +9,8 @@ import (
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/testutil"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/components/datasciencepipelines"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/testutil"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 
 	. "github.com/onsi/gomega"

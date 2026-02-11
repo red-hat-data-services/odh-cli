@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/testutil"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/testutil"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/workloads/ray"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 

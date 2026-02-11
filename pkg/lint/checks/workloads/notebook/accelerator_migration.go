@@ -10,7 +10,7 @@ import (
 	"github.com/lburgazzoli/odh-cli/pkg/constants"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check"
 	"github.com/lburgazzoli/odh-cli/pkg/lint/check/result"
-	"github.com/lburgazzoli/odh-cli/pkg/lint/checks/shared/accelerator"
+	"github.com/lburgazzoli/odh-cli/pkg/lint/check/validate"
 	"github.com/lburgazzoli/odh-cli/pkg/resources"
 	"github.com/lburgazzoli/odh-cli/pkg/util/client"
 	"github.com/lburgazzoli/odh-cli/pkg/util/components"
@@ -65,7 +65,7 @@ func (c *AcceleratorMigrationCheck) Validate(
 		dr.Annotations[check.AnnotationCheckTargetVersion] = target.TargetVersion.String()
 	}
 
-	impacted, missingCount, err := accelerator.FindWorkloadsWithAcceleratorRefs(ctx, target, resources.Notebook)
+	impacted, missingCount, err := validate.FindWorkloadsWithAcceleratorRefs(ctx, target, resources.Notebook)
 	if err != nil {
 		return nil, fmt.Errorf("finding Notebooks with AcceleratorProfiles: %w", err)
 	}
