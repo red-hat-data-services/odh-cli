@@ -78,6 +78,50 @@ func TestIsUpgradeFrom2xTo3x(t *testing.T) {
 	}
 }
 
+func TestIsVersion3x(t *testing.T) {
+	tests := []struct {
+		name           string
+		version        *semver.Version
+		expectedResult bool
+	}{
+		{
+			name:           "nil version returns false",
+			version:        nil,
+			expectedResult: false,
+		},
+		{
+			name:           "2.x version returns false",
+			version:        toVersionPtr("2.17.0"),
+			expectedResult: false,
+		},
+		{
+			name:           "3.0.0 returns true",
+			version:        toVersionPtr("3.0.0"),
+			expectedResult: true,
+		},
+		{
+			name:           "3.1.0 returns true",
+			version:        toVersionPtr("3.1.0"),
+			expectedResult: true,
+		},
+		{
+			name:           "4.x version returns false",
+			version:        toVersionPtr("4.0.0"),
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+
+			result := version.IsVersion3x(tt.version)
+
+			g.Expect(result).To(Equal(tt.expectedResult))
+		})
+	}
+}
+
 func TestIsVersionAtLeast(t *testing.T) {
 	tests := []struct {
 		name           string

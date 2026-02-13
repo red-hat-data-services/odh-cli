@@ -313,14 +313,6 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 			c.TargetVersion, currentVersion.String())
 	}
 
-	// Check if already at target version
-	if c.parsedTargetVersion.EQ(*currentVersion) {
-		c.IO.Errorf("Cluster is already at target version %s", c.TargetVersion)
-		c.IO.Errorf("No upgrade necessary")
-
-		return nil
-	}
-
 	c.IO.Errorf("Assessing upgrade readiness: %s → %s\n", currentVersion.String(), c.TargetVersion)
 
 	// Execute checks using target version for applicability filtering

@@ -217,7 +217,24 @@ func TestOpenShiftCheck_CanApply_3xTo3x(t *testing.T) {
 
 	canApply, err := openshiftCheck.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(canApply).To(BeFalse())
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestOpenShiftCheck_CanApply_3xCurrent(t *testing.T) {
+	g := NewWithT(t)
+
+	openshiftCheck := openshift.NewCheck()
+
+	currentVer := semver.MustParse("3.0.0")
+	targetVer := semver.MustParse("3.0.0")
+	target := check.Target{
+		CurrentVersion: &currentVer,
+		TargetVersion:  &targetVer,
+	}
+
+	canApply, err := openshiftCheck.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
 }
 
 func TestOpenShiftCheck_Metadata(t *testing.T) {

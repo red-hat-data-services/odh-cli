@@ -40,7 +40,7 @@ func NewCheck() *Check {
 }
 
 func (c *Check) CanApply(_ context.Context, target check.Target) (bool, error) {
-	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion), nil
+	return version.IsVersion3x(target.CurrentVersion) || version.IsVersion3x(target.TargetVersion), nil
 }
 
 func (c *Check) Validate(

@@ -13,6 +13,16 @@ func IsUpgradeFrom2xTo3x(from *semver.Version, to *semver.Version) bool {
 	return from.Major == 2 && to.Major == 3
 }
 
+// IsVersion3x checks if the given version has major version 3.
+// Returns false if version is nil.
+func IsVersion3x(v *semver.Version) bool {
+	if v == nil {
+		return false
+	}
+
+	return v.Major == 3 //nolint:mnd
+}
+
 // IsVersionAtLeast checks if the given version is at least the specified major.minor version.
 // Patch version is ignored in the comparison.
 // Returns false if version is nil.
