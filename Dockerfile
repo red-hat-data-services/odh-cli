@@ -56,7 +56,6 @@ COPY ./requirements.txt ./requirements.txt
 
 # Install base utilities (jq, wget, python3, python3-pip)
 RUN yum install -y \
-    gcc \
     jq \
     wget \
     python3 \

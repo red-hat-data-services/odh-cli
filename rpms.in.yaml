@@ -27,6 +27,6 @@ packages:
   - python3
   - python3-pip
   - make
-  - gcc
 context:
-  image: registry.access.redhat.com/ubi9/ubi:latest
+  containerfile:
+    file: Dockerfile
