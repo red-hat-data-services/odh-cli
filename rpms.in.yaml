@@ -1,0 +1,32 @@
+
+arches:
+  - x86_64
+  - aarch64
+contentOrigin:
+  repos:
+  - repoid: ubi-9-for-$basearch-baseos-rpms
+    baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/baseos/os
+
+  - repoid: ubi-9-for-$basearch-baseos-source-rpms
+    baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/baseos/source/SRPMS
+
+  - repoid: ubi-9-for-$basearch-appstream-rpms
+    baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/appstream/os
+
+  - repoid: ubi-9-for-$basearch-appstream-source-rpms
+    baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/appstream/source/SRPMS
+
+  - repoid: codeready-builder-for-ubi-9-$basearch-rpms
+    baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/codeready-builder/os
+  - repoid: codeready-builder-for-ubi-9-$basearch-source-rpms
+    baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/codeready-builder/source/SRPMS
+
+packages:
+  - jq
+  - wget
+  - python3
+  - python3-pip
+  - make
+context:
+  containerfile:
+    file: Dockerfile.konflux
