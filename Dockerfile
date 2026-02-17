@@ -1,5 +1,5 @@
 # Build stage - use native platform for builder to avoid emulation
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25 AS builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:ca9697879a642fa691f17daf329fc24d239f5b385ecda06070ebddd5fdab287d AS builder
 
 # Build arguments for cross-compilation
 ARG TARGETOS
@@ -36,21 +36,10 @@ RUN make build \
     COMMIT=${COMMIT} \
     DATE=${DATE}
 
-# # Clone upgrade helpers repository (configurable via build args)
-# ARG UPGRADE_HELPERS_REPO=https://github.com/red-hat-data-services/rhoai-upgrade-helpers.git
-# ARG UPGRADE_HELPERS_BRANCH=main
 
-# RUN git clone --depth 1 --branch ${UPGRADE_HELPERS_BRANCH} \
-#     ${UPGRADE_HELPERS_REPO} /opt/rhai-upgrade-helpers \
-#     && rm -rf /opt/rhai-upgrade-helpers/.git
-
-# Create dir and extract the pre-fetched tarball
-RUN mkdir -p /opt/rhai-upgrade-helpers
-# Note: The path is usually /cachi2/output/deps/generic/<filename>
-RUN tar -xzf /cachi2/output/deps/generic/upgrade-helpers.tar.gz -C /opt/rhai-upgrade-helpers --strip-components=1
 
 # Runtime stage
-FROM registry.access.redhat.com/ubi9/ubi:latest
+FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.21.0@sha256:463eb49fab8d00b81352f9fce7bc9ccb64898ba2a044408b6f4b7bf56d1b5c8c
 
 # Build arguments for downloading architecture-specific binaries
 ARG TARGETARCH
@@ -58,6 +47,12 @@ ARG TARGETARCH
 # Set default KUBECONFIG path for container usage
 # Users can override this with -e KUBECONFIG=<path> when running the container
 ENV KUBECONFIG=/kubeconfig
+
+# Copy upgrade helpers from submodule folder
+COPY ./rhoai-upgrade-helpers /opt/rhai-upgrade-helpers
+
+# Copy requirements.txt
+COPY ./requirements.txt ./requirements.txt
 
 # Install base utilities (jq, wget, python3, python3-pip)
 RUN yum install -y \
@@ -68,55 +63,13 @@ RUN yum install -y \
     && yum clean all
 
 # Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
-RUN python3 -m pip install --no-cache-dir \
-    'kubernetes>=28.1.0' \
-    'PyYAML>=6.0'
-
-# Install kubectl with multi-arch support (latest stable version)
-RUN set -e; \
-    ARCH=${TARGETARCH:-amd64}; \
-    case "$ARCH" in \
-        amd64) KUBE_ARCH="amd64" ;; \
-        arm64) KUBE_ARCH="arm64" ;; \
-        *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
-    esac; \
-    echo "Installing kubectl for architecture: $KUBE_ARCH"; \
-    # curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/${KUBE_ARCH}/kubectl"; \
-    # chmod +x kubectl; \
-    # mv kubectl /usr/local/bin/kubectl
-
-    # Copy the pre-fetched binary. 
-    # Logic added to rename it based on arch if you fetched multiple arches.
-    COPY /cachi2/output/deps/generic/kubectl-${KUBE_ARCH} /usr/local/bin/kubectl
-    RUN chmod +x /usr/local/bin/kubectl
-
-# Install OpenShift CLI (oc) with multi-arch support (stable version)
-RUN set -e; \
-    ARCH=${TARGETARCH:-amd64}; \
-    case "$ARCH" in \
-        amd64) OC_ARCH="amd64" ;; \
-        arm64) OC_ARCH="arm64" ;; \
-        *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
-    esac; \
-    echo "Installing oc for architecture: $OC_ARCH"; \
-    # curl -fsSL -o openshift-client.tar.gz \
-    #     "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4.17/openshift-client-linux-${OC_ARCH}-rhel9.tar.gz"; \
-    # tar -xzf openshift-client.tar.gz; \
-    # chmod +x oc; \
-    # Extract pre-fetched tarball
-    RUN tar -xzf /cachi2/output/deps/generic/oc-amd64.tar.gz -C /usr/local/bin/ oc && \
-        chmod +x /usr/local/bin/oc \
-    mv oc /usr/local/bin/oc; \
-    rm -f openshift-client.tar.gz kubectl README.md
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
 
 # Add rhai-cli to PATH
 ENV PATH="/opt/rhai-cli/bin:${PATH}"
-
-# Copy upgrade helpers from builder
-COPY --from=builder /opt/rhai-upgrade-helpers /opt/rhai-upgrade-helpers
 
 # Set entrypoint to rhai-cli binary
 # Users can override with --entrypoint /bin/bash for interactive debugging
