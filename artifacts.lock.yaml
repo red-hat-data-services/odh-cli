@@ -15,5 +15,5 @@ artifacts:
 
   # 3. OpenShift Client (oc)
   - download_url: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4.17/openshift-client-linux-amd64-rhel9.tar.gz"
-    checksum: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    checksum: "sha256:ba07c7aa61a383102bd85d083135f4c2f09fc9dbe046b85846e1eace04666902"
     filename: "oc-amd64.tar.gz"
