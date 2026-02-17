@@ -63,7 +63,7 @@ RUN yum install -y \
     && yum clean all
 
 # Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
-RUN python3 -m pip install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --use-pep517 -r requirements.txt
 
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
