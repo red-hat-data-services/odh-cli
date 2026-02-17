@@ -39,7 +39,7 @@ RUN make build \
 
 
 # Runtime stage
-FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.21.0@sha256:463eb49fab8d00b81352f9fce7bc9ccb64898ba2a044408b6f4b7bf56d1b5c8c
+FROM registry.access.redhat.com/openshift4/ose-cli-rhel9:v4.21.0@sha256:463eb49fab8d00b81352f9fce7bc9ccb64898ba2a044408b6f4b7bf56d1b5c8c
 
 # Build arguments for downloading architecture-specific binaries
 ARG TARGETARCH
@@ -56,6 +56,7 @@ COPY ./requirements.txt ./requirements.txt
 
 # Install base utilities (jq, wget, python3, python3-pip)
 RUN yum install -y \
+    gcc \
     jq \
     wget \
     python3 \
