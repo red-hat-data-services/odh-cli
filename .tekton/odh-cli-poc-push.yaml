@@ -36,6 +36,7 @@ spec:
     value: |
         [
           {"type": "rpm", "path": "."},
+          {"type": "gomod", "path": "."},
           {"type": "pip", "path": ".", "requirements_files": ["requirements.txt"]}
         ]
   - name: build-image-index
