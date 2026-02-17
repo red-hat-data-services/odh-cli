@@ -1,0 +1,19 @@
+metadata:
+  version: "1.0"
+artifacts:
+  # 1. rhoai-upgrade-helpers (Replaces git clone)
+  # Download the archive of the branch/commit you need
+  - download_url: "https://github.com/red-hat-data-services/rhoai-upgrade-helpers/archive/refs/heads/main.tar.gz"
+    checksum: "sha256:0900fa38218484d30c4714e751eafbbd1b47b6ebc6641019ed9ff2c5d3c1c269"
+    filename: "upgrade-helpers.tar.gz"
+
+  # 2. kubectl (Replaces curl download)
+  # Pin a specific version (e.g., v1.32.0) instead of "stable"
+  - download_url: "https://dl.k8s.io/release/v1.32.0/bin/linux/amd64/kubectl"
+    checksum: "sha256:646d58f6d98ee670a71d9cdffbf6625aeea2849d567f214bc43a35f8ccb7bf70"
+    filename: "kubectl-amd64"
+
+  # 3. OpenShift Client (oc)
+  - download_url: "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/stable-4.17/openshift-client-linux-amd64-rhel9.tar.gz"
+    checksum: "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    filename: "oc-amd64.tar.gz
