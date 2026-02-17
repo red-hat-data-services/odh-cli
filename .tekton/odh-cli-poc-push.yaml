@@ -37,6 +37,7 @@ spec:
         [
           {"type": "rpm", "path": "."},
           {"type": "pip", "path": "."},
+          {"type": "gomod", "path": "."},
           {"type": "generic", "path": "."} 
         ]
   - name: build-image-index
