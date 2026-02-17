@@ -1,0 +1,21 @@
+context:
+  containerfile: Dockerfile
+
+contentOrigin:
+  repofiles:
+    - ./ubi.repo
+
+packages:
+  # From builder stage
+  - make
+  # From runtime stage
+  - jq
+  - wget
+  - python3
+  - python3-pip
+
+arches:
+  - x86_64
+  - aarch64
+  - ppc64le
+  - s390x
