@@ -29,4 +29,4 @@ packages:
   - make
 context:
   containerfile:
-    file: Dockerfile.konflux
+    file: Dockerfile
