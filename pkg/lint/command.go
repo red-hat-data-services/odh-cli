@@ -14,18 +14,17 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	resultpkg "github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
-	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/codeflare"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/dashboard"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/datasciencepipelines"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/kserve"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/kueue"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/modelmesh"
+	raycomponent "github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/ray"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/trainingoperator"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/certmanager"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/openshift"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/servicemeshoperator"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/services/servicemesh"
-	codeflareworkloads "github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/codeflare"
 	datasciencepipelinesworkloads "github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/datasciencepipelines"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/guardrails"
 	kserveworkloads "github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/kserve"
@@ -76,12 +75,14 @@ func NewCommand(
 	registry := check.NewRegistry()
 
 	// Explicitly register all checks (no global state, full test isolation)
-	// Components (9)
-	registry.MustRegister(codeflare.NewRemovalCheck())
+	// Components (11)
+	registry.MustRegister(raycomponent.NewCodeFlareRemovalCheck())
 	registry.MustRegister(dashboard.NewAcceleratorProfileMigrationCheck())
 	registry.MustRegister(dashboard.NewHardwareProfileMigrationCheck())
 	registry.MustRegister(datasciencepipelines.NewRenamingCheck())
 	registry.MustRegister(kserve.NewServerlessRemovalCheck())
+	registry.MustRegister(kserve.NewKuadrantReadinessCheck())
+	registry.MustRegister(kserve.NewAuthorinoTLSReadinessCheck())
 	registry.MustRegister(kueue.NewManagementStateCheck())
 	registry.MustRegister(kueue.NewOperatorInstalledCheck())
 	registry.MustRegister(modelmesh.NewRemovalCheck())
@@ -96,7 +97,7 @@ func NewCommand(
 	registry.MustRegister(servicemesh.NewRemovalCheck())
 
 	// Workloads (13)
-	registry.MustRegister(codeflareworkloads.NewImpactedWorkloadsCheck())
+	registry.MustRegister(ray.NewAppWrapperCleanupCheck())
 	registry.MustRegister(datasciencepipelinesworkloads.NewInstructLabRemovalCheck())
 	registry.MustRegister(datasciencepipelinesworkloads.NewStoredVersionRemovalCheck())
 	registry.MustRegister(guardrails.NewImpactedWorkloadsCheck())
