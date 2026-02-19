@@ -30,7 +30,7 @@ pathspec==1.0.4
     # via hatchling
 pluggy==1.6.0
     # via hatchling
-setuptools-scm==7.1.0
+setuptools-scm==9.2.2
     # via python-dateutil
 setuptools-scm==9.2.2
     # via
