@@ -122,7 +122,7 @@ ENV PATH="/opt/rhai-cli/bin:${PATH}"
 COPY --from=builder /opt/rhai-upgrade-helpers /opt/rhai-upgrade-helpers
 
 # Add oc bash completions to enhance user experience when using oc inside the container
-RUN oc completion bash > /etc/bash_completion.d/oc-completion
+RUN oc completion bash > /etc/bash_completion.d/oc
 
 # Set entrypoint to rhai-cli binary
 # Users can override with --entrypoint /bin/bash for interactive debugging
