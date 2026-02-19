@@ -74,3 +74,11 @@ ENV PATH="/opt/rhai-cli/bin:${PATH}"
 # Set entrypoint to rhai-cli binary
 # Users can override with --entrypoint /bin/bash for interactive debugging
 ENTRYPOINT ["/opt/rhai-cli/bin/rhai-cli"]
+
+LABEL name="rhoai/odh-cli-rhel9" \
+      com.redhat.component="odh-cli-rhel9" \
+      io.k8s.display-name="odh-cli-rhel9" \
+      io.k8s.description="CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes." \
+      description="CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes." \
+      summary="CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes." \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
