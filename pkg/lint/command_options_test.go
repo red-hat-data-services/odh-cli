@@ -458,6 +458,87 @@ func TestOutputTable_VerboseNamespaceGroupingSorted(t *testing.T) {
 	g.Expect(mIdx).To(BeNumerically("<", zIdx))
 }
 
+func TestOutputTable_SortsByGroupKindImpactCheck(t *testing.T) {
+	g := NewWithT(t)
+
+	mkCondition := func(impact result.Impact, msg string) result.Condition {
+		status := metav1.ConditionTrue
+		if impact == result.ImpactBlocking {
+			status = metav1.ConditionFalse
+		}
+
+		return result.Condition{
+			Condition: metav1.Condition{
+				Type:    "Validated",
+				Status:  status,
+				Reason:  "TestReason",
+				Message: msg,
+			},
+			Impact: impact,
+		}
+	}
+
+	mkExec := func(group string, kind string, name string, conditions ...result.Condition) check.CheckExecution {
+		return check.CheckExecution{
+			Result: &result.DiagnosticResult{
+				Group: group,
+				Kind:  kind,
+				Name:  name,
+				Status: result.DiagnosticStatus{
+					Conditions: conditions,
+				},
+			},
+		}
+	}
+
+	results := []check.CheckExecution{
+		// Deliberately unordered to exercise sorting.
+		mkExec("component", "kserve", "config-check", mkCondition(result.ImpactNone, "kserve-comp-info")),
+		mkExec("workload", "dashboard", "wl-check", mkCondition(result.ImpactAdvisory, "dashboard-wl-warn")),
+		mkExec("dependency", "openshift-platform", "dep-check", mkCondition(result.ImpactBlocking, "ocp-dep-crit")),
+		mkExec("dependency", "certmanager", "installed", mkCondition(result.ImpactNone, "cert-dep-info")),
+		mkExec("component", "dashboard", "removal", mkCondition(result.ImpactBlocking, "dashboard-comp-crit")),
+		mkExec("service", "dashboard", "svc-check", mkCondition(result.ImpactAdvisory, "dashboard-svc-warn")),
+		mkExec("component", "dashboard", "config-migration", mkCondition(result.ImpactAdvisory, "dashboard-comp-warn")),
+		mkExec("service", "kserve", "svc-check", mkCondition(result.ImpactBlocking, "kserve-svc-crit")),
+	}
+
+	var buf bytes.Buffer
+	err := lint.OutputTable(&buf, results, lint.TableOutputOptions{})
+	g.Expect(err).ToNot(HaveOccurred())
+
+	output := buf.String()
+
+	// Expected order (Group canonical -> Kind alpha -> Impact severity -> Check alpha):
+	//   dependency:  certmanager         info      installed
+	//   dependency:  openshift-platform  critical  dep-check
+	//   service:     dashboard           warning   svc-check
+	//   service:     kserve              critical  svc-check
+	//   component:   dashboard           critical  removal
+	//   component:   dashboard           warning   config-migration
+	//   component:   kserve              info      config-check
+	//   workload:    dashboard           warning   wl-check
+	expectedOrder := []string{
+		"cert-dep-info",
+		"ocp-dep-crit",
+		"dashboard-svc-warn",
+		"kserve-svc-crit",
+		"dashboard-comp-crit",
+		"dashboard-comp-warn",
+		"kserve-comp-info",
+		"dashboard-wl-warn",
+	}
+
+	prevIdx := -1
+	for _, msg := range expectedOrder {
+		idx := indexOf(output, msg)
+		g.Expect(idx).To(BeNumerically(">", prevIdx),
+			fmt.Sprintf("%q should appear after previous entry (prevIdx=%d, idx=%d)", msg, prevIdx, idx))
+
+		prevIdx = idx
+	}
+}
+
 // indexOf returns the index of the first occurrence of substr in s, or -1.
 func indexOf(s, substr string) int {
 	for i := 0; i <= len(s)-len(substr); i++ {
