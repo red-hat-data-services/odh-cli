@@ -54,14 +54,12 @@ ARG TARGETARCH
 # Users can override this with -e KUBECONFIG=<path> when running the container
 ENV KUBECONFIG=/kubeconfig
 
-# Install base utilities (jq, wget, python3, python3-pip, nano, bash-completion)
+# Install base utilities (jq, wget, python3, python3-pip)
 RUN yum install -y \
     jq \
     wget \
     python3 \
     python3-pip \
-    nano \
-    bash-completion \
     && yum clean all
 
 # Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
@@ -120,9 +118,6 @@ ENV PATH="/opt/rhai-cli/bin:${PATH}"
 
 # Copy upgrade helpers from builder
 COPY --from=builder /opt/rhai-upgrade-helpers /opt/rhai-upgrade-helpers
-
-# Add oc bash completions to enhance user experience when using oc inside the container
-RUN oc completion bash > /etc/bash_completion.d/oc
 
 # Set entrypoint to rhai-cli binary
 # Users can override with --entrypoint /bin/bash for interactive debugging
