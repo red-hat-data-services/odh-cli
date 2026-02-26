@@ -47,8 +47,26 @@ var (
 	severityInfo = color.New(color.FgCyan).Sprint("info")
 
 	// Table headers.
-	tableHeaders = []string{"STATUS", "GROUP", "KIND", "CHECK", "IMPACT", "MESSAGE"}
+	tableHeaders = []string{"STATUS", "KIND", "GROUP", "CHECK", "IMPACT", "MESSAGE"}
 )
+
+// printVerdict prints the Result section after the summary.
+func printVerdict(out io.Writer, hasBlocking bool, hasAdvisory bool) {
+	_, _ = fmt.Fprintln(out)
+	_, _ = fmt.Fprintln(out, "Result:")
+
+	switch {
+	case hasBlocking:
+		verdict := color.New(color.FgRed, color.Bold).Sprint("FAIL")
+		_, _ = fmt.Fprintf(out, "  %s - blocking findings detected\n", verdict)
+	case hasAdvisory:
+		verdict := color.New(color.FgYellow, color.Bold).Sprint("WARNING")
+		_, _ = fmt.Fprintf(out, "  %s - advisory findings detected\n", verdict)
+	default:
+		verdict := color.New(color.FgGreen, color.Bold).Sprint("PASS")
+		_, _ = fmt.Fprintf(out, "  %s - all checks passed\n", verdict)
+	}
+}
 
 // Validate checks if the output format is valid.
 func (o OutputFormat) Validate() error {
@@ -73,12 +91,6 @@ type SharedOptions struct {
 
 	// CheckSelectors filters which checks to run (glob patterns, repeatable)
 	CheckSelectors []string
-
-	// FailOnCritical exits with non-zero code if critical findings detected
-	FailOnCritical bool
-
-	// FailOnWarning exits with non-zero code if warning findings detected
-	FailOnWarning bool
 
 	// Verbose enables progress messages (default: false, quiet by default)
 	Verbose bool
@@ -107,8 +119,6 @@ func NewSharedOptions(
 		ConfigFlags:    configFlags,
 		OutputFormat:   OutputFormatTable,
 		CheckSelectors: []string{"*"},  // Run all checks by default
-		FailOnCritical: true,           // Exit with error on critical findings (default)
-		FailOnWarning:  false,          // Don't exit on warnings by default
 		Timeout:        DefaultTimeout, // Default timeout to prevent hanging on slow clusters
 		IO:             iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
 		QPS:            client.DefaultQPS,
@@ -228,8 +238,8 @@ type CheckResultOutput struct {
 // Each row represents one condition from a diagnostic result.
 type CheckResultTableRow struct {
 	Status      string
-	Group       string
 	Kind        string
+	Group       string
 	Check       string
 	Impact      string
 	Message     string
@@ -300,8 +310,58 @@ func getImpactString(
 	return noneStr
 }
 
+// sortableRow pairs a table row with the raw impact for sort comparisons.
+type sortableRow struct {
+	row    CheckResultTableRow
+	impact result.Impact
+}
+
+// Impact sort priorities (lower = higher severity).
+const (
+	impactPriorityBlocking = iota
+	impactPriorityAdvisory
+	impactPriorityNone
+)
+
+// impactSortPriority returns a numeric priority so blocking (critical) sorts
+// before advisory (warning) which sorts before none (info).
+func impactSortPriority(impact result.Impact) int {
+	switch impact {
+	case result.ImpactBlocking:
+		return impactPriorityBlocking
+	case result.ImpactAdvisory:
+		return impactPriorityAdvisory
+	case result.ImpactNone:
+		return impactPriorityNone
+	}
+
+	return impactPriorityNone
+}
+
+// groupSortPriority returns a numeric priority that follows the canonical
+// group order: dependency -> service -> component -> workload.
+func groupSortPriority(group string) int {
+	for i, g := range check.CanonicalGroupOrder {
+		if string(g) == group {
+			return i
+		}
+	}
+
+	return len(check.CanonicalGroupOrder)
+}
+
+// VersionInfo holds version data for display in the status report.
+type VersionInfo struct {
+	RHOAICurrentVersion string
+	RHOAITargetVersion  string // empty in lint mode
+	OpenShiftVersion    string
+}
+
 // TableOutputOptions configures the behavior of OutputTable.
 type TableOutputOptions struct {
+	// VersionInfo contains version data to display in the Environment section.
+	VersionInfo *VersionInfo
+
 	// ShowImpactedObjects enables listing impacted objects after the summary.
 	ShowImpactedObjects bool
 
@@ -310,67 +370,108 @@ type TableOutputOptions struct {
 	NamespaceRequesters map[string]string
 }
 
+// collectSortedRows builds table rows from check executions and sorts them
+// by Group (canonical) -> Kind -> Impact (critical, warning, info) -> Check.
+func collectSortedRows(results []check.CheckExecution) []sortableRow {
+	totalConditions := 0
+	for _, exec := range results {
+		totalConditions += len(exec.Result.Status.Conditions)
+	}
+
+	rows := make([]sortableRow, 0, totalConditions)
+
+	for _, exec := range results {
+		for _, condition := range exec.Result.Status.Conditions {
+			rows = append(rows, sortableRow{
+				row: CheckResultTableRow{
+					Status:      statusSymbol(condition.Impact),
+					Kind:        exec.Result.Kind,
+					Group:       exec.Result.Group,
+					Check:       exec.Result.Name,
+					Impact:      getImpactString(&condition, severityCrit, severityWarn, severityInfo),
+					Message:     condition.Message,
+					Description: exec.Result.Spec.Description,
+				},
+				impact: condition.Impact,
+			})
+		}
+	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		gi, gj := groupSortPriority(rows[i].row.Group), groupSortPriority(rows[j].row.Group)
+		if gi != gj {
+			return gi < gj
+		}
+
+		if rows[i].row.Kind != rows[j].row.Kind {
+			return rows[i].row.Kind < rows[j].row.Kind
+		}
+
+		pi, pj := impactSortPriority(rows[i].impact), impactSortPriority(rows[j].impact)
+		if pi != pj {
+			return pi < pj
+		}
+
+		return rows[i].row.Check < rows[j].row.Check
+	})
+
+	return rows
+}
+
+// statusSymbol returns the colored status symbol for the given impact level.
+func statusSymbol(impact result.Impact) string {
+	switch impact {
+	case result.ImpactBlocking:
+		return statusFail
+	case result.ImpactAdvisory:
+		return statusWarn
+	case result.ImpactNone:
+		return statusPass
+	}
+
+	return statusPass
+}
+
 // OutputTable is a shared function for outputting check results in table format.
 // When opts.ShowImpactedObjects is true, impacted objects are listed after the summary.
 func OutputTable(out io.Writer, results []check.CheckExecution, opts TableOutputOptions) error {
-	totalChecks := 0
-	totalPassed := 0
-	totalWarnings := 0
-	totalFailed := 0
+	rows := collectSortedRows(results)
 
-	// Create single table renderer for all results
 	renderer := table.NewRenderer[CheckResultTableRow](
 		table.WithWriter[CheckResultTableRow](out),
 		table.WithHeaders[CheckResultTableRow](tableHeaders...),
 		table.WithTableOptions[CheckResultTableRow](table.DefaultTableOptions...),
 	)
 
-	// Append all results to single table - one row per condition
-	for _, exec := range results {
-		// Each diagnostic result can have multiple conditions
-		// Create one table row per condition
-		for _, condition := range exec.Result.Status.Conditions {
-			totalChecks++
+	totalChecks := 0
+	totalPassed := 0
+	totalWarnings := 0
+	totalFailed := 0
 
-			// Determine impact display string from condition.
-			impact := getImpactString(&condition, severityCrit, severityWarn, severityInfo)
+	for _, sr := range rows {
+		totalChecks++
 
-			// Determine status symbol and count based on impact.
-			var status string
+		switch sr.impact {
+		case result.ImpactBlocking:
+			totalFailed++
+		case result.ImpactAdvisory:
+			totalWarnings++
+		case result.ImpactNone:
+			totalPassed++
+		}
 
-			switch impact {
-			case severityCrit:
-				// Blocking impact = failed check
-				status = statusFail
-				totalFailed++
-			case severityWarn:
-				// Advisory impact = warning (not counted as failure)
-				status = statusWarn
-				totalWarnings++
-			default:
-				// No impact/success
-				status = statusPass
-				totalPassed++
-			}
-
-			row := CheckResultTableRow{
-				Status:      status,
-				Group:       exec.Result.Group,
-				Kind:        exec.Result.Kind,
-				Check:       exec.Result.Name,
-				Impact:      impact,
-				Message:     condition.Message,
-				Description: exec.Result.Spec.Description,
-			}
-
-			if err := renderer.Append(row); err != nil {
-				return fmt.Errorf("appending table row: %w", err)
-			}
+		if err := renderer.Append(sr.row); err != nil {
+			return fmt.Errorf("appending table row: %w", err)
 		}
 	}
 
 	if err := renderer.Render(); err != nil {
 		return fmt.Errorf("rendering table: %w", err)
+	}
+
+	if opts.VersionInfo != nil {
+		_, _ = fmt.Fprintln(out)
+		outputVersionInfo(out, opts.VersionInfo)
 	}
 
 	_, _ = fmt.Fprintln(out)
@@ -382,6 +483,21 @@ func OutputTable(out io.Writer, results []check.CheckExecution, opts TableOutput
 	}
 
 	return nil
+}
+
+// outputVersionInfo prints the Environment section with version details.
+func outputVersionInfo(out io.Writer, info *VersionInfo) {
+	_, _ = fmt.Fprintln(out, "Environment:")
+
+	if info.RHOAITargetVersion != "" {
+		_, _ = fmt.Fprintf(out, "  OpenShift AI version: %s -> %s\n", info.RHOAICurrentVersion, info.RHOAITargetVersion)
+	} else {
+		_, _ = fmt.Fprintf(out, "  OpenShift AI version: %s\n", info.RHOAICurrentVersion)
+	}
+
+	if info.OpenShiftVersion != "" {
+		_, _ = fmt.Fprintf(out, "  OpenShift version:    %s\n", info.OpenShiftVersion)
+	}
 }
 
 // outputImpactedObjects prints impacted objects for each check execution.
@@ -423,9 +539,15 @@ func outputImpactedObjects(
 }
 
 // OutputJSON outputs diagnostic results in List format.
-func OutputJSON(out io.Writer, results []check.CheckExecution, clusterVersion *string, targetVersion *string) error {
+func OutputJSON(
+	out io.Writer,
+	results []check.CheckExecution,
+	clusterVersion *string,
+	targetVersion *string,
+	openShiftVersion *string,
+) error {
 	// Create the list
-	list := result.NewDiagnosticResultList(clusterVersion, targetVersion)
+	list := result.NewDiagnosticResultList(clusterVersion, targetVersion, openShiftVersion)
 
 	// Add all results in execution order
 	for _, exec := range results {
@@ -444,9 +566,15 @@ func OutputJSON(out io.Writer, results []check.CheckExecution, clusterVersion *s
 }
 
 // OutputYAML outputs diagnostic results in List format.
-func OutputYAML(out io.Writer, results []check.CheckExecution, clusterVersion *string, targetVersion *string) error {
+func OutputYAML(
+	out io.Writer,
+	results []check.CheckExecution,
+	clusterVersion *string,
+	targetVersion *string,
+	openShiftVersion *string,
+) error {
 	// Create the list
-	list := result.NewDiagnosticResultList(clusterVersion, targetVersion)
+	list := result.NewDiagnosticResultList(clusterVersion, targetVersion, openShiftVersion)
 
 	// Add all results in execution order
 	for _, exec := range results {

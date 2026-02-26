@@ -11,24 +11,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/opendatahub-io/odh-cli/pkg/constants"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/validate"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
-	"github.com/opendatahub-io/odh-cli/pkg/util/components"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 	"github.com/opendatahub-io/odh-cli/pkg/util/jq"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
 )
 
 const (
-	kind = "notebook"
-
-	// ConditionTypeNotebooksCompatible indicates whether notebooks will be impacted by the 3.x upgrade.
-	ConditionTypeNotebooksCompatible = "NotebooksCompatible"
-
 	// Image compatibility configuration.
 	// Minimum tag version that contains the nginx fix for non-Jupyter notebooks.
 	nginxFixMinTag = "2025.2"
@@ -140,12 +133,12 @@ func (c *ImpactedWorkloadsCheck) FormatVerboseOutput(out iolib.Writer, dr *resul
 	imageIndex := make(map[string]int) // imageRef -> index in groups
 
 	for _, obj := range dr.ImpactedObjects {
-		imageRef := obj.Annotations["check.opendatahub.io/image-ref"]
+		imageRef := obj.Annotations[AnnotationCheckImageRef]
 		if imageRef == "" {
 			imageRef = "(unknown image)"
 		}
 
-		imageStatus := obj.Annotations["check.opendatahub.io/image-status"]
+		imageStatus := obj.Annotations[AnnotationCheckImageStatus]
 
 		name := obj.Name
 		if obj.Namespace != "" {
@@ -204,12 +197,7 @@ func (c *ImpactedWorkloadsCheck) CanApply(ctx context.Context, target check.Targ
 		return false, nil
 	}
 
-	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
-	if err != nil {
-		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
-	}
-
-	return components.HasManagementState(dsc, "workbenches", constants.ManagementStateManaged), nil
+	return isWorkbenchesManaged(ctx, target)
 }
 
 // Validate executes the check against the provided target.
@@ -238,7 +226,7 @@ func (c *ImpactedWorkloadsCheck) analyzeNotebooks(
 			ConditionTypeNotebooksCompatible,
 			metav1.ConditionTrue,
 			check.WithReason(check.ReasonVersionCompatible),
-			check.WithMessage("No Notebook (workbench) instances found"),
+			check.WithMessage(MsgNoNotebookInstances),
 		))
 
 		return nil
@@ -387,8 +375,8 @@ func (c *ImpactedWorkloadsCheck) analyzeNotebook(
 
 	log.logf("[notebook] Analyzing %s/%s", ns, name)
 
-	// Extract all containers from the notebook spec.
-	containers, err := jq.Query[[]any](nb, ".spec.template.spec.containers")
+	// Extract workload containers (infrastructure sidecars already filtered out).
+	containers, err := ExtractWorkloadContainers(nb)
 	if err != nil || len(containers) == 0 {
 		log.logf("[notebook]   %s/%s: VERIFY_FAILED - could not extract containers (err=%v, count=%d)",
 			ns, name, err, len(containers))
@@ -401,30 +389,15 @@ func (c *ImpactedWorkloadsCheck) analyzeNotebook(
 		}
 	}
 
-	// Analyze each container image, skipping known infrastructure sidecars.
+	// Analyze each container image.
 	var imageAnalyses []imageAnalysis
 
 	for _, container := range containers {
-		containerMap, ok := container.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		containerName, _ := containerMap["name"].(string)
-		image, _ := containerMap["image"].(string)
-
-		// Skip known infrastructure/sidecar containers that are not notebook images.
-		if isInfrastructureContainer(containerName, image) {
-			log.logf("[notebook]   %s/%s: skipping infrastructure container %s", ns, name, containerName)
-
-			continue
-		}
-
-		if image == "" {
+		if container.Image == "" {
 			log.logf("[notebook]   %s/%s: VERIFY_FAILED - container %s has no image",
-				ns, name, containerName)
+				ns, name, container.Name)
 			imageAnalyses = append(imageAnalyses, imageAnalysis{
-				ContainerName: containerName,
+				ContainerName: container.Name,
 				Status:        ImageStatusVerifyFailed,
 				Reason:        "Container has no image specified",
 			})
@@ -432,12 +405,12 @@ func (c *ImpactedWorkloadsCheck) analyzeNotebook(
 			continue
 		}
 
-		analysis := c.analyzeImage(ctx, reader, image, ootbImages, imageStreamData, appNS, log)
-		analysis.ContainerName = containerName
-		analysis.ImageRef = image
+		analysis := c.analyzeImage(ctx, reader, container.Image, ootbImages, imageStreamData, appNS, log)
+		analysis.ContainerName = container.Name
+		analysis.ImageRef = container.Image
 
 		log.logf("[notebook]   %s/%s container %s: status=%s reason=%q",
-			ns, name, containerName, analysis.Status, analysis.Reason)
+			ns, name, container.Name, analysis.Status, analysis.Reason)
 
 		imageAnalyses = append(imageAnalyses, analysis)
 	}
@@ -513,7 +486,7 @@ func (c *ImpactedWorkloadsCheck) analyzeImage(
 	// Strategy 3: dockerImageRepository lookup - match container image path against internal registry path.
 	// Matches container image like: image-registry.openshift-image-registry.svc:5000/ns/name:tag
 	// Against ImageStream's: .status.dockerImageRepository
-	if ootbIS := c.findImageStreamByDockerRepo(ref.FullPath, ootbImages); ootbIS != nil {
+	if ootbIS, found := c.findImageStreamByDockerRepo(ref.FullPath, ootbImages); found {
 		log.logf("[notebook]     Strategy 3 (dockerImageRepo) matched: is=%s tag=%s type=%s",
 			ootbIS.Name, ref.Tag, ootbIS.Type)
 
@@ -682,18 +655,18 @@ func (c *ImpactedWorkloadsCheck) findImageStreamForSHA(
 func (c *ImpactedWorkloadsCheck) findImageStreamByDockerRepo(
 	imagePath string,
 	ootbImages map[string]ootbImageStream,
-) *ootbImageStream {
+) (ootbImageStream, bool) {
 	if imagePath == "" {
-		return nil
+		return ootbImageStream{}, false
 	}
 
 	for _, is := range ootbImages {
 		if is.DockerImageRepository != "" && is.DockerImageRepository == imagePath {
-			return &is
+			return is, true
 		}
 	}
 
-	return nil
+	return ootbImageStream{}, false
 }
 
 // aggregateImageAnalyses combines individual image analyses into a notebook analysis.
@@ -1079,16 +1052,13 @@ func (c *ImpactedWorkloadsCheck) setConditions(
 	totalImages := len(allImages)
 
 	// Build multi-line breakdown message with image counts.
-	message := fmt.Sprintf(`Found %d Notebook(s) using %d unique images:
-  - %d compatible (%d images, OOTB ready for %s)
-  - %d custom (%d images, user verification needed)
-  - %d incompatible (%d images, must update before upgrade)
-  - %d unverified (%d images, could not determine status)`,
-		totalCount, totalImages,
-		goodCount, len(goodImages), targetVersionLabel,
-		customCount, len(customImages),
-		problematicCount, len(problematicImages),
-		verifyFailedCount, len(verifyFailedImages))
+	message := strings.Join([]string{
+		fmt.Sprintf(MsgNotebookImageSummary, totalCount, totalImages),
+		fmt.Sprintf(MsgCompatibleCount, goodCount, len(goodImages), targetVersionLabel),
+		fmt.Sprintf(MsgCustomCount, customCount, len(customImages)),
+		fmt.Sprintf(MsgIncompatibleCount, problematicCount, len(problematicImages)),
+		fmt.Sprintf(MsgUnverifiedCount, verifyFailedCount, len(verifyFailedImages)),
+	}, "\n")
 
 	switch {
 	case problematicCount > 0:
@@ -1110,7 +1080,7 @@ func (c *ImpactedWorkloadsCheck) setConditions(
 			check.WithReason(check.ReasonWorkloadsImpacted),
 			check.WithMessage("%s", message),
 			check.WithImpact(result.ImpactAdvisory),
-			check.WithRemediation(fmt.Sprintf("Verify custom images are compatible with RHOAI %s before upgrading", targetVersionLabel)),
+			check.WithRemediation(fmt.Sprintf(MsgVerifyCustomImages, targetVersionLabel)),
 		))
 
 	default:
@@ -1119,7 +1089,7 @@ func (c *ImpactedWorkloadsCheck) setConditions(
 			ConditionTypeNotebooksCompatible,
 			metav1.ConditionTrue,
 			check.WithReason(check.ReasonVersionCompatible),
-			check.WithMessage("All %d Notebook(s) use compatible OOTB images", totalCount),
+			check.WithMessage(MsgAllNotebooksCompatible, totalCount),
 		))
 	}
 }
@@ -1145,9 +1115,9 @@ func (c *ImpactedWorkloadsCheck) setImpactedObjects(
 				Namespace: a.Namespace,
 				Name:      a.Name,
 				Annotations: map[string]string{
-					"check.opendatahub.io/image-status": string(a.Status),
-					"check.opendatahub.io/image-ref":    a.ImageRef,
-					"check.opendatahub.io/reason":       a.Reason,
+					AnnotationCheckImageStatus: string(a.Status),
+					AnnotationCheckImageRef:    a.ImageRef,
+					AnnotationCheckReason:      a.Reason,
 				},
 			},
 		})
@@ -1229,21 +1199,11 @@ func isTagGTE(tag1, tag2 string) bool {
 // rhoaiVersionRegex matches RHOAI build references like "rhoai-2.25".
 var rhoaiVersionRegex = regexp.MustCompile(`^rhoai-(\d+)\.(\d+)$`)
 
-// isInfrastructureContainer returns true if the container is a known infrastructure sidecar
-// that should not be analyzed for notebook image compatibility.
-// Both the container name AND image must match known patterns to be skipped.
-// This prevents false positives where a user might name their container "oauth-proxy"
-// but use a custom image that needs compatibility verification.
-func isInfrastructureContainer(containerName, image string) bool {
-	// Only skip oauth-proxy sidecars when BOTH conditions are met:
-	// 1. Container name is "oauth-proxy"
-	// 2. Image contains "ose-oauth-proxy-rhel9" (the official OpenShift oauth-proxy image)
-	if containerName == "oauth-proxy" && strings.Contains(image, "ose-oauth-proxy-rhel9") {
-		return true
-	}
-
-	return false
-}
+// Pre-computed minimum RHOAI version parts from nginxFixMinRHOAIVersion.
+// Panics at package load time if the constant has an invalid "X.Y" format.
+//
+//nolint:gochecknoglobals // Derived from constant at init time; effectively immutable.
+var nginxFixMinMajor, nginxFixMinMinor = mustParseVersionParts(nginxFixMinRHOAIVersion)
 
 // isCompliantBuildRef checks if a build reference indicates a compliant RHOAI version.
 // Parses "rhoai-X.Y" format and compares against nginxFixMinRHOAIVersion.
@@ -1256,20 +1216,34 @@ func isCompliantBuildRef(buildRef string) bool {
 	major, _ := strconv.Atoi(matches[1])
 	minor, _ := strconv.Atoi(matches[2])
 
-	// Parse minimum version.
-	minMatches := strings.Split(nginxFixMinRHOAIVersion, ".")
-	if len(minMatches) != 2 {
-		return false
-	}
-
-	minMajor, _ := strconv.Atoi(minMatches[0])
-	minMinor, _ := strconv.Atoi(minMatches[1])
-
-	if major > minMajor {
+	if major > nginxFixMinMajor {
 		return true
 	}
 
-	return major == minMajor && minor >= minMinor
+	return major == nginxFixMinMajor && minor >= nginxFixMinMinor
+}
+
+// mustParseVersionParts parses a "X.Y" version string into its major and minor
+// integer components. Panics if the format is invalid.
+//
+//nolint:revive // unnamed-result conflicts with nonamedreturns linter
+func mustParseVersionParts(v string) (int, int) {
+	majorStr, minorStr, ok := strings.Cut(v, ".")
+	if !ok {
+		panic("invalid version format: " + v)
+	}
+
+	major, err := strconv.Atoi(majorStr)
+	if err != nil {
+		panic("invalid major version in " + v + ": " + err.Error())
+	}
+
+	minor, err := strconv.Atoi(minorStr)
+	if err != nil {
+		panic("invalid minor version in " + v + ": " + err.Error())
+	}
+
+	return major, minor
 }
 
 // debugLogger provides debug logging when enabled.

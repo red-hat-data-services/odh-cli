@@ -96,6 +96,20 @@ RUN set -e; \
     mv oc /usr/local/bin/oc; \
     rm -f openshift-client.tar.gz kubectl README.md
 
+# Install yq with multi-arch support (stable version)
+RUN set -e; \
+    ARCH=${TARGETARCH:-amd64}; \
+    case "$ARCH" in \
+        amd64) YQ_ARCH="amd64" ;; \
+        arm64) YQ_ARCH="arm64" ;; \
+        *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
+    esac; \
+    echo "Installing yq for architecture: $YQ_ARCH"; \
+    YQ_VERSION="v4.44.6"; \
+    curl -fsSL -o /usr/local/bin/yq \
+        "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}"; \
+    chmod +x /usr/local/bin/yq
+
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
 
