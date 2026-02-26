@@ -276,12 +276,44 @@ var (
 		Resource: "hardwareprofiles",
 	}
 
+	// InfrastructureHardwareProfile is the HardwareProfile resource in the infrastructure API group.
+	InfrastructureHardwareProfile = ResourceType{
+		Group:    "infrastructure.opendatahub.io",
+		Version:  "v1",
+		Kind:     "HardwareProfile",
+		Resource: "hardwareprofiles",
+	}
+
 	// LlamaStackDistribution is the LlamaStack distribution configuration resource.
 	LlamaStackDistribution = ResourceType{
 		Group:    "llamastack.io",
 		Version:  "v1alpha1",
 		Kind:     "LlamaStackDistribution",
 		Resource: "llamastackdistributions",
+	}
+
+	// Kuadrant is the Kuadrant gateway API resource.
+	Kuadrant = ResourceType{
+		Group:    "kuadrant.io",
+		Version:  "v1beta1",
+		Kind:     "Kuadrant",
+		Resource: "kuadrants",
+	}
+
+	// Authorino is the Authorino operator resource.
+	Authorino = ResourceType{
+		Group:    "operator.authorino.kuadrant.io",
+		Version:  "v1beta1",
+		Kind:     "Authorino",
+		Resource: "authorinos",
+	}
+
+	// LLMInferenceService is the llm-d LLMInferenceService resource.
+	LLMInferenceService = ResourceType{
+		Group:    "serving.kserve.io",
+		Version:  "v1alpha1",
+		Kind:     "LLMInferenceService",
+		Resource: "llminferenceservices",
 	}
 
 	// ImageStream is the OpenShift ImageStream resource.

@@ -19,6 +19,7 @@ cd konflux-central
 
 ```bash
 git checkout rhoai-3.3
+=======
 ```
 
 - Navigate to the Tekton files for your component(s).
