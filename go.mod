@@ -9,7 +9,7 @@ require (
 	github.com/itchyny/gojq v0.12.18
 	github.com/olekukonko/tablewriter v1.1.3
 	github.com/onsi/gomega v1.39.1
-	github.com/operator-framework/api v0.39.0
+	github.com/operator-framework/api v0.41.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
