@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"strconv"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 
+	"github.com/opendatahub-io/odh-cli/pkg/constants"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/validate"
@@ -38,9 +40,9 @@ func NewHardwareProfileIntegrityCheck() *HardwareProfileIntegrityCheck {
 }
 
 // CanApply returns whether this check should run for the given target.
-// Applies whenever Workbenches is Managed, regardless of version.
-func (c *HardwareProfileIntegrityCheck) CanApply(ctx context.Context, target check.Target) (bool, error) {
-	return isWorkbenchesManaged(ctx, target)
+// Applies regardless of version; component state is checked via ForComponent in Validate.
+func (c *HardwareProfileIntegrityCheck) CanApply(_ context.Context, _ check.Target) (bool, error) {
+	return true, nil
 }
 
 // Validate lists Notebooks with hardware profile annotations and checks that each
@@ -50,6 +52,7 @@ func (c *HardwareProfileIntegrityCheck) Validate(
 	target check.Target,
 ) (*result.DiagnosticResult, error) {
 	return validate.WorkloadsMetadata(c, target, resources.Notebook).
+		ForComponent(constants.ComponentWorkbenches).
 		Run(ctx, c.checkHardwareProfiles)
 }
 
@@ -94,23 +97,23 @@ func (c *HardwareProfileIntegrityCheck) checkHardwareProfiles(
 	}
 
 	// Build HardwareProfile cache scoped to only the namespaces referenced by notebooks.
+	// Skip CRD resolution entirely when no notebooks reference a HardwareProfile,
+	// avoiding unnecessary API calls that may fail for RBAC-limited users.
 	profileCache := sets.New[types.NamespacedName]()
 
-	for ns := range targetNamespaces {
-		profiles, err := req.Client.ListMetadata(ctx, resources.InfrastructureHardwareProfile, client.WithNamespace(ns))
-		if err != nil {
-			if client.IsResourceTypeNotFound(err) {
-				continue
-			}
-
-			return fmt.Errorf("listing HardwareProfiles in namespace %s: %w", ns, err)
+	if len(referenced) > 0 {
+		// Resolve the HardwareProfile API version from the CRD's storage version.
+		hwpResource, resolveErr := resolveResourceType(ctx, req.Client, resources.InfrastructureHardwareProfile)
+		if resolveErr != nil && !apierrors.IsNotFound(resolveErr) {
+			return fmt.Errorf("resolving HardwareProfile version: %w", resolveErr)
 		}
 
-		for _, p := range profiles {
-			profileCache.Insert(types.NamespacedName{
-				Namespace: p.GetNamespace(),
-				Name:      p.GetName(),
-			})
+		// If CRD not found (IsNotFound): hwpResource is zero, skip listing below.
+		// profileCache stays empty → all HWP references flagged as missing (correct).
+		if resolveErr == nil {
+			if err := populateProfileCache(ctx, req.Client, hwpResource, targetNamespaces, profileCache); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -131,6 +134,35 @@ func (c *HardwareProfileIntegrityCheck) checkHardwareProfiles(
 
 	dr.Status.Conditions = append(dr.Status.Conditions, c.newCondition(totalImpacted))
 	dr.SetImpactedObjects(resources.Notebook, impacted)
+
+	return nil
+}
+
+// populateProfileCache lists HardwareProfiles in each target namespace and inserts them into the cache.
+func populateProfileCache(
+	ctx context.Context,
+	reader client.Reader,
+	hwpResource resources.ResourceType,
+	targetNamespaces sets.Set[string],
+	profileCache sets.Set[types.NamespacedName],
+) error {
+	for ns := range targetNamespaces {
+		profiles, err := reader.ListMetadata(ctx, hwpResource, client.WithNamespace(ns))
+		if err != nil {
+			if client.IsResourceTypeNotFound(err) {
+				continue
+			}
+
+			return fmt.Errorf("listing HardwareProfiles in namespace %s: %w", ns, err)
+		}
+
+		for _, p := range profiles {
+			profileCache.Insert(types.NamespacedName{
+				Namespace: p.GetNamespace(),
+				Name:      p.GetName(),
+			})
+		}
+	}
 
 	return nil
 }

@@ -83,6 +83,11 @@ const (
 	jupyterExternalCompatible      = externalRegistry + "/odh-" + isJupyterDatascience + "@" + shaCompatible
 	codeserverExternalIncompatible = externalRegistry + "/odh-" + isCodeserverDatascience + "@" + shaIncompatible
 
+	// Strategy 4: Spec from.name exact match (disconnected cluster).
+	// These are the source references stored in .spec.tags[*].from.name.
+	specRefJupyterCompatible      = externalRegistry + "/odh-" + isJupyterDatascience + "@" + shaCompatible
+	specRefCodeserverIncompatible = externalRegistry + "/odh-" + isCodeserverDatascience + "@" + shaIncompatible
+
 	// Custom images - should NOT match any OOTB ImageStream.
 	customImageTag = "quay.io/myorg/custom-image:v1.0"
 	customImageSHA = "quay.io/myorg/custom-image@" + shaCustom
@@ -159,6 +164,21 @@ func newImageStream(name string, nbType string) *unstructured.Unstructured {
 				"tags": []any{
 					map[string]any{
 						"name": tagCurrent,
+						"from": map[string]any{
+							"kind": "DockerImage",
+							"name": externalImageBase + "@" + shaCompatible,
+						},
+						"annotations": map[string]any{
+							"opendatahub.io/notebook-python-dependencies": pythonDeps,
+							"opendatahub.io/notebook-software":            software,
+						},
+					},
+					map[string]any{
+						"name": tagPrevious,
+						"from": map[string]any{
+							"kind": "DockerImage",
+							"name": externalImageBase + "@" + shaIncompatible,
+						},
 						"annotations": map[string]any{
 							"opendatahub.io/notebook-python-dependencies": pythonDeps,
 							"opendatahub.io/notebook-software":            software,
@@ -231,6 +251,82 @@ func newUserContributedImageStream(name string) *unstructured.Unstructured {
 	}
 }
 
+// newDisconnectedImageStream creates an ImageStream simulating a disconnected cluster.
+// - Has OOTB metadata (labels, platform.opendatahub.io/version annotation)
+// - Has spec.tags with from: {kind: "DockerImage", name: "<full-ref>"} entries
+// - Has status.dockerImageRepository: "" (empty - internal registry disabled)
+// - Has status.tags with items: null (import failed on disconnected cluster).
+func newDisconnectedImageStream(name string, nbType string) *unstructured.Unstructured {
+	var pythonDeps, software string
+
+	switch nbType {
+	case "jupyter":
+		pythonDeps = `[{"name":"jupyterlab","version":"4.0"}]`
+	case "codeserver":
+		software = `[{"name":"code-server","version":"4.0"}]`
+	case "rstudio":
+		software = `[{"name":"R","version":"4.0"}]`
+	}
+
+	externalImageBase := externalRegistry + "/odh-" + name
+
+	return &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.ImageStream.APIVersion(),
+			"kind":       resources.ImageStream.Kind,
+			"metadata": map[string]any{
+				"name":      name,
+				"namespace": "redhat-ods-applications",
+				"labels": map[string]any{
+					"app.kubernetes.io/part-of": "workbenches",
+				},
+				"annotations": map[string]any{
+					"platform.opendatahub.io/version": "2.25.1",
+				},
+			},
+			"spec": map[string]any{
+				"tags": []any{
+					map[string]any{
+						"name": tagCurrent,
+						"from": map[string]any{
+							"kind": "DockerImage",
+							"name": externalImageBase + "@" + shaCompatible,
+						},
+						"annotations": map[string]any{
+							"opendatahub.io/notebook-python-dependencies": pythonDeps,
+							"opendatahub.io/notebook-software":            software,
+						},
+					},
+					map[string]any{
+						"name": tagPrevious,
+						"from": map[string]any{
+							"kind": "DockerImage",
+							"name": externalImageBase + "@" + shaIncompatible,
+						},
+						"annotations": map[string]any{
+							"opendatahub.io/notebook-python-dependencies": pythonDeps,
+							"opendatahub.io/notebook-software":            software,
+						},
+					},
+				},
+			},
+			"status": map[string]any{
+				"dockerImageRepository": "",
+				"tags": []any{
+					map[string]any{
+						"tag":   tagCurrent,
+						"items": nil,
+					},
+					map[string]any{
+						"tag":   tagPrevious,
+						"items": nil,
+					},
+				},
+			},
+		},
+	}
+}
+
 func newRStudioImageStreamTag(imageName, buildRef, sha string) *unstructured.Unstructured {
 	return &unstructured.Unstructured{
 		Object: map[string]any{
@@ -263,6 +359,7 @@ func TestImpactedWorkloadsCheck_NoNotebooks(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -377,7 +474,7 @@ func TestImpactedWorkloadsCheck_SingleNotebook(t *testing.T) {
 			g := NewWithT(t)
 			ctx := t.Context()
 
-			objects := append(tc.objects(), testutil.NewDSCI(applicationsNS))
+			objects := append(tc.objects(), testutil.NewDSC(map[string]string{"workbenches": "Managed"}), testutil.NewDSCI(applicationsNS))
 
 			target := testutil.NewTarget(t, testutil.TargetConfig{
 				ListKinds:      listKinds,
@@ -481,6 +578,7 @@ func TestImpactedWorkloadsCheck_MultiContainer(t *testing.T) {
 
 			objects := tc.objects()
 			objects = append(objects,
+				testutil.NewDSC(map[string]string{"workbenches": "Managed"}),
 				newNotebookWithContainers("multi-nb", "test-ns", tc.containers),
 				testutil.NewDSCI(applicationsNS),
 			)
@@ -526,6 +624,7 @@ func TestImpactedWorkloadsCheck_MixedNotebooks(t *testing.T) {
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds: listKinds,
 		Objects: []*unstructured.Unstructured{
+			testutil.NewDSC(map[string]string{"workbenches": "Managed"}),
 			testutil.NewDSCI(applicationsNS),
 			jupyterIS, rstudioIS, rstudioISTBad, jupyterNb, rstudioNb,
 		},
@@ -567,35 +666,24 @@ func TestImpactedWorkloadsCheck_CanApply(t *testing.T) {
 		name           string
 		currentVersion string
 		targetVersion  string
-		workbenches    string
 		expected       bool
 	}{
 		{
 			name:           "LintMode_SameVersion",
 			currentVersion: "2.17.0",
 			targetVersion:  "2.17.0",
-			workbenches:    "Managed",
 			expected:       false,
 		},
 		{
-			name:           "Upgrade2xTo3x_Managed",
+			name:           "Upgrade2xTo3x",
 			currentVersion: "2.17.0",
 			targetVersion:  "3.0.0",
-			workbenches:    "Managed",
 			expected:       true,
-		},
-		{
-			name:           "Upgrade2xTo3x_Removed",
-			currentVersion: "2.17.0",
-			targetVersion:  "3.0.0",
-			workbenches:    "Removed",
-			expected:       false,
 		},
 		{
 			name:           "Upgrade3xTo3x",
 			currentVersion: "3.0.0",
 			targetVersion:  "3.1.0",
-			workbenches:    "Managed",
 			expected:       false,
 		},
 	}
@@ -606,7 +694,6 @@ func TestImpactedWorkloadsCheck_CanApply(t *testing.T) {
 
 			target := testutil.NewTarget(t, testutil.TargetConfig{
 				ListKinds:      listKinds,
-				Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": tc.workbenches})},
 				CurrentVersion: tc.currentVersion,
 				TargetVersion:  tc.targetVersion,
 			})
@@ -625,6 +712,7 @@ func TestImpactedWorkloadsCheck_AnnotationTargetVersion(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -636,10 +724,11 @@ func TestImpactedWorkloadsCheck_AnnotationTargetVersion(t *testing.T) {
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationCheckTargetVersion, "3.0.0"))
 }
 
-// TestImpactedWorkloadsCheck_LookupStrategies tests all three image lookup strategies:
+// TestImpactedWorkloadsCheck_LookupStrategies tests all five image lookup strategies:
 // 1. dockerImageReference - exact match against .status.tags[*].items[*].dockerImageReference
 // 2. SHA lookup - match SHA against .status.tags[*].items[*].image
-// 3. dockerImageRepository - match path against .status.dockerImageRepository.
+// 3. dockerImageRepository - match path against .status.dockerImageRepository
+// 4. spec from.name - exact match against .spec.tags[*].from.name (disconnected clusters).
 func TestImpactedWorkloadsCheck_LookupStrategies(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -734,6 +823,47 @@ func TestImpactedWorkloadsCheck_LookupStrategies(t *testing.T) {
 			expectedImpact: resultpkg.ImpactBlocking,
 		},
 
+		// Strategy 4: spec from.name - exact match against .spec.tags[*].from.name (disconnected clusters)
+		{
+			name:        "Strategy4_SpecRef_Compliant",
+			description: "Disconnected cluster: spec from.name match (Jupyter compatible)",
+			image:       specRefJupyterCompatible,
+			objects: func() []*unstructured.Unstructured {
+				return []*unstructured.Unstructured{
+					newDisconnectedImageStream(isJupyterDatascience, "jupyter"),
+				}
+			},
+			expectedStatus: metav1.ConditionTrue,
+			expectedReason: check.ReasonVersionCompatible,
+			expectedImpact: resultpkg.ImpactNone,
+		},
+		{
+			name:        "Strategy4_SpecRef_NonCompliant",
+			description: "Disconnected cluster: spec from.name match (CodeServer old tag)",
+			image:       specRefCodeserverIncompatible,
+			objects: func() []*unstructured.Unstructured {
+				return []*unstructured.Unstructured{
+					newDisconnectedImageStream(isCodeserverDatascience, "codeserver"),
+				}
+			},
+			expectedStatus: metav1.ConditionFalse,
+			expectedReason: check.ReasonWorkloadsImpacted,
+			expectedImpact: resultpkg.ImpactBlocking,
+		},
+		{
+			name:        "Strategy4_SpecRef_NoMatch",
+			description: "Disconnected cluster: image not in spec from.name - falls through to CUSTOM",
+			image:       externalRegistry + "/odh-" + isJupyterDatascience + "@" + shaUnknown,
+			objects: func() []*unstructured.Unstructured {
+				return []*unstructured.Unstructured{
+					newDisconnectedImageStream(isJupyterDatascience, "jupyter"),
+				}
+			},
+			expectedStatus: metav1.ConditionFalse,
+			expectedReason: check.ReasonWorkloadsImpacted,
+			expectedImpact: resultpkg.ImpactAdvisory, // Falls through to CUSTOM
+		},
+
 		// Non-OOTB images - should be classified as CUSTOM
 		{
 			name:        "Custom_WithTag",
@@ -816,6 +946,7 @@ func TestImpactedWorkloadsCheck_LookupStrategies(t *testing.T) {
 
 			objects := tc.objects()
 			objects = append(objects,
+				testutil.NewDSC(map[string]string{"workbenches": "Managed"}),
 				newNotebookWithImage("test-nb", "test-ns", tc.image),
 				testutil.NewDSCI(applicationsNS),
 			)
@@ -900,6 +1031,7 @@ func TestImpactedWorkloadsCheck_InfrastructureContainerFiltering(t *testing.T) {
 			ctx := t.Context()
 
 			objects := []*unstructured.Unstructured{
+				testutil.NewDSC(map[string]string{"workbenches": "Managed"}),
 				testutil.NewDSCI(applicationsNS),
 				newImageStream(isJupyterDatascience, "jupyter"),
 				newNotebookWithContainers("test-nb", "test-ns", tc.containers),
