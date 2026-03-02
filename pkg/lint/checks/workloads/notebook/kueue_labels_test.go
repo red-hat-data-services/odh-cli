@@ -8,11 +8,9 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/opendatahub-io/odh-cli/pkg/constants"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	resultpkg "github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/testutil"
-	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/kueue"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/notebook"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 
@@ -59,12 +57,12 @@ func TestKueueLabelsCheck_Metadata(t *testing.T) {
 	g.Expect(chk.Remediation()).To(ContainSubstring("kueue.x-k8s.io/queue-name"))
 }
 
-func TestKueueLabelsCheck_CanApply_WorkbenchesManagedKueueManaged(t *testing.T) {
+func TestKueueLabelsCheck_CanApply_WorkbenchesManaged(t *testing.T) {
 	g := NewWithT(t)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed", "kueue": "Managed"})},
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -73,38 +71,6 @@ func TestKueueLabelsCheck_CanApply_WorkbenchesManagedKueueManaged(t *testing.T) 
 	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
-}
-
-func TestKueueLabelsCheck_CanApply_WorkbenchesManagedKueueUnmanaged(t *testing.T) {
-	g := NewWithT(t)
-
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed", "kueue": "Unmanaged"})},
-		CurrentVersion: "3.0.0",
-		TargetVersion:  "3.0.0",
-	})
-
-	chk := notebook.NewKueueLabelsCheck()
-	canApply, err := chk.CanApply(t.Context(), target)
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(canApply).To(BeTrue())
-}
-
-func TestKueueLabelsCheck_CanApply_WorkbenchesManagedKueueRemoved(t *testing.T) {
-	g := NewWithT(t)
-
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed", "kueue": "Removed"})},
-		CurrentVersion: "3.0.0",
-		TargetVersion:  "3.0.0",
-	})
-
-	chk := notebook.NewKueueLabelsCheck()
-	canApply, err := chk.CanApply(t.Context(), target)
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(canApply).To(BeFalse())
 }
 
 func TestKueueLabelsCheck_CanApply_WorkbenchesRemoved(t *testing.T) {
@@ -112,7 +78,7 @@ func TestKueueLabelsCheck_CanApply_WorkbenchesRemoved(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Removed", "kueue": "Managed"})},
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Removed"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -129,7 +95,6 @@ func TestKueueLabelsCheck_NoNotebooks(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -138,24 +103,19 @@ func TestKueueLabelsCheck_NoNotebooks(t *testing.T) {
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(2))
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(notebook.ConditionTypeKueueLabels),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonRequirementsMet),
-		"Message": Equal(fmt.Sprintf(kueue.MsgNoWorkloads, "Notebook")),
+		"Message": Equal(notebook.MsgAllKueueLabelsValid),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactNone))
-	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(notebook.ConditionTypeKueueMissingLabels),
-		"Status":  Equal(metav1.ConditionTrue),
-		"Message": Equal(fmt.Sprintf(kueue.MsgNoWorkloadsInKueueNs, "Notebook")),
-	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 	g.Expect(result.ImpactedObjects).To(BeEmpty())
 }
 
-func TestKueueLabelsCheck_NotebookWithoutQueueLabel(t *testing.T) {
+func TestKueueLabelsCheck_NamespaceWithoutKueueLabel(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
@@ -164,7 +124,7 @@ func TestKueueLabelsCheck_NotebookWithoutQueueLabel(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), ns, nb},
+		Objects:        []*unstructured.Unstructured{ns, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -174,92 +134,21 @@ func TestKueueLabelsCheck_NotebookWithoutQueueLabel(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgNoLabeledWorkloads, "Notebook")))
-	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgNoWorkloadsInKueueNs, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 	g.Expect(result.ImpactedObjects).To(BeEmpty())
 }
 
-func TestKueueLabelsCheck_NotebookWithQueueLabelInKueueNamespace(t *testing.T) {
+func TestKueueLabelsCheck_NotebookWithKueueLabel(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
 	ns := newNamespace("kueue-ns", map[string]any{
-		constants.LabelKueueManaged: "true",
+		notebook.LabelKueueManaged: "true",
 	})
 
 	nb := newNotebook("good-notebook", "kueue-ns", notebookOptions{
 		Labels: map[string]any{
-			constants.LabelKueueQueueName: "default",
-		},
-	})
-
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), ns, nb},
-		CurrentVersion: "3.0.0",
-		TargetVersion:  "3.0.0",
-	})
-
-	chk := notebook.NewKueueLabelsCheck()
-	result, err := chk.Validate(ctx, target)
-
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgAllValid, 1, "Notebook")))
-	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "Notebook")))
-	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
-	g.Expect(result.ImpactedObjects).To(BeEmpty())
-}
-
-func TestKueueLabelsCheck_NotebookWithoutQueueLabelInKueueNamespace(t *testing.T) {
-	g := NewWithT(t)
-	ctx := t.Context()
-
-	ns := newNamespace("kueue-ns", map[string]any{
-		constants.LabelKueueManaged: "true",
-	})
-
-	nb := newNotebook("unlabeled-notebook", "kueue-ns", notebookOptions{})
-
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), ns, nb},
-		CurrentVersion: "3.0.0",
-		TargetVersion:  "3.0.0",
-	})
-
-	chk := notebook.NewKueueLabelsCheck()
-	result, err := chk.Validate(ctx, target)
-
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(2))
-	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgNoLabeledWorkloads, "Notebook")))
-	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(notebook.ConditionTypeKueueMissingLabels),
-		"Status":  Equal(metav1.ConditionFalse),
-		"Reason":  Equal(check.ReasonConfigurationInvalid),
-		"Message": Equal(fmt.Sprintf(kueue.MsgMissingLabelInKueueNs, 1, "Notebook")),
-	}))
-	g.Expect(result.Status.Conditions[1].Impact).To(Equal(resultpkg.ImpactBlocking))
-	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
-	g.Expect(result.ImpactedObjects).To(HaveLen(1))
-	g.Expect(result.ImpactedObjects[0].Name).To(Equal("unlabeled-notebook"))
-	g.Expect(result.ImpactedObjects[0].Namespace).To(Equal("kueue-ns"))
-}
-
-func TestKueueLabelsCheck_LabeledNotebookInNonKueueNamespace(t *testing.T) {
-	g := NewWithT(t)
-	ctx := t.Context()
-
-	ns := newNamespace("plain-ns", nil)
-
-	nb := newNotebook("bad-notebook", "plain-ns", notebookOptions{
-		Labels: map[string]any{
-			constants.LabelKueueQueueName: "default",
+			notebook.LabelKueueQueueName: "default",
 		},
 	})
 
@@ -274,47 +163,72 @@ func TestKueueLabelsCheck_LabeledNotebookInNonKueueNamespace(t *testing.T) {
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions).To(HaveLen(2))
+	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
+	g.Expect(result.ImpactedObjects).To(BeEmpty())
+}
+
+func TestKueueLabelsCheck_NotebookMissingKueueLabel(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	ns := newNamespace("kueue-ns", map[string]any{
+		notebook.LabelKueueManaged: "true",
+	})
+
+	nb := newNotebook("bad-notebook", "kueue-ns", notebookOptions{})
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      kueueLabelsListKinds,
+		Objects:        []*unstructured.Unstructured{ns, nb},
+		CurrentVersion: "3.0.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := notebook.NewKueueLabelsCheck()
+	result, err := chk.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(notebook.ConditionTypeKueueLabels),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonConfigurationInvalid),
-		"Message": Equal(fmt.Sprintf(kueue.MsgNsNotKueueEnabled, 1, "Notebook")),
+		"Message": Equal(fmt.Sprintf(notebook.MsgKueueLabelsMissing, 1)),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
 	g.Expect(result.Status.Conditions[0].Remediation).To(ContainSubstring("kueue.x-k8s.io/queue-name"))
-	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgNoWorkloadsInKueueNs, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
 	g.Expect(result.ImpactedObjects[0].Name).To(Equal("bad-notebook"))
-	g.Expect(result.ImpactedObjects[0].Namespace).To(Equal("plain-ns"))
+	g.Expect(result.ImpactedObjects[0].Namespace).To(Equal("kueue-ns"))
 }
 
-func TestKueueLabelsCheck_MixedLabeledNotebooks(t *testing.T) {
+func TestKueueLabelsCheck_MixedNotebooks(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	nsKueue := newNamespace("kueue-ns", map[string]any{
-		constants.LabelKueueManaged: "true",
+	ns := newNamespace("kueue-ns", map[string]any{
+		notebook.LabelKueueManaged: "true",
 	})
 	nsPlain := newNamespace("plain-ns", nil)
 
+	// Notebook with kueue label in kueue namespace — compliant
 	nbGood := newNotebook("good-notebook", "kueue-ns", notebookOptions{
 		Labels: map[string]any{
-			constants.LabelKueueQueueName: "default",
+			notebook.LabelKueueQueueName: "default",
 		},
 	})
-	nbBad := newNotebook("bad-notebook", "plain-ns", notebookOptions{
-		Labels: map[string]any{
-			constants.LabelKueueQueueName: "default",
-		},
-	})
+
+	// Notebook without kueue label in kueue namespace — non-compliant
+	nbBad := newNotebook("bad-notebook", "kueue-ns", notebookOptions{})
+
+	// Notebook in non-kueue namespace — should not be flagged
 	nbPlain := newNotebook("plain-notebook", "plain-ns", notebookOptions{})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{nsKueue, nsPlain, nbGood, nbBad, nbPlain},
+		Objects:        []*unstructured.Unstructured{ns, nsPlain, nbGood, nbBad, nbPlain},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -324,31 +238,25 @@ func TestKueueLabelsCheck_MixedLabeledNotebooks(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionFalse))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgNsNotKueueEnabled, 1, "Notebook")))
-	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
 	g.Expect(result.ImpactedObjects[0].Name).To(Equal("bad-notebook"))
 }
 
-func TestKueueLabelsCheck_OpenshiftKueueNamespaceLabel(t *testing.T) {
+func TestKueueLabelsCheck_BothKueueNamespaceLabels(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
+	// Namespace with the OpenShift-specific kueue label
 	ns := newNamespace("ocp-kueue-ns", map[string]any{
-		constants.LabelKueueOpenshiftManaged: "true",
+		notebook.LabelKueueOpenshiftManaged: "true",
 	})
 
-	nb := newNotebook("good-notebook", "ocp-kueue-ns", notebookOptions{
-		Labels: map[string]any{
-			constants.LabelKueueQueueName: "default",
-		},
-	})
+	nb := newNotebook("unlabeled-notebook", "ocp-kueue-ns", notebookOptions{})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), ns, nb},
+		Objects:        []*unstructured.Unstructured{ns, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -357,12 +265,10 @@ func TestKueueLabelsCheck_OpenshiftKueueNamespaceLabel(t *testing.T) {
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgAllValid, 1, "Notebook")))
-	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "Notebook")))
-	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
-	g.Expect(result.ImpactedObjects).To(BeEmpty())
+	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionFalse))
+	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
+	g.Expect(result.ImpactedObjects).To(HaveLen(1))
+	g.Expect(result.ImpactedObjects[0].Name).To(Equal("unlabeled-notebook"))
 }
 
 func TestKueueLabelsCheck_NotebookWithCustomQueueName(t *testing.T) {
@@ -370,18 +276,18 @@ func TestKueueLabelsCheck_NotebookWithCustomQueueName(t *testing.T) {
 	ctx := t.Context()
 
 	ns := newNamespace("kueue-ns", map[string]any{
-		constants.LabelKueueManaged: "true",
+		notebook.LabelKueueManaged: "true",
 	})
 
 	nb := newNotebook("custom-queue-notebook", "kueue-ns", notebookOptions{
 		Labels: map[string]any{
-			constants.LabelKueueQueueName: "team-queue",
+			notebook.LabelKueueQueueName: "team-queue",
 		},
 	})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), ns, nb},
+		Objects:        []*unstructured.Unstructured{ns, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -391,9 +297,6 @@ func TestKueueLabelsCheck_NotebookWithCustomQueueName(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgAllValid, 1, "Notebook")))
-	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 	g.Expect(result.ImpactedObjects).To(BeEmpty())
 }
@@ -404,7 +307,6 @@ func TestKueueLabelsCheck_AnnotationTargetVersion(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      kueueLabelsListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})

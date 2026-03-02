@@ -97,7 +97,7 @@ func (b *WorkloadBuilder[T]) Filter(fn func(T) (bool, error)) *WorkloadBuilder[T
 // ForComponent specifies the DSC component(s) this workload check requires.
 // If set, Run() verifies at least one component is not in "Removed" state
 // before listing resources. If all components are Removed (or DSC is not found),
-// Run returns nil, causing the check to be silently skipped in output.
+// a passing result is returned indicating no validation is needed.
 // Multiple names use OR semantics (at least one must be active).
 func (b *WorkloadBuilder[T]) ForComponent(names ...string) *WorkloadBuilder[T] {
 	b.componentNames = names
@@ -124,13 +124,13 @@ func (b *WorkloadBuilder[T]) Run(
 
 	// Check component state precondition if ForComponent was called.
 	if len(b.componentNames) > 0 {
-		active, err := b.checkComponentState(ctx)
+		earlyResult, err := b.checkComponentState(ctx, dr)
 		if err != nil {
 			return nil, err
 		}
 
-		if !active {
-			return nil, nil
+		if earlyResult != nil {
+			return earlyResult, nil
 		}
 	}
 
@@ -180,26 +180,41 @@ func (b *WorkloadBuilder[T]) Run(
 }
 
 // checkComponentState verifies at least one component is not in Removed state.
-// Returns (true, nil) if at least one component is active, or (false, nil) if
-// all components are Removed or the DSC is not found.
-func (b *WorkloadBuilder[T]) checkComponentState(ctx context.Context) (bool, error) {
+// Returns (result, nil) if validation should short-circuit, or (nil, nil) to continue.
+func (b *WorkloadBuilder[T]) checkComponentState(
+	ctx context.Context,
+	dr *result.DiagnosticResult,
+) (*result.DiagnosticResult, error) {
 	dsc, err := client.GetDataScienceCluster(ctx, b.target.Client)
 	switch {
 	case apierrors.IsNotFound(err):
-		return false, nil
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonResourceNotFound),
+			check.WithMessage("No DataScienceCluster found"),
+		))
+
+		return dr, nil
 	case err != nil:
-		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
+		return nil, fmt.Errorf("getting DataScienceCluster: %w", err)
 	}
 
-	// At least one component must be active (not Removed).
+	// Check if at least one component is active (not Removed).
 	for _, name := range b.componentNames {
 		if !components.HasManagementState(dsc, name, constants.ManagementStateRemoved) {
-			return true, nil
+			return nil, nil
 		}
 	}
 
-	// All components are Removed.
-	return false, nil
+	// All components are Removed - skip workload validation.
+	dr.SetCondition(check.NewCondition(
+		check.ConditionTypeConfigured,
+		metav1.ConditionTrue,
+		check.WithReason(check.ReasonRequirementsMet),
+	))
+
+	return dr, nil
 }
 
 // Complete is a convenience alternative to Run for checks that only need to set conditions.

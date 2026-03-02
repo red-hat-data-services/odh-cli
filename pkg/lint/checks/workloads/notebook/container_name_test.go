@@ -76,7 +76,7 @@ func TestContainerNameCheck_NoNotebooks(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      containerNameListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
+		Objects:        nil,
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -106,7 +106,7 @@ func TestContainerNameCheck_MatchingContainerName(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      containerNameListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), nb},
+		Objects:        []*unstructured.Unstructured{nb},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -136,7 +136,7 @@ func TestContainerNameCheck_MismatchedContainerName(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      containerNameListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), nb},
+		Objects:        []*unstructured.Unstructured{nb},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -168,7 +168,7 @@ func TestContainerNameCheck_NoDashboardAnnotation(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      containerNameListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), nb},
+		Objects:        []*unstructured.Unstructured{nb},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -198,7 +198,7 @@ func TestContainerNameCheck_SizeSelectionAnnotationMismatch(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      containerNameListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), nb},
+		Objects:        []*unstructured.Unstructured{nb},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -230,7 +230,7 @@ func TestContainerNameCheck_SizeSelectionAnnotationMatching(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      containerNameListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), nb},
+		Objects:        []*unstructured.Unstructured{nb},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -272,7 +272,7 @@ func TestContainerNameCheck_MixedNotebooks(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      containerNameListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), nbMatching, nbMismatched, nbSizeOnly, nbNoDashboard},
+		Objects:        []*unstructured.Unstructured{nbMatching, nbMismatched, nbSizeOnly, nbNoDashboard},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -305,7 +305,7 @@ func TestContainerNameCheck_WithOAuthProxy(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      containerNameListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"}), nb},
+		Objects:        []*unstructured.Unstructured{nb},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -325,11 +325,12 @@ func TestContainerNameCheck_WithOAuthProxy(t *testing.T) {
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
 }
 
-func TestContainerNameCheck_CanApply(t *testing.T) {
+func TestContainerNameCheck_CanApply_Managed(t *testing.T) {
 	g := NewWithT(t)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      containerNameListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -338,6 +339,22 @@ func TestContainerNameCheck_CanApply(t *testing.T) {
 	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
+}
+
+func TestContainerNameCheck_CanApply_Removed(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      containerNameListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Removed"})},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := notebook.NewContainerNameCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
 func TestContainerNameCheck_Metadata(t *testing.T) {

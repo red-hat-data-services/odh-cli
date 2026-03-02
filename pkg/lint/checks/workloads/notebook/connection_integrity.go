@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"github.com/opendatahub-io/odh-cli/pkg/constants"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/validate"
@@ -41,9 +40,9 @@ func NewConnectionIntegrityCheck() *ConnectionIntegrityCheck {
 }
 
 // CanApply returns whether this check should run for the given target.
-// Applies regardless of version; component state is checked via ForComponent in Validate.
-func (c *ConnectionIntegrityCheck) CanApply(_ context.Context, _ check.Target) (bool, error) {
-	return true, nil
+// Applies whenever Workbenches is Managed, regardless of version.
+func (c *ConnectionIntegrityCheck) CanApply(ctx context.Context, target check.Target) (bool, error) {
+	return isWorkbenchesManaged(ctx, target)
 }
 
 // Validate lists Notebooks with the connections annotation and verifies that each
@@ -53,7 +52,6 @@ func (c *ConnectionIntegrityCheck) Validate(
 	target check.Target,
 ) (*result.DiagnosticResult, error) {
 	return validate.WorkloadsMetadata(c, target, resources.Notebook).
-		ForComponent(constants.ComponentWorkbenches).
 		Run(ctx, c.checkConnections)
 }
 

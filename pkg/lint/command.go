@@ -98,7 +98,7 @@ func NewCommand(
 	registry.MustRegister(certmanager.NewCheck())
 	registry.MustRegister(openshift.NewCheck())
 
-	// Workloads (25)
+	// Workloads (20)
 	registry.MustRegister(ray.NewAppWrapperCleanupCheck())
 	registry.MustRegister(datasciencepipelinesworkloads.NewInstructLabRemovalCheck())
 	registry.MustRegister(datasciencepipelinesworkloads.NewStoredVersionRemovalCheck())
@@ -108,8 +108,6 @@ func NewCommand(
 	registry.MustRegister(kserveworkloads.NewAcceleratorMigrationCheck())
 	registry.MustRegister(kserveworkloads.NewHardwareProfileMigrationCheck())
 	registry.MustRegister(kserveworkloads.NewImpactedWorkloadsCheck())
-	registry.MustRegister(kserveworkloads.NewKueueLabelsISVCCheck())
-	registry.MustRegister(kserveworkloads.NewKueueLabelsLLMCheck())
 	registry.MustRegister(llamastackworkloads.NewConfigCheck())
 	registry.MustRegister(notebook.NewAcceleratorMigrationCheck())
 	registry.MustRegister(notebook.NewContainerNameCheck())
@@ -119,10 +117,7 @@ func NewCommand(
 	registry.MustRegister(notebook.NewKueueLabelsCheck())
 	registry.MustRegister(notebook.NewImpactedWorkloadsCheck())
 	registry.MustRegister(notebook.NewRunningWorkloadsCheck())
-	registry.MustRegister(ray.NewKueueLabelsRayClusterCheck())
-	registry.MustRegister(ray.NewKueueLabelsRayJobCheck())
 	registry.MustRegister(ray.NewImpactedWorkloadsCheck())
-	registry.MustRegister(trainingoperatorworkloads.NewKueueLabelsPyTorchJobCheck())
 	registry.MustRegister(trainingoperatorworkloads.NewImpactedWorkloadsCheck())
 
 	c := &Command{

@@ -7,10 +7,23 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/opendatahub-io/odh-cli/pkg/resources"
+	"github.com/opendatahub-io/odh-cli/pkg/constants"
+	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
+	"github.com/opendatahub-io/odh-cli/pkg/util/components"
 	"github.com/opendatahub-io/odh-cli/pkg/util/jq"
 )
+
+// isWorkbenchesManaged returns true when the Workbenches component is set to Managed on the DSC.
+// Used as the common precondition for all notebook checks.
+func isWorkbenchesManaged(ctx context.Context, target check.Target) (bool, error) {
+	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
+	if err != nil {
+		return false, fmt.Errorf("getting DataScienceCluster: %w", err)
+	}
+
+	return components.HasManagementState(dsc, componentWorkbenches, constants.ManagementStateManaged), nil
+}
 
 // NotebookContainer holds the parsed name and image of a container from a notebook spec.
 type NotebookContainer struct {
@@ -65,48 +78,4 @@ func IsInfrastructureContainer(containerName string, image string) bool {
 	}
 
 	return false
-}
-
-// resolveResourceType queries the CRD for the given ResourceType and returns
-// a copy with Version set to the cluster's storage version.
-// Returns an error if the CRD cannot be read or has no storage version.
-func resolveResourceType(
-	ctx context.Context,
-	c client.Reader,
-	rt resources.ResourceType,
-) (resources.ResourceType, error) {
-	crdName := rt.Resource + "." + rt.Group
-
-	crd, err := c.Get(ctx, resources.CustomResourceDefinition.GVR(), crdName)
-	if err != nil {
-		return resources.ResourceType{}, fmt.Errorf("getting CRD %s: %w", crdName, err)
-	}
-
-	if crd == nil {
-		// Reader.Get returns nil (no error) for permission errors
-		return resources.ResourceType{}, fmt.Errorf("unable to read CRD %s: insufficient permissions", crdName)
-	}
-
-	versions, err := jq.Query[[]any](crd, ".spec.versions")
-	if err != nil {
-		return resources.ResourceType{}, fmt.Errorf("reading versions from CRD %s: %w", crdName, err)
-	}
-
-	for _, v := range versions {
-		vm, ok := v.(map[string]any)
-		if !ok {
-			continue
-		}
-
-		if storage, _ := vm["storage"].(bool); storage {
-			if name, _ := vm["name"].(string); name != "" {
-				resolved := rt
-				resolved.Version = name
-
-				return resolved, nil
-			}
-		}
-	}
-
-	return resources.ResourceType{}, fmt.Errorf("no storage version found in CRD %s", crdName)
 }
