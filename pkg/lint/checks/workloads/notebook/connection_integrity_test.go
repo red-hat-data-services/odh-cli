@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/opendatahub-io/odh-cli/pkg/constants"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	resultpkg "github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/testutil"
@@ -23,6 +24,10 @@ var connIntegrityListKinds = map[schema.GroupVersionResource]string{
 	resources.Notebook.GVR():           resources.Notebook.ListKind(),
 	resources.Secret.GVR():             resources.Secret.ListKind(),
 	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
+}
+
+func workbenchesDSC(state string) *unstructured.Unstructured {
+	return testutil.NewDSC(map[string]string{"workbenches": state})
 }
 
 func newSecret(name, namespace string) *unstructured.Unstructured {
@@ -52,12 +57,11 @@ func TestConnectionIntegrityCheck_Metadata(t *testing.T) {
 	g.Expect(chk.Remediation()).To(ContainSubstring("missing connection Secret"))
 }
 
-func TestConnectionIntegrityCheck_CanApply_WorkbenchesManaged(t *testing.T) {
+func TestConnectionIntegrityCheck_CanApply(t *testing.T) {
 	g := NewWithT(t)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -68,20 +72,37 @@ func TestConnectionIntegrityCheck_CanApply_WorkbenchesManaged(t *testing.T) {
 	g.Expect(canApply).To(BeTrue())
 }
 
-func TestConnectionIntegrityCheck_CanApply_WorkbenchesRemoved(t *testing.T) {
+func TestConnectionIntegrityCheck_Validate_SkipWhenDSCMissing(t *testing.T) {
 	g := NewWithT(t)
+	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Removed"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
 	chk := notebook.NewConnectionIntegrityCheck()
-	canApply, err := chk.CanApply(t.Context(), target)
+	result, err := chk.Validate(ctx, target)
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(canApply).To(BeFalse())
+	g.Expect(result).To(BeNil())
+}
+
+func TestConnectionIntegrityCheck_Validate_SkipWhenWorkbenchesRemoved(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      connIntegrityListKinds,
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateRemoved)},
+		CurrentVersion: "3.0.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := notebook.NewConnectionIntegrityCheck()
+	result, err := chk.Validate(ctx, target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).To(BeNil())
 }
 
 func TestConnectionIntegrityCheck_NoNotebooks(t *testing.T) {
@@ -90,6 +111,7 @@ func TestConnectionIntegrityCheck_NoNotebooks(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged)},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -118,7 +140,7 @@ func TestConnectionIntegrityCheck_NotebookWithoutConnectionAnnotation(t *testing
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{nb},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -147,7 +169,7 @@ func TestConnectionIntegrityCheck_AllSecretsExist(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{nb, secret1, secret2},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), nb, secret1, secret2},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -173,7 +195,7 @@ func TestConnectionIntegrityCheck_SecretMissing(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{nb},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -212,7 +234,7 @@ func TestConnectionIntegrityCheck_OneOfMultipleSecretsMissing(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{nb, secret},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), nb, secret},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -252,7 +274,7 @@ func TestConnectionIntegrityCheck_MixedNotebooks(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{secret, nbGood, nbPlain, nbBroken},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), secret, nbGood, nbPlain, nbBroken},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -282,7 +304,7 @@ func TestConnectionIntegrityCheck_SecretInWrongNamespace(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{secret, nb},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), secret, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -309,7 +331,7 @@ func TestConnectionIntegrityCheck_NotebookFlaggedOnlyOnce(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{nb},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -328,6 +350,7 @@ func TestConnectionIntegrityCheck_AnnotationTargetVersion(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      connIntegrityListKinds,
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged)},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})

@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/opendatahub-io/odh-cli/pkg/constants"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	resultpkg "github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/testutil"
@@ -62,12 +63,11 @@ func TestHardwareProfileIntegrityCheck_Metadata(t *testing.T) {
 	g.Expect(chk.Remediation()).To(ContainSubstring("missing HardwareProfile"))
 }
 
-func TestHardwareProfileIntegrityCheck_CanApply_WorkbenchesManaged(t *testing.T) {
+func TestHardwareProfileIntegrityCheck_CanApply(t *testing.T) {
 	g := NewWithT(t)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      hwpIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -78,36 +78,21 @@ func TestHardwareProfileIntegrityCheck_CanApply_WorkbenchesManaged(t *testing.T)
 	g.Expect(canApply).To(BeTrue())
 }
 
-func TestHardwareProfileIntegrityCheck_CanApply_WorkbenchesRemoved(t *testing.T) {
+func TestHardwareProfileIntegrityCheck_Validate_SkipWhenWorkbenchesRemoved(t *testing.T) {
 	g := NewWithT(t)
+	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      hwpIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Removed"})},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateRemoved)},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
 	chk := notebook.NewHardwareProfileIntegrityCheck()
-	canApply, err := chk.CanApply(t.Context(), target)
+	result, err := chk.Validate(ctx, target)
 	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(canApply).To(BeFalse())
-}
-
-func TestHardwareProfileIntegrityCheck_CanApply_UpgradeMode(t *testing.T) {
-	g := NewWithT(t)
-
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      hwpIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
-		CurrentVersion: "2.17.0",
-		TargetVersion:  "3.0.0",
-	})
-
-	chk := notebook.NewHardwareProfileIntegrityCheck()
-	canApply, err := chk.CanApply(t.Context(), target)
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(canApply).To(BeTrue())
+	g.Expect(result).To(BeNil())
 }
 
 func TestHardwareProfileIntegrityCheck_NoNotebooks(t *testing.T) {
@@ -116,6 +101,7 @@ func TestHardwareProfileIntegrityCheck_NoNotebooks(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      hwpIntegrityListKinds,
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged)},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -144,7 +130,7 @@ func TestHardwareProfileIntegrityCheck_NotebookWithoutHWPAnnotation(t *testing.T
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      hwpIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{nb},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -185,7 +171,7 @@ func TestHardwareProfileIntegrityCheck_ProfileExists(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      hwpIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{crd, nb, profile},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), crd, nb, profile},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -215,7 +201,7 @@ func TestHardwareProfileIntegrityCheck_ProfileMissing(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      hwpIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{crd, nb},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), crd, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -277,7 +263,7 @@ func TestHardwareProfileIntegrityCheck_MixedExistingAndMissing(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      hwpIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{crd, profile, nbGood, nbPlain, nbBroken},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), crd, profile, nbGood, nbPlain, nbBroken},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -326,7 +312,7 @@ func TestHardwareProfileIntegrityCheck_WrongNamespace(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      hwpIntegrityListKinds,
-		Objects:        []*unstructured.Unstructured{crd, profile, nb},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), crd, profile, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -381,7 +367,7 @@ func TestHardwareProfileIntegrityCheck_ProfileExistsV1Alpha1(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds,
-		Objects:        []*unstructured.Unstructured{crd, nb, profile},
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged), crd, nb, profile},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
@@ -402,6 +388,7 @@ func TestHardwareProfileIntegrityCheck_AnnotationTargetVersion(t *testing.T) {
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      hwpIntegrityListKinds,
+		Objects:        []*unstructured.Unstructured{workbenchesDSC(constants.ManagementStateManaged)},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
