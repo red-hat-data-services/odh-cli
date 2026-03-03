@@ -37,6 +37,15 @@ RUN make build \
     DATE=${DATE}
 
 
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:4c0a6ea209ccc5028c45d3fd886dd0f51e52a8917bceea15c759a2bd2598836f AS yq-builder
+
+WORKDIR /workspace
+
+USER root
+
+COPY ./yq .
+
+RUN CGO_ENABLED=0 go build -ldflags "-s -w" .
 
 # Runtime stage
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.21.0
@@ -53,6 +62,8 @@ COPY ./rhoai-upgrade-helpers /opt/rhai-upgrade-helpers
 
 # Copy requirements.txt
 COPY ./requirements.txt ./requirements.txt
+
+COPY --from=yq-builder /workspace/yq /usr/bin/yq
 
 # Install base utilities (jq, wget, python3, python3-pip)
 RUN yum install -y \
