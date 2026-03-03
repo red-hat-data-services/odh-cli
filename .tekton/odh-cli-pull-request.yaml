@@ -31,6 +31,8 @@ spec:
     - io.openshift.tags=odh-cli
   - name: output-image
     value: quay.io/rhoai/pull-request-pipelines:odh-cli-{{revision}}
+  - name: rhoai-version
+    value: "3.3.0"
   - name: dockerfile
     value: Dockerfile.konflux
   - name: path-context
@@ -42,6 +44,7 @@ spec:
         [
           {"type": "rpm", "path": "."},
           {"type": "gomod", "path": "."},
+          {"type": "gomod", "path": "./yq"},
           {
             "type": "pip", 
             "path": ".", 
