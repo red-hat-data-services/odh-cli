@@ -2,3 +2,6 @@
 	path = rhoai-upgrade-helpers
 	url = https://github.com/red-hat-data-services/rhoai-upgrade-helpers.git
 	branch = main
+[submodule "yq"]
+	path = yq
+	url = https://github.com/mikefarah/yq.git
