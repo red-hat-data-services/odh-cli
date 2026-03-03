@@ -37,6 +37,15 @@ RUN make build \
     DATE=${DATE}
 
 
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:4c0a6ea209ccc5028c45d3fd886dd0f51e52a8917bceea15c759a2bd2598836f AS yq-builder
+
+WORKDIR /workspace
+
+USER root
+
+COPY ./yq .
+
+RUN CGO_ENABLED=0 go build -ldflags "-s -w" .
 
 # Runtime stage
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.21.0
@@ -53,6 +62,8 @@ COPY ./rhoai-upgrade-helpers /opt/rhai-upgrade-helpers
 
 # Copy requirements.txt
 COPY ./requirements.txt ./requirements.txt
+
+COPY --from=yq-builder /workspace/yq /usr/bin/yq
 
 # Install base utilities (jq, wget, python3, python3-pip)
 RUN yum install -y \
@@ -74,3 +85,11 @@ ENV PATH="/opt/rhai-cli/bin:${PATH}"
 # Set entrypoint to rhai-cli binary
 # Users can override with --entrypoint /bin/bash for interactive debugging
 ENTRYPOINT ["/opt/rhai-cli/bin/rhai-cli"]
+
+LABEL name="rhoai/odh-cli-rhel9" \
+      com.redhat.component="odh-cli-rhel9" \
+      io.k8s.display-name="odh-cli-rhel9" \
+      io.k8s.description="CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes." \
+      description="CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes." \
+      summary="CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes." \
+      com.redhat.license_terms="https://www.redhat.com/licenses/Red_Hat_Standard_EULA_20191108.pdf"
