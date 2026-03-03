@@ -4,4 +4,4 @@
 	branch = main
 [submodule "yq"]
 	path = yq
-	url = ./yq
+	url = https://github.com/mikefarah/yq.git
