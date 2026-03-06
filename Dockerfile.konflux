@@ -1,5 +1,5 @@
 # Build stage - use native platform for builder to avoid emulation
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:b3b98e0b21ddbb979d968ca319b8eebdca121e30d58994072cbf99ce86e5d24e AS builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:e4210398439060b5e7bbea2dc5ee532b3b85911e64924c3a81a645553c2ab240 AS builder
 
 # Build arguments for cross-compilation
 ARG TARGETOS
@@ -37,7 +37,7 @@ RUN make build \
     DATE=${DATE}
 
 
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:b3b98e0b21ddbb979d968ca319b8eebdca121e30d58994072cbf99ce86e5d24e AS yq-builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:e4210398439060b5e7bbea2dc5ee532b3b85911e64924c3a81a645553c2ab240 AS yq-builder
 
 WORKDIR /workspace
 
