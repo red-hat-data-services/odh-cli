@@ -23,6 +23,8 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/trainingoperator"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/certmanager"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/openshift"
+	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/platform/datasciencecluster"
+	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/platform/dscinitialization"
 	datasciencepipelinesworkloads "github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/datasciencepipelines"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/guardrails"
 	kserveworkloads "github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/kserve"
@@ -79,6 +81,10 @@ func NewCommand(
 	registry := check.NewRegistry()
 
 	// Explicitly register all checks (no global state, full test isolation)
+	// Platform (2)
+	registry.MustRegister(dscinitialization.NewDSCInitializationReadinessCheck())
+	registry.MustRegister(datasciencecluster.NewDataScienceClusterReadinessCheck())
+
 	// Components (13)
 	registry.MustRegister(raycomponent.NewCodeFlareRemovalCheck())
 	registry.MustRegister(dashboard.NewAcceleratorProfileMigrationCheck())
@@ -143,6 +149,7 @@ func NewCommand(
 func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescTargetVersion)
 	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescOutput)
+	fs.StringVar((*string)(&c.SeverityLevel), "severity", string(SeverityLevelInfo), flagDescSeverity)
 	fs.StringArrayVar(&c.CheckSelectors, "checks", []string{"*"}, flagDescChecks)
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
 	fs.BoolVar(&c.Debug, "debug", false, flagDescDebug)
@@ -289,7 +296,7 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 		Debug:          c.Debug,
 	}
 
-	// Execute checks in canonical order: dependencies → services → components → workloads
+	// Execute checks in canonical order: dependencies → services → platform → components → workloads
 	resultsByGroup := make(map[check.CheckGroup][]check.CheckExecution)
 
 	for _, group := range check.CanonicalGroupOrder {
@@ -301,33 +308,39 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 		resultsByGroup[group] = results
 	}
 
+	// Flatten, strip nil results, and apply severity filter
+	flatResults := FlattenResults(resultsByGroup)
+	flatResults = slices.DeleteFunc(flatResults, func(exec check.CheckExecution) bool {
+		return exec.Result == nil
+	})
+	flatResults = FilterBySeverity(flatResults, c.SeverityLevel)
+
 	// Format and output results
-	if err := c.formatAndOutputUpgradeResults(ctx, currentVersion.String(), resultsByGroup); err != nil {
+	if err := c.formatAndOutputUpgradeResults(ctx, currentVersion.String(), flatResults); err != nil {
 		return err
 	}
 
 	// Print verdict and determine exit code
-	return c.printVerdictAndExit(resultsByGroup)
+	return c.printVerdictAndExit(flatResults)
 }
 
 // printVerdictAndExit prints a prominent result verdict for table output and returns
 // an error if fail-on conditions are met (to control exit code).
-func (c *Command) printVerdictAndExit(resultsByGroup map[check.CheckGroup][]check.CheckExecution) error {
+func (c *Command) printVerdictAndExit(results []check.CheckExecution) error {
 	var hasBlocking, hasAdvisory bool
 
-	for _, results := range resultsByGroup {
-		for _, exec := range results {
-			impact := exec.Result.GetImpact()
-			if impact != nil {
-				switch *impact {
-				case string(resultpkg.ImpactBlocking):
-					hasBlocking = true
-				case string(resultpkg.ImpactAdvisory):
-					hasAdvisory = true
-				default:
-					// ImpactNone and unknown impacts don't affect exit code
-				}
-			}
+	for _, exec := range results {
+		if exec.Result == nil {
+			continue
+		}
+
+		switch exec.Result.GetImpact() {
+		case resultpkg.ImpactBlocking:
+			hasBlocking = true
+		case resultpkg.ImpactAdvisory:
+			hasAdvisory = true
+		case resultpkg.ImpactNone:
+			// No impact on exit code
 		}
 	}
 
@@ -351,26 +364,23 @@ func (c *Command) openShiftVersionPtr() *string {
 func (c *Command) formatAndOutputUpgradeResults(
 	ctx context.Context,
 	currentVer string,
-	resultsByGroup map[check.CheckGroup][]check.CheckExecution,
+	results []check.CheckExecution,
 ) error {
 	clusterVer := &c.currentClusterVersion
 	targetVer := &c.TargetVersion
 	ocpVer := c.openShiftVersionPtr()
 
-	// Flatten results to sorted array
-	flatResults := FlattenResults(resultsByGroup)
-
 	switch c.OutputFormat {
 	case OutputFormatTable:
-		return c.outputUpgradeTable(ctx, currentVer, flatResults)
+		return c.outputUpgradeTable(ctx, currentVer, results)
 	case OutputFormatJSON:
-		if err := OutputJSON(c.IO.Out(), flatResults, clusterVer, targetVer, ocpVer); err != nil {
+		if err := OutputJSON(c.IO.Out(), results, clusterVer, targetVer, ocpVer); err != nil {
 			return fmt.Errorf("outputting JSON: %w", err)
 		}
 
 		return nil
 	case OutputFormatYAML:
-		if err := OutputYAML(c.IO.Out(), flatResults, clusterVer, targetVer, ocpVer); err != nil {
+		if err := OutputYAML(c.IO.Out(), results, clusterVer, targetVer, ocpVer); err != nil {
 			return fmt.Errorf("outputting YAML: %w", err)
 		}
 

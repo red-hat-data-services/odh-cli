@@ -59,8 +59,8 @@ const (
 	tagPrevious = "2025.1"
 
 	// RStudio build references (determines 3.x compatibility).
-	buildRefCompatible   = "rhoai-2.25"
-	buildRefIncompatible = "rhoai-2.24"
+	buildRefCompatible   = "rhoai-3.0"
+	buildRefIncompatible = "rhoai-2.25"
 )
 
 // =============================================================================
@@ -426,7 +426,7 @@ func TestImpactedWorkloadsCheck_SingleNotebook(t *testing.T) {
 			},
 			expectedStatus: metav1.ConditionFalse,
 			expectedReason: check.ReasonWorkloadsImpacted,
-			expectedImpact: resultpkg.ImpactBlocking,
+			expectedImpact: resultpkg.ImpactAdvisory,
 			expectImpacted: true,
 		},
 		{
@@ -452,7 +452,7 @@ func TestImpactedWorkloadsCheck_SingleNotebook(t *testing.T) {
 			},
 			expectedStatus: metav1.ConditionFalse,
 			expectedReason: check.ReasonWorkloadsImpacted,
-			expectedImpact: resultpkg.ImpactBlocking,
+			expectedImpact: resultpkg.ImpactAdvisory,
 			expectImpacted: true,
 		},
 		{
@@ -539,7 +539,7 @@ func TestImpactedWorkloadsCheck_MultiContainer(t *testing.T) {
 				"sidecar":  codeserverIncompatibleSHA,
 			},
 			expectedStatus: metav1.ConditionFalse,
-			expectedImpact: resultpkg.ImpactBlocking,
+			expectedImpact: resultpkg.ImpactAdvisory,
 		},
 		{
 			name: "OneCustom",
@@ -567,7 +567,7 @@ func TestImpactedWorkloadsCheck_MultiContainer(t *testing.T) {
 				"sidecar":  codeserverIncompatibleSHA,
 			},
 			expectedStatus: metav1.ConditionFalse,
-			expectedImpact: resultpkg.ImpactBlocking,
+			expectedImpact: resultpkg.ImpactAdvisory,
 		},
 	}
 
@@ -643,7 +643,7 @@ func TestImpactedWorkloadsCheck_MixedNotebooks(t *testing.T) {
 		"Reason":  Equal(check.ReasonWorkloadsImpacted),
 		"Message": ContainSubstring(fmt.Sprintf(notebook.MsgNotebookImageSummary, 2, 2)),
 	}))
-	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 
 	// Only RStudio notebook is impacted.
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
@@ -764,7 +764,7 @@ func TestImpactedWorkloadsCheck_LookupStrategies(t *testing.T) {
 			},
 			expectedStatus: metav1.ConditionFalse,
 			expectedReason: check.ReasonWorkloadsImpacted,
-			expectedImpact: resultpkg.ImpactBlocking,
+			expectedImpact: resultpkg.ImpactAdvisory,
 		},
 
 		// Strategy 2: SHA lookup - match by SHA digest
@@ -792,7 +792,7 @@ func TestImpactedWorkloadsCheck_LookupStrategies(t *testing.T) {
 			},
 			expectedStatus: metav1.ConditionFalse,
 			expectedReason: check.ReasonWorkloadsImpacted,
-			expectedImpact: resultpkg.ImpactBlocking,
+			expectedImpact: resultpkg.ImpactAdvisory,
 		},
 
 		// Strategy 3: dockerImageRepository with tag
@@ -820,7 +820,7 @@ func TestImpactedWorkloadsCheck_LookupStrategies(t *testing.T) {
 			},
 			expectedStatus: metav1.ConditionFalse,
 			expectedReason: check.ReasonWorkloadsImpacted,
-			expectedImpact: resultpkg.ImpactBlocking,
+			expectedImpact: resultpkg.ImpactAdvisory,
 		},
 
 		// Strategy 4: spec from.name - exact match against .spec.tags[*].from.name (disconnected clusters)
@@ -848,7 +848,7 @@ func TestImpactedWorkloadsCheck_LookupStrategies(t *testing.T) {
 			},
 			expectedStatus: metav1.ConditionFalse,
 			expectedReason: check.ReasonWorkloadsImpacted,
-			expectedImpact: resultpkg.ImpactBlocking,
+			expectedImpact: resultpkg.ImpactAdvisory,
 		},
 		{
 			name:        "Strategy4_SpecRef_NoMatch",
