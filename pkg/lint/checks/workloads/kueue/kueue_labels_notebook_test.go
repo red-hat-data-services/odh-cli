@@ -1,4 +1,4 @@
-package kserve_test
+package kueue_test
 
 import (
 	"fmt"
@@ -12,7 +12,6 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	resultpkg "github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/testutil"
-	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/kserve"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/kueue"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 
@@ -21,13 +20,13 @@ import (
 )
 
 //nolint:gochecknoglobals
-var kueueLabelsISVCListKinds = map[schema.GroupVersionResource]string{
-	resources.InferenceService.GVR():   resources.InferenceService.ListKind(),
+var kueueLabelsNotebookListKinds = map[schema.GroupVersionResource]string{
+	resources.Notebook.GVR():           resources.Notebook.ListKind(),
 	resources.Namespace.GVR():          resources.Namespace.ListKind(),
 	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
 }
 
-func newKueueNamespace(name string, labels map[string]any) *unstructured.Unstructured {
+func newNamespace(name string, labels map[string]any) *unstructured.Unstructured {
 	metadata := map[string]any{
 		"name": name,
 	}
@@ -45,7 +44,7 @@ func newKueueNamespace(name string, labels map[string]any) *unstructured.Unstruc
 	}
 }
 
-func newISVC(name string, namespace string, labels map[string]any) *unstructured.Unstructured {
+func newNotebook(name string, namespace string, labels map[string]any) *unstructured.Unstructured {
 	metadata := map[string]any{
 		"name":      name,
 		"namespace": namespace,
@@ -57,364 +56,350 @@ func newISVC(name string, namespace string, labels map[string]any) *unstructured
 
 	return &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": resources.InferenceService.APIVersion(),
-			"kind":       resources.InferenceService.Kind,
+			"apiVersion": resources.Notebook.APIVersion(),
+			"kind":       resources.Notebook.Kind,
 			"metadata":   metadata,
 		},
 	}
 }
 
-func TestKueueLabelsISVCCheck_Metadata(t *testing.T) {
+func TestKueueLabelsNotebookCheck_Metadata(t *testing.T) {
 	g := NewWithT(t)
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 
-	g.Expect(chk.ID()).To(Equal("workloads.kserve.kueue-labels-isvc"))
-	g.Expect(chk.Name()).To(Equal("Workloads :: KServe :: InferenceService Kueue Labels"))
+	g.Expect(chk.ID()).To(Equal("workloads.kueue.notebook-labels"))
+	g.Expect(chk.Name()).To(Equal("Workloads :: Kueue :: Notebook Labels"))
 	g.Expect(chk.Group()).To(Equal(check.GroupWorkload))
-	g.Expect(chk.CheckKind()).To(Equal("kserve"))
+	g.Expect(chk.CheckKind()).To(Equal("kueue"))
 	g.Expect(chk.CheckType()).To(Equal(string(check.CheckTypeDataIntegrity)))
 	g.Expect(chk.Description()).ToNot(BeEmpty())
 	g.Expect(chk.Remediation()).To(ContainSubstring("kueue.x-k8s.io/queue-name"))
 }
 
-func TestKueueLabelsISVCCheck_CanApply_KServeManagedKueueManaged(t *testing.T) {
+func TestKueueLabelsNotebookCheck_CanApply_KueueManaged(t *testing.T) {
 	g := NewWithT(t)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Managed", "kueue": "Managed"})},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
 }
 
-func TestKueueLabelsISVCCheck_CanApply_KServeManagedKueueUnmanaged(t *testing.T) {
+func TestKueueLabelsNotebookCheck_CanApply_KueueUnmanaged(t *testing.T) {
 	g := NewWithT(t)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Managed", "kueue": "Unmanaged"})},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Unmanaged"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
 }
 
-func TestKueueLabelsISVCCheck_CanApply_KServeManagedKueueRemoved(t *testing.T) {
+func TestKueueLabelsNotebookCheck_CanApply_KueueRemoved(t *testing.T) {
 	g := NewWithT(t)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Managed", "kueue": "Removed"})},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Removed"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	canApply, err := chk.CanApply(t.Context(), target)
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
 }
 
-func TestKueueLabelsISVCCheck_CanApply_KServeRemoved(t *testing.T) {
-	g := NewWithT(t)
-
-	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kserve": "Removed", "kueue": "Managed"})},
-		CurrentVersion: "3.0.0",
-		TargetVersion:  "3.0.0",
-	})
-
-	chk := kserve.NewKueueLabelsISVCCheck()
-	canApply, err := chk.CanApply(t.Context(), target)
-	g.Expect(err).ToNot(HaveOccurred())
-	g.Expect(canApply).To(BeFalse())
-}
-
-func TestKueueLabelsISVCCheck_NoInferenceServices(t *testing.T) {
+func TestKueueLabelsNotebookCheck_NoNotebooks(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"})},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(2))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(kserve.ConditionTypeISVCKueueLabels),
+		"Type":    Equal(kueue.ConditionTypeNotebookKueueLabels),
 		"Status":  Equal(metav1.ConditionTrue),
 		"Reason":  Equal(check.ReasonRequirementsMet),
-		"Message": Equal(fmt.Sprintf(kueue.MsgNoWorkloads, "InferenceService")),
+		"Message": Equal(fmt.Sprintf(kueue.MsgNoWorkloads, "Notebook")),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactNone))
 	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(kserve.ConditionTypeISVCKueueMissingLabels),
+		"Type":    Equal(kueue.ConditionTypeNotebookKueueMissingLabels),
 		"Status":  Equal(metav1.ConditionTrue),
-		"Message": Equal(fmt.Sprintf(kueue.MsgNoWorkloadsInKueueNs, "InferenceService")),
+		"Message": Equal(fmt.Sprintf(kueue.MsgNoWorkloadsInKueueNs, "Notebook")),
 	}))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 	g.Expect(result.ImpactedObjects).To(BeEmpty())
 }
 
-func TestKueueLabelsISVCCheck_WithoutQueueLabel(t *testing.T) {
+func TestKueueLabelsNotebookCheck_NotebookWithoutQueueLabel(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	ns := newKueueNamespace("user-ns", nil)
-	isvc := newISVC("my-isvc", "user-ns", nil)
+	ns := newNamespace("user-ns", nil)
+	nb := newNotebook("my-notebook", "user-ns", nil)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{ns, isvc},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"}), ns, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgNoLabeledWorkloads, "InferenceService")))
+	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgNoLabeledWorkloads, "Notebook")))
 	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgNoWorkloadsInKueueNs, "InferenceService")))
+	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgNoWorkloadsInKueueNs, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 	g.Expect(result.ImpactedObjects).To(BeEmpty())
 }
 
-func TestKueueLabelsISVCCheck_WithQueueLabelInKueueNamespace(t *testing.T) {
+func TestKueueLabelsNotebookCheck_NotebookWithQueueLabelInKueueNamespace(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	ns := newKueueNamespace("kueue-ns", map[string]any{
+	ns := newNamespace("kueue-ns", map[string]any{
 		constants.LabelKueueManaged: "true",
 	})
 
-	isvc := newISVC("good-isvc", "kueue-ns", map[string]any{
+	nb := newNotebook("good-notebook", "kueue-ns", map[string]any{
 		constants.LabelKueueQueueName: "default",
 	})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{ns, isvc},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"}), ns, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgAllValid, 1, "InferenceService")))
+	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgAllValid, 1, "Notebook")))
 	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "InferenceService")))
+	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 	g.Expect(result.ImpactedObjects).To(BeEmpty())
 }
 
-func TestKueueLabelsISVCCheck_WithoutQueueLabelInKueueNamespace(t *testing.T) {
+func TestKueueLabelsNotebookCheck_NotebookWithoutQueueLabelInKueueNamespace(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	ns := newKueueNamespace("kueue-ns", map[string]any{
+	ns := newNamespace("kueue-ns", map[string]any{
 		constants.LabelKueueManaged: "true",
 	})
 
-	isvc := newISVC("unlabeled-isvc", "kueue-ns", nil)
+	nb := newNotebook("unlabeled-notebook", "kueue-ns", nil)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{ns, isvc},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"}), ns, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(2))
 	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgNoLabeledWorkloads, "InferenceService")))
+	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgNoLabeledWorkloads, "Notebook")))
 	g.Expect(result.Status.Conditions[1].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(kserve.ConditionTypeISVCKueueMissingLabels),
+		"Type":    Equal(kueue.ConditionTypeNotebookKueueMissingLabels),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonConfigurationInvalid),
-		"Message": Equal(fmt.Sprintf(kueue.MsgMissingLabelInKueueNs, 1, "InferenceService")),
+		"Message": Equal(fmt.Sprintf(kueue.MsgMissingLabelInKueueNs, 1, "Notebook")),
 	}))
 	g.Expect(result.Status.Conditions[1].Impact).To(Equal(resultpkg.ImpactBlocking))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
-	g.Expect(result.ImpactedObjects[0].Name).To(Equal("unlabeled-isvc"))
+	g.Expect(result.ImpactedObjects[0].Name).To(Equal("unlabeled-notebook"))
 	g.Expect(result.ImpactedObjects[0].Namespace).To(Equal("kueue-ns"))
 }
 
-func TestKueueLabelsISVCCheck_LabeledInNonKueueNamespace(t *testing.T) {
+func TestKueueLabelsNotebookCheck_LabeledNotebookInNonKueueNamespace(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	ns := newKueueNamespace("plain-ns", nil)
+	ns := newNamespace("plain-ns", nil)
 
-	isvc := newISVC("bad-isvc", "plain-ns", map[string]any{
+	nb := newNotebook("bad-notebook", "plain-ns", map[string]any{
 		constants.LabelKueueQueueName: "default",
 	})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{ns, isvc},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{ns, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(2))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":    Equal(kserve.ConditionTypeISVCKueueLabels),
+		"Type":    Equal(kueue.ConditionTypeNotebookKueueLabels),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonConfigurationInvalid),
-		"Message": Equal(fmt.Sprintf(kueue.MsgNsNotKueueEnabled, 1, "InferenceService")),
+		"Message": Equal(fmt.Sprintf(kueue.MsgNsNotKueueEnabled, 1, "Notebook")),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
 	g.Expect(result.Status.Conditions[0].Remediation).To(ContainSubstring("kueue.x-k8s.io/queue-name"))
 	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgNoWorkloadsInKueueNs, "InferenceService")))
+	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgNoWorkloadsInKueueNs, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
-	g.Expect(result.ImpactedObjects[0].Name).To(Equal("bad-isvc"))
+	g.Expect(result.ImpactedObjects[0].Name).To(Equal("bad-notebook"))
 	g.Expect(result.ImpactedObjects[0].Namespace).To(Equal("plain-ns"))
 }
 
-func TestKueueLabelsISVCCheck_MixedLabeledInferenceServices(t *testing.T) {
+func TestKueueLabelsNotebookCheck_MixedLabeledNotebooks(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	nsKueue := newKueueNamespace("kueue-ns", map[string]any{
+	nsKueue := newNamespace("kueue-ns", map[string]any{
 		constants.LabelKueueManaged: "true",
 	})
-	nsPlain := newKueueNamespace("plain-ns", nil)
+	nsPlain := newNamespace("plain-ns", nil)
 
-	isvcGood := newISVC("good-isvc", "kueue-ns", map[string]any{
+	nbGood := newNotebook("good-notebook", "kueue-ns", map[string]any{
 		constants.LabelKueueQueueName: "default",
 	})
-	isvcBad := newISVC("bad-isvc", "plain-ns", map[string]any{
+	nbBad := newNotebook("bad-notebook", "plain-ns", map[string]any{
 		constants.LabelKueueQueueName: "default",
 	})
-	isvcPlain := newISVC("plain-isvc", "plain-ns", nil)
+	nbPlain := newNotebook("plain-notebook", "plain-ns", nil)
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{nsKueue, nsPlain, isvcGood, isvcBad, isvcPlain},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{nsKueue, nsPlain, nbGood, nbBad, nbPlain},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionFalse))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgNsNotKueueEnabled, 1, "InferenceService")))
+	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgNsNotKueueEnabled, 1, "Notebook")))
 	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "InferenceService")))
+	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(result.ImpactedObjects).To(HaveLen(1))
-	g.Expect(result.ImpactedObjects[0].Name).To(Equal("bad-isvc"))
+	g.Expect(result.ImpactedObjects[0].Name).To(Equal("bad-notebook"))
 }
 
-func TestKueueLabelsISVCCheck_OpenshiftKueueLabel(t *testing.T) {
+func TestKueueLabelsNotebookCheck_OpenshiftKueueNamespaceLabel(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	ns := newKueueNamespace("ocp-kueue-ns", map[string]any{
+	ns := newNamespace("ocp-kueue-ns", map[string]any{
 		constants.LabelKueueOpenshiftManaged: "true",
 	})
 
-	isvc := newISVC("good-isvc", "ocp-kueue-ns", map[string]any{
+	nb := newNotebook("good-notebook", "ocp-kueue-ns", map[string]any{
 		constants.LabelKueueQueueName: "default",
 	})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{ns, isvc},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"}), ns, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgAllValid, 1, "InferenceService")))
+	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgAllValid, 1, "Notebook")))
 	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "InferenceService")))
+	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 	g.Expect(result.ImpactedObjects).To(BeEmpty())
 }
 
-func TestKueueLabelsISVCCheck_CustomQueueName(t *testing.T) {
+func TestKueueLabelsNotebookCheck_NotebookWithCustomQueueName(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	ns := newKueueNamespace("kueue-ns", map[string]any{
+	ns := newNamespace("kueue-ns", map[string]any{
 		constants.LabelKueueManaged: "true",
 	})
 
-	isvc := newISVC("custom-queue-isvc", "kueue-ns", map[string]any{
+	nb := newNotebook("custom-queue-notebook", "kueue-ns", map[string]any{
 		constants.LabelKueueQueueName: "team-queue",
 	})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
-		Objects:        []*unstructured.Unstructured{ns, isvc},
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"}), ns, nb},
 		CurrentVersion: "3.0.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions[0].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgAllValid, 1, "InferenceService")))
+	g.Expect(result.Status.Conditions[0].Message).To(Equal(fmt.Sprintf(kueue.MsgAllValid, 1, "Notebook")))
 	g.Expect(result.Status.Conditions[1].Status).To(Equal(metav1.ConditionTrue))
-	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "InferenceService")))
+	g.Expect(result.Status.Conditions[1].Message).To(Equal(fmt.Sprintf(kueue.MsgAllInKueueNsLabeled, 1, "Notebook")))
 	g.Expect(result.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "0"))
 	g.Expect(result.ImpactedObjects).To(BeEmpty())
 }
 
-func TestKueueLabelsISVCCheck_AnnotationTargetVersion(t *testing.T) {
+func TestKueueLabelsNotebookCheck_AnnotationTargetVersion(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
-		ListKinds:      kueueLabelsISVCListKinds,
+		ListKinds:      kueueLabelsNotebookListKinds,
+		Objects:        []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"kueue": "Managed"})},
 		CurrentVersion: "2.17.0",
 		TargetVersion:  "3.0.0",
 	})
 
-	chk := kserve.NewKueueLabelsISVCCheck()
+	chk := kueue.NewKueueLabelsNotebookCheck()
 	result, err := chk.Validate(ctx, target)
 
 	g.Expect(err).ToNot(HaveOccurred())

@@ -1,8 +1,7 @@
-package ray
+package kueue
 
 import (
 	"github.com/opendatahub-io/odh-cli/pkg/constants"
-	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/kueue"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 )
 
@@ -11,15 +10,14 @@ const (
 	ConditionTypeRayJobKueueMissingLabels = "RayJobKueueMissingLabels"
 )
 
-func NewKueueLabelsRayJobCheck() *kueue.KueueLabelCheck {
-	return kueue.NewCheck(kueue.CheckConfig{
-		Kind:                      kind,
-		Component:                 constants.ComponentRay,
+func NewKueueLabelsRayJobCheck() *KueueLabelCheck {
+	return NewCheck(CheckConfig{
+		Kind:                      constants.ComponentKueue,
 		Resource:                  resources.RayJob,
 		ConditionType:             ConditionTypeRayJobKueueLabels,
 		MissingLabelConditionType: ConditionTypeRayJobKueueMissingLabels,
 		KindLabel:                 "RayJob",
-		CheckID:                   "workloads.ray.kueue-labels-rayjob",
-		CheckName:                 "Workloads :: Ray :: RayJob Kueue Labels",
+		CheckID:                   "workloads.kueue.rayjob-labels",
+		CheckName:                 "Workloads :: Kueue :: RayJob Labels",
 	})
 }
