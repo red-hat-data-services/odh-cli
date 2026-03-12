@@ -79,6 +79,10 @@ RUN python3 -m pip install --use-pep517 -r requirements.txt
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
 
+# Create backup directory for upgrade artifacts (world-writable with sticky bit
+# so arbitrary UIDs can create subdirectories without permission errors)
+RUN mkdir -p /tmp/rhoai-upgrade-backup && chmod 1777 /tmp/rhoai-upgrade-backup
+
 # Add rhai-cli to PATH
 ENV PATH="/opt/rhai-cli/bin:${PATH}"
 
