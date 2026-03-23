@@ -88,7 +88,7 @@ check: lint
 # Run tests
 .PHONY: test
 test:
-	go test ./...
+	go test -coverprofile=coverage.out ./...
 
 # Build container image without pushing (creates local manifest)
 .PHONY: build-image
