@@ -7,6 +7,7 @@ import (
 	"slices"
 
 	"github.com/blang/semver/v4"
+	"github.com/fatih/color"
 	"github.com/spf13/pflag"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -151,6 +152,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVar(&c.CheckSelectors, "checks", []string{"*"}, flagDescChecks)
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
 	fs.BoolVar(&c.Debug, "debug", false, flagDescDebug)
+	fs.BoolVar(&c.NoColor, "no-color", false, flagDescNoColor)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescTimeout)
 	fs.StringVar(&c.ISVCDeploymentMode, "isvc-deployment-mode", "all", flagDescISVCDeploymentMode)
 
@@ -165,6 +167,11 @@ func (c *Command) Complete() error {
 	if err := c.SharedOptions.Complete(); err != nil {
 		return fmt.Errorf("completing shared options: %w", err)
 	}
+	// Disable color for structured output; fatih/color handles NO_COLOR env and non-TTY detection.
+	if c.OutputFormat == OutputFormatJSON || c.OutputFormat == OutputFormatYAML {
+		c.NoColor = true
+	}
+	color.NoColor = c.NoColor
 
 	// Wrap IO with QuietWrapper if NOT in verbose or debug mode (default is quiet)
 	if !c.Verbose && !c.Debug {

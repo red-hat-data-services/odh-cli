@@ -188,6 +188,7 @@ func TestCommand_AddFlags(t *testing.T) {
 		g.Expect(fs.Lookup("output")).ToNot(BeNil())
 		g.Expect(fs.Lookup("checks")).ToNot(BeNil())
 		g.Expect(fs.Lookup("timeout")).ToNot(BeNil())
+		g.Expect(fs.Lookup("no-color")).ToNot(BeNil())
 	})
 }
 

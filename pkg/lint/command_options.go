@@ -86,6 +86,9 @@ type SharedOptions struct {
 	// Debug enables detailed diagnostic logging for troubleshooting (default: false)
 	Debug bool
 
+	// NoColor disables color output (default: false)
+	NoColor bool
+
 	// Timeout is the maximum duration for command execution
 	Timeout time.Duration
 

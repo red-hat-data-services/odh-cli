@@ -9,27 +9,14 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/fatih/color"
-
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/printer/table"
+	utilcolor "github.com/opendatahub-io/odh-cli/pkg/util/color"
 )
 
 //nolint:gochecknoglobals
 var (
-	// Table output symbols.
-	statusPass       = color.New(color.FgGreen).Sprint("✓")
-	statusWarn       = color.New(color.FgYellow).Sprint("⚠")
-	statusFail       = color.New(color.FgRed).Sprint("✗")
-	statusProhibited = color.New(color.FgRed, color.Bold).Sprint("‼")
-
-	// Severity level formatting.
-	severityProhibited = color.New(color.FgRed, color.Bold).Sprint("prohibited")
-	severityCrit       = color.New(color.FgRed).Sprint("critical")
-	severityWarn       = color.New(color.FgYellow).Sprint("warning")
-	severityInfo       = color.New(color.FgCyan).Sprint("info")
-
 	// Table headers.
 	tableHeaders        = []string{"STATUS", "KIND", "GROUP", "CHECK", "IMPACT", "MESSAGE"}
 	verboseTableHeaders = []string{"STATUS", "KIND", "GROUP", "CHECK", "IMPACT"}
@@ -45,16 +32,16 @@ func printVerdict(out io.Writer, hasProhibited bool, hasBlocking bool, hasAdviso
 
 	switch {
 	case hasProhibited:
-		verdict := color.New(color.FgRed, color.Bold).Sprint("PROHIBITED")
+		verdict := utilcolor.VerdictProhibited()
 		_, _ = fmt.Fprintf(out, "  %s - upgrade is not possible\n", verdict)
 	case hasBlocking:
-		verdict := color.New(color.FgRed, color.Bold).Sprint("FAIL")
+		verdict := utilcolor.VerdictFail()
 		_, _ = fmt.Fprintf(out, "  %s - blocking findings detected\n", verdict)
 	case hasAdvisory:
-		verdict := color.New(color.FgYellow, color.Bold).Sprint("WARNING")
+		verdict := utilcolor.VerdictWarning()
 		_, _ = fmt.Fprintf(out, "  %s - advisory findings detected\n", verdict)
 	default:
-		verdict := color.New(color.FgGreen, color.Bold).Sprint("PASS")
+		verdict := utilcolor.VerdictPass()
 		_, _ = fmt.Fprintf(out, "  %s - all checks passed\n", verdict)
 	}
 }
@@ -63,20 +50,18 @@ func printVerdict(out io.Writer, hasProhibited bool, hasBlocking bool, hasAdviso
 // listing all prohibited findings. Each prohibited condition is shown so that none
 // can be overlooked when multiple checks report prohibited-level impact.
 func outputProhibitedBanner(out io.Writer, findings []sortableRow) {
-	bold := color.New(color.FgRed, color.Bold)
-
 	_, _ = fmt.Fprintln(out)
 	bannerText := "  Prohibited Violations Detected: Upgrade is NOT POSSIBLE  "
 	bannerWidth := visibleLen(bannerText)
 	hLine := strings.Repeat("═", bannerWidth)
 
-	_, _ = fmt.Fprintln(out, bold.Sprintf("╔%s╗", hLine))
-	_, _ = fmt.Fprintln(out, bold.Sprintf("║%s║", bannerText))
-	_, _ = fmt.Fprintln(out, bold.Sprintf("╚%s╝", hLine))
+	_, _ = fmt.Fprintln(out, utilcolor.BannerProhibited("╔%s╗", hLine))
+	_, _ = fmt.Fprintln(out, utilcolor.BannerProhibited("║%s║", bannerText))
+	_, _ = fmt.Fprintln(out, utilcolor.BannerProhibited("╚%s╝", hLine))
 
 	for _, f := range findings {
 		_, _ = fmt.Fprintf(out, "  %s  [%s / %s] %s\n",
-			statusProhibited, f.row.Group, f.row.Check, f.row.Message)
+			utilcolor.StatusProhibited(), f.row.Group, f.row.Check, f.row.Message)
 	}
 
 	_, _ = fmt.Fprintln(out)
@@ -114,7 +99,7 @@ func collectSortedRows(results []check.CheckExecution) []sortableRow {
 					Kind:        exec.Result.Kind,
 					Group:       exec.Result.Group,
 					Check:       exec.Result.Name,
-					Impact:      getImpactString(&condition, severityProhibited, severityCrit, severityWarn, severityInfo),
+					Impact:      getImpactString(&condition, utilcolor.SeverityProhibited(), utilcolor.SeverityCritical(), utilcolor.SeverityWarning(), utilcolor.SeverityInfo()),
 					Message:     condition.Message,
 					Description: exec.Result.Spec.Description,
 				},
@@ -148,16 +133,16 @@ func collectSortedRows(results []check.CheckExecution) []sortableRow {
 func statusSymbol(impact result.Impact) string {
 	switch impact {
 	case result.ImpactProhibited:
-		return statusProhibited
+		return utilcolor.StatusProhibited()
 	case result.ImpactBlocking:
-		return statusFail
+		return utilcolor.StatusFail()
 	case result.ImpactAdvisory:
-		return statusWarn
+		return utilcolor.StatusWarn()
 	case result.ImpactNone:
-		return statusPass
+		return utilcolor.StatusPass()
 	}
 
-	return statusPass
+	return utilcolor.StatusPass()
 }
 
 // visibleLen returns the display width (rune count) of a string after stripping
@@ -304,7 +289,7 @@ func buildVerboseRows(
 			check:  exec.Result.Name,
 			impact: getImpactString(
 				&result.Condition{Impact: maxImpact},
-				severityProhibited, severityCrit, severityWarn, severityInfo,
+				utilcolor.SeverityProhibited(), utilcolor.SeverityCritical(), utilcolor.SeverityWarning(), utilcolor.SeverityInfo(),
 			),
 			exec: exec,
 		}
