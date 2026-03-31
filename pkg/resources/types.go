@@ -390,4 +390,12 @@ var (
 		Kind:     "ImageStreamTag",
 		Resource: "imagestreamtags",
 	}
+
+	// PackageManifest is the OLM PackageManifest resource for operator catalog queries.
+	PackageManifest = ResourceType{
+		Group:    "packages.operators.coreos.com",
+		Version:  "v1",
+		Kind:     "PackageManifest",
+		Resource: "packagemanifests",
+	}
 )
