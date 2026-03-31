@@ -65,7 +65,7 @@ func newIngressOperatorDeployment(envVars map[string]string) *unstructured.Unstr
 	return &unstructured.Unstructured{Object: obj}
 }
 
-func newPackageManifest(catalogSource string, csvNames []string) *unstructured.Unstructured {
+func newPackageManifest(catalogSource string, channel string, csvNames []string) *unstructured.Unstructured {
 	entries := make([]any, 0, len(csvNames))
 	for _, csv := range csvNames {
 		entries = append(entries, map[string]any{
@@ -75,7 +75,7 @@ func newPackageManifest(catalogSource string, csvNames []string) *unstructured.U
 
 	channels := []any{
 		map[string]any{
-			"name":    "stable",
+			"name":    channel,
 			"entries": entries,
 		},
 	}
@@ -102,8 +102,9 @@ func TestServiceMeshV3Check_VersionAvailable(t *testing.T) {
 
 	deploy := newIngressOperatorDeployment(map[string]string{
 		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
+		"GATEWAY_API_OPERATOR_CHANNEL": "stable",
 	})
-	pm := newPackageManifest("redhat-operators", []string{"servicemeshoperator3.v3.1.0"})
+	pm := newPackageManifest("redhat-operators", "stable", []string{"servicemeshoperator3.v3.1.0"})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds(),
@@ -124,6 +125,7 @@ func TestServiceMeshV3Check_VersionAvailable(t *testing.T) {
 	}))
 	g.Expect(result.Status.Conditions[0].Message).To(And(
 		ContainSubstring("servicemeshoperator3.v3.1.0"),
+		ContainSubstring("'stable' channel"),
 		ContainSubstring("redhat-operators"),
 	))
 }
@@ -132,7 +134,7 @@ func TestServiceMeshV3Check_DeploymentNotFound(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
-	pm := newPackageManifest("redhat-operators", []string{"servicemeshoperator3.v3.1.0"})
+	pm := newPackageManifest("redhat-operators", "stable", []string{"servicemeshoperator3.v3.1.0"})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds(),
@@ -205,7 +207,7 @@ func TestServiceMeshV3Check_EnvVarMissing(t *testing.T) {
 	ctx := t.Context()
 
 	deploy := newIngressOperatorDeployment(map[string]string{})
-	pm := newPackageManifest("redhat-operators", []string{"servicemeshoperator3.v3.1.0"})
+	pm := newPackageManifest("redhat-operators", "stable", []string{"servicemeshoperator3.v3.1.0"})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds(),
@@ -233,6 +235,7 @@ func TestServiceMeshV3Check_PackageManifestNotFound(t *testing.T) {
 
 	deploy := newIngressOperatorDeployment(map[string]string{
 		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
+		"GATEWAY_API_OPERATOR_CHANNEL": "stable",
 	})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
@@ -261,9 +264,10 @@ func TestServiceMeshV3Check_WrongCatalogSource(t *testing.T) {
 
 	deploy := newIngressOperatorDeployment(map[string]string{
 		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
+		"GATEWAY_API_OPERATOR_CHANNEL": "stable",
 	})
 	// PackageManifest exists but from a non-redhat-operators catalog; the check should not find it.
-	pm := newPackageManifest("custom-operators", []string{"servicemeshoperator3.v3.1.0"})
+	pm := newPackageManifest("custom-operators", "stable", []string{"servicemeshoperator3.v3.1.0"})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds(),
@@ -292,8 +296,9 @@ func TestServiceMeshV3Check_VersionNotAvailable(t *testing.T) {
 
 	deploy := newIngressOperatorDeployment(map[string]string{
 		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
+		"GATEWAY_API_OPERATOR_CHANNEL": "stable",
 	})
-	pm := newPackageManifest("redhat-operators", []string{"servicemeshoperator3.v3.0.0"})
+	pm := newPackageManifest("redhat-operators", "stable", []string{"servicemeshoperator3.v3.0.0"})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds(),
@@ -312,8 +317,10 @@ func TestServiceMeshV3Check_VersionNotAvailable(t *testing.T) {
 		"Status": Equal(metav1.ConditionFalse),
 		"Reason": Equal(check.ReasonDependencyUnavailable),
 	}))
+	g.Expect(result.Status.Conditions[0].Message).To(ContainSubstring("'stable' channel"))
 	g.Expect(result.Status.Conditions[0].Remediation).To(And(
 		ContainSubstring("Mirror"),
+		ContainSubstring("'stable' channel"),
 		ContainSubstring("redhat-operators"),
 		ContainSubstring("openshift-marketplace"),
 	))
@@ -346,7 +353,7 @@ func TestServiceMeshV3Check_ContainerWithNoEnvKey(t *testing.T) {
 			},
 		},
 	}
-	pm := newPackageManifest("redhat-operators", []string{"servicemeshoperator3.v3.1.0"})
+	pm := newPackageManifest("redhat-operators", "stable", []string{"servicemeshoperator3.v3.1.0"})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds(),
@@ -375,7 +382,7 @@ func TestServiceMeshV3Check_EnvVarEmpty(t *testing.T) {
 	deploy := newIngressOperatorDeployment(map[string]string{
 		"GATEWAY_API_OPERATOR_VERSION": "",
 	})
-	pm := newPackageManifest("redhat-operators", []string{"servicemeshoperator3.v3.1.0"})
+	pm := newPackageManifest("redhat-operators", "stable", []string{"servicemeshoperator3.v3.1.0"})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
 		ListKinds:      listKinds(),
@@ -403,8 +410,9 @@ func TestServiceMeshV3Check_VersionAvailableAmongMultipleEntries(t *testing.T) {
 
 	deploy := newIngressOperatorDeployment(map[string]string{
 		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.2.0",
+		"GATEWAY_API_OPERATOR_CHANNEL": "stable",
 	})
-	pm := newPackageManifest("redhat-operators", []string{
+	pm := newPackageManifest("redhat-operators", "stable", []string{
 		"servicemeshoperator3.v3.0.0",
 		"servicemeshoperator3.v3.1.0",
 		"servicemeshoperator3.v3.2.0",
@@ -429,6 +437,7 @@ func TestServiceMeshV3Check_VersionAvailableAmongMultipleEntries(t *testing.T) {
 	}))
 	g.Expect(result.Status.Conditions[0].Message).To(And(
 		ContainSubstring("servicemeshoperator3.v3.2.0"),
+		ContainSubstring("'stable' channel"),
 		ContainSubstring("redhat-operators"),
 	))
 }
@@ -439,6 +448,7 @@ func TestServiceMeshV3Check_MissingCatalogSource(t *testing.T) {
 
 	deploy := newIngressOperatorDeployment(map[string]string{
 		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
+		"GATEWAY_API_OPERATOR_CHANNEL": "stable",
 	})
 	// PackageManifest with no catalogSource in status — won't match redhat-operators.
 	pm := &unstructured.Unstructured{
@@ -481,6 +491,99 @@ func TestServiceMeshV3Check_MissingCatalogSource(t *testing.T) {
 		"Status": Equal(metav1.ConditionFalse),
 		"Reason": Equal(check.ReasonResourceNotFound),
 	}))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
+}
+
+func TestServiceMeshV3Check_ChannelEnvVarMissing(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	deploy := newIngressOperatorDeployment(map[string]string{
+		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
+	})
+	pm := newPackageManifest("redhat-operators", "stable", []string{"servicemeshoperator3.v3.1.0"})
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds(),
+		Objects:        []*unstructured.Unstructured{deploy, pm},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	smCheck := servicemesh.NewCheck()
+	result, err := smCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(check.ConditionTypeAvailable),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonDependencyUnavailable),
+	}))
+	g.Expect(result.Status.Conditions[0].Message).To(ContainSubstring("GATEWAY_API_OPERATOR_CHANNEL"))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
+}
+
+func TestServiceMeshV3Check_ChannelEnvVarEmpty(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	deploy := newIngressOperatorDeployment(map[string]string{
+		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
+		"GATEWAY_API_OPERATOR_CHANNEL": "",
+	})
+	pm := newPackageManifest("redhat-operators", "stable", []string{"servicemeshoperator3.v3.1.0"})
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds(),
+		Objects:        []*unstructured.Unstructured{deploy, pm},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	smCheck := servicemesh.NewCheck()
+	result, err := smCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(check.ConditionTypeAvailable),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonDependencyUnavailable),
+	}))
+	g.Expect(result.Status.Conditions[0].Message).To(ContainSubstring("GATEWAY_API_OPERATOR_CHANNEL"))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
+}
+
+func TestServiceMeshV3Check_VersionInDifferentChannel(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	deploy := newIngressOperatorDeployment(map[string]string{
+		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
+		"GATEWAY_API_OPERATOR_CHANNEL": "stable",
+	})
+	// The CSV exists in the "candidate" channel, but the check requires "stable".
+	pm := newPackageManifest("redhat-operators", "candidate", []string{"servicemeshoperator3.v3.1.0"})
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds(),
+		Objects:        []*unstructured.Unstructured{deploy, pm},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	smCheck := servicemesh.NewCheck()
+	result, err := smCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(check.ConditionTypeAvailable),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonDependencyUnavailable),
+	}))
+	g.Expect(result.Status.Conditions[0].Message).To(ContainSubstring("'stable' channel"))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
 }
 

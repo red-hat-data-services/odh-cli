@@ -45,10 +45,47 @@ func (c *Check) CanApply(_ context.Context, target check.Target) (bool, error) {
 	return version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion), nil
 }
 
+// extractEnvVar extracts a named environment variable from the ingress-operator deployment.
+// It returns the value, a diagnostic result if the variable is missing/empty, and an error.
+// When the returned result is non-nil, the caller should return it immediately.
+func extractEnvVar(deploy *unstructured.Unstructured, dr *result.DiagnosticResult, envName string) (string, *result.DiagnosticResult, error) {
+	value, err := jq.Query[string](deploy,
+		fmt.Sprintf(`[.spec.template.spec.containers[].env[]? | select(.name == "%s") | .value] | first`, envName))
+
+	switch {
+	case errors.Is(err, jq.ErrNotFound):
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonDependencyUnavailable),
+			check.WithMessage("%s env var not found on ingress-operator deployment", envName),
+			check.WithRemediation(fmt.Sprintf("Verify the ingress-operator deployment in the openshift-ingress-operator namespace has the %s environment variable.", envName)),
+			check.WithImpact(result.ImpactBlocking),
+		))
+
+		return "", dr, nil
+	case err != nil:
+		return "", nil, fmt.Errorf("querying %s: %w", envName, err)
+	case value == "":
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonDependencyUnavailable),
+			check.WithMessage("%s env var is empty on ingress-operator deployment", envName),
+			check.WithRemediation(fmt.Sprintf("Verify the ingress-operator deployment in the openshift-ingress-operator namespace has a non-empty %s environment variable.", envName)),
+			check.WithImpact(result.ImpactBlocking),
+		))
+
+		return "", dr, nil
+	}
+
+	return value, nil, nil
+}
+
 func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
 	dr := c.NewResult()
 
-	// Step 1: Get the ingress-operator deployment to determine the required version.
+	// Step 1: Get the ingress-operator deployment to determine the required version and channel.
 	deploy, err := target.Client.GetResource(ctx, resources.Deployment, "ingress-operator",
 		client.InNamespace("openshift-ingress-operator"))
 
@@ -80,41 +117,22 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 	}
 
 	// Step 2: Extract the required version from the GATEWAY_API_OPERATOR_VERSION env var.
-	requiredVersion, err := jq.Query[string](deploy,
-		`[.spec.template.spec.containers[].env[]? | select(.name == "GATEWAY_API_OPERATOR_VERSION") | .value] | first`)
-
-	switch {
-	case errors.Is(err, jq.ErrNotFound):
-		dr.SetCondition(check.NewCondition(
-			check.ConditionTypeAvailable,
-			metav1.ConditionFalse,
-			check.WithReason(check.ReasonDependencyUnavailable),
-			check.WithMessage("GATEWAY_API_OPERATOR_VERSION env var not found on ingress-operator deployment"),
-			check.WithRemediation("Verify the ingress-operator deployment in the openshift-ingress-operator namespace has the GATEWAY_API_OPERATOR_VERSION environment variable."),
-			check.WithImpact(result.ImpactBlocking),
-		))
-
-		return dr, nil
-	case err != nil:
-		return nil, fmt.Errorf("querying GATEWAY_API_OPERATOR_VERSION: %w", err)
-	case requiredVersion == "":
-		dr.SetCondition(check.NewCondition(
-			check.ConditionTypeAvailable,
-			metav1.ConditionFalse,
-			check.WithReason(check.ReasonDependencyUnavailable),
-			check.WithMessage("GATEWAY_API_OPERATOR_VERSION env var is empty on ingress-operator deployment"),
-			check.WithRemediation("Verify the ingress-operator deployment in the openshift-ingress-operator namespace has a non-empty GATEWAY_API_OPERATOR_VERSION environment variable."),
-			check.WithImpact(result.ImpactBlocking),
-		))
-
-		return dr, nil
+	requiredVersion, earlyResult, err := extractEnvVar(deploy, dr, "GATEWAY_API_OPERATOR_VERSION")
+	if earlyResult != nil || err != nil {
+		return earlyResult, err
 	}
 
-	// Step 3: The env var contains the full CSV name (e.g. "servicemeshoperator3.v3.1.0").
+	// Step 3: Extract the required channel from the GATEWAY_API_OPERATOR_CHANNEL env var.
+	requiredChannel, earlyResult, err := extractEnvVar(deploy, dr, "GATEWAY_API_OPERATOR_CHANNEL")
+	if earlyResult != nil || err != nil {
+		return earlyResult, err
+	}
+
+	// Step 4: The env var contains the full CSV name (e.g. "servicemeshoperator3.v3.1.0").
 	requiredCSV := requiredVersion
 	displayVersion := strings.TrimPrefix(requiredCSV, "servicemeshoperator3.v")
 
-	// Step 4: Find the servicemeshoperator3 PackageManifest from redhat-operators in openshift-marketplace.
+	// Step 5: Find the servicemeshoperator3 PackageManifest from redhat-operators in openshift-marketplace.
 	// Multiple catalog sources can produce PackageManifests with the same name, so we list all
 	// PackageManifests and filter by .status.catalogSource. A direct get-by-name would return a
 	// non-deterministic result when multiple catalog sources provide the same package.
@@ -150,27 +168,28 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 
 	pm := manifests[0]
 
-	// Step 5: Extract available CSVs from all channels.
-	availableCSVs, err := jq.Query[[]string](pm, "[.status.channels[]?.entries[]?.name]")
+	// Step 6: Extract available CSVs from the required channel.
+	availableCSVs, err := jq.Query[[]string](pm,
+		fmt.Sprintf(`[.status.channels[]? | select(.name == "%s") | .entries[]?.name]`, requiredChannel))
 	if err != nil {
 		return nil, fmt.Errorf("querying available CSVs: %w", err)
 	}
 
-	// Step 6: Check if the required CSV is available.
+	// Step 7: Check if the required CSV is available.
 	if slices.Contains(availableCSVs, requiredCSV) {
 		dr.SetCondition(check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionTrue,
 			check.WithReason(check.ReasonResourceFound),
-			check.WithMessage("%s (%s) is available in the 'redhat-operators' cluster catalog", displayName, requiredCSV),
+			check.WithMessage("%s (%s) is available in the '%s' channel of the 'redhat-operators' cluster catalog", displayName, requiredCSV, requiredChannel),
 		))
 	} else {
 		dr.SetCondition(check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonDependencyUnavailable),
-			check.WithMessage("%s version %s is not available in the cluster catalog", displayName, displayVersion),
-			check.WithRemediation(fmt.Sprintf("Mirror %s into your environment. It must be available in the redhat-operators catalog source in the openshift-marketplace namespace. See the pre-requisite instructions in the RHOAI 2.x to 3.x upgrade guide.", requiredCSV)),
+			check.WithMessage("%s version %s is not available in the '%s' channel of the cluster catalog", displayName, displayVersion, requiredChannel),
+			check.WithRemediation(fmt.Sprintf("Mirror %s into the '%s' channel of the redhat-operators catalog source in the openshift-marketplace namespace. See the pre-requisite instructions in the RHOAI 2.x to 3.x upgrade guide.", requiredCSV, requiredChannel)),
 			check.WithImpact(result.ImpactBlocking),
 		))
 	}
