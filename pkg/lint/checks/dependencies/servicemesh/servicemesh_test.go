@@ -1,20 +1,25 @@
 package servicemesh_test
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
 	"github.com/blang/semver/v4"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
+	k8stesting "k8s.io/client-go/testing"
 
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	resultpkg "github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/testutil"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/servicemesh"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
+	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -60,13 +65,19 @@ func newIngressOperatorDeployment(envVars map[string]string) *unstructured.Unstr
 	return &unstructured.Unstructured{Object: obj}
 }
 
-func newPackageManifest(catalogSource string, currentCSVs []string) *unstructured.Unstructured {
-	channels := make([]any, 0, len(currentCSVs))
-	for i, csv := range currentCSVs {
-		channels = append(channels, map[string]any{
-			"name":       fmt.Sprintf("channel-%d", i),
-			"currentCSV": csv,
+func newPackageManifest(catalogSource string, csvNames []string) *unstructured.Unstructured {
+	entries := make([]any, 0, len(csvNames))
+	for _, csv := range csvNames {
+		entries = append(entries, map[string]any{
+			"name": csv,
 		})
+	}
+
+	channels := []any{
+		map[string]any{
+			"name":    "stable",
+			"entries": entries,
+		},
 	}
 
 	obj := map[string]any{
@@ -90,7 +101,7 @@ func TestServiceMeshV3Check_VersionAvailable(t *testing.T) {
 	ctx := t.Context()
 
 	deploy := newIngressOperatorDeployment(map[string]string{
-		"GATEWAY_API_OPERATOR_VERSION": "3.1.0",
+		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
 	})
 	pm := newPackageManifest("redhat-operators", []string{"servicemeshoperator3.v3.1.0"})
 
@@ -111,7 +122,10 @@ func TestServiceMeshV3Check_VersionAvailable(t *testing.T) {
 		"Status": Equal(metav1.ConditionTrue),
 		"Reason": Equal(check.ReasonResourceFound),
 	}))
-	g.Expect(result.Status.Conditions[0].Message).To(ContainSubstring("3.1.0"))
+	g.Expect(result.Status.Conditions[0].Message).To(And(
+		ContainSubstring("servicemeshoperator3.v3.1.0"),
+		ContainSubstring("redhat-operators"),
+	))
 }
 
 func TestServiceMeshV3Check_DeploymentNotFound(t *testing.T) {
@@ -137,6 +151,52 @@ func TestServiceMeshV3Check_DeploymentNotFound(t *testing.T) {
 		"Status": Equal(metav1.ConditionFalse),
 		"Reason": Equal(check.ReasonResourceNotFound),
 	}))
+	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
+}
+
+func TestServiceMeshV3Check_InsufficientPermissions(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	// testutil.NewTarget does not support reactor injection, so we construct the client manually.
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(
+		scheme,
+		listKinds(),
+	)
+
+	// Simulate a Forbidden error when trying to get the ingress-operator deployment.
+	dynamicClient.PrependReactor("get", "deployments", func(action k8stesting.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewForbidden(
+			schema.GroupResource{Group: "apps", Resource: "deployments"},
+			"ingress-operator",
+			errors.New("forbidden"),
+		)
+	})
+
+	currentVer := semver.MustParse("2.17.0")
+	targetVer := semver.MustParse("3.0.0")
+
+	target := check.Target{
+		Client:         client.NewForTesting(client.TestClientConfig{Dynamic: dynamicClient}),
+		CurrentVersion: &currentVer,
+		TargetVersion:  &targetVer,
+	}
+
+	smCheck := servicemesh.NewCheck()
+	result, err := smCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result.Status.Conditions).To(HaveLen(1))
+	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
+		"Type":   Equal(check.ConditionTypeAvailable),
+		"Status": Equal(metav1.ConditionFalse),
+		"Reason": Equal(check.ReasonInsufficientData),
+	}))
+	g.Expect(result.Status.Conditions[0].Message).To(ContainSubstring("insufficient permissions"))
+	g.Expect(result.Status.Conditions[0].Remediation).To(ContainSubstring("read access"))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
 }
 
@@ -172,7 +232,7 @@ func TestServiceMeshV3Check_PackageManifestNotFound(t *testing.T) {
 	ctx := t.Context()
 
 	deploy := newIngressOperatorDeployment(map[string]string{
-		"GATEWAY_API_OPERATOR_VERSION": "3.1.0",
+		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
 	})
 
 	target := testutil.NewTarget(t, testutil.TargetConfig{
@@ -200,7 +260,7 @@ func TestServiceMeshV3Check_WrongCatalogSource(t *testing.T) {
 	ctx := t.Context()
 
 	deploy := newIngressOperatorDeployment(map[string]string{
-		"GATEWAY_API_OPERATOR_VERSION": "3.1.0",
+		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
 	})
 	// PackageManifest exists but from a non-redhat-operators catalog; the check should not find it.
 	pm := newPackageManifest("custom-operators", []string{"servicemeshoperator3.v3.1.0"})
@@ -231,7 +291,7 @@ func TestServiceMeshV3Check_VersionNotAvailable(t *testing.T) {
 	ctx := t.Context()
 
 	deploy := newIngressOperatorDeployment(map[string]string{
-		"GATEWAY_API_OPERATOR_VERSION": "3.1.0",
+		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
 	})
 	pm := newPackageManifest("redhat-operators", []string{"servicemeshoperator3.v3.0.0"})
 
@@ -337,12 +397,12 @@ func TestServiceMeshV3Check_EnvVarEmpty(t *testing.T) {
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
 }
 
-func TestServiceMeshV3Check_VersionAvailableInMultipleChannels(t *testing.T) {
+func TestServiceMeshV3Check_VersionAvailableAmongMultipleEntries(t *testing.T) {
 	g := NewWithT(t)
 	ctx := t.Context()
 
 	deploy := newIngressOperatorDeployment(map[string]string{
-		"GATEWAY_API_OPERATOR_VERSION": "3.2.0",
+		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.2.0",
 	})
 	pm := newPackageManifest("redhat-operators", []string{
 		"servicemeshoperator3.v3.0.0",
@@ -367,7 +427,10 @@ func TestServiceMeshV3Check_VersionAvailableInMultipleChannels(t *testing.T) {
 		"Status": Equal(metav1.ConditionTrue),
 		"Reason": Equal(check.ReasonResourceFound),
 	}))
-	g.Expect(result.Status.Conditions[0].Message).To(ContainSubstring("3.2.0"))
+	g.Expect(result.Status.Conditions[0].Message).To(And(
+		ContainSubstring("servicemeshoperator3.v3.2.0"),
+		ContainSubstring("redhat-operators"),
+	))
 }
 
 func TestServiceMeshV3Check_MissingCatalogSource(t *testing.T) {
@@ -375,7 +438,7 @@ func TestServiceMeshV3Check_MissingCatalogSource(t *testing.T) {
 	ctx := t.Context()
 
 	deploy := newIngressOperatorDeployment(map[string]string{
-		"GATEWAY_API_OPERATOR_VERSION": "3.1.0",
+		"GATEWAY_API_OPERATOR_VERSION": "servicemeshoperator3.v3.1.0",
 	})
 	// PackageManifest with no catalogSource in status — won't match redhat-operators.
 	pm := &unstructured.Unstructured{
@@ -389,8 +452,12 @@ func TestServiceMeshV3Check_MissingCatalogSource(t *testing.T) {
 			"status": map[string]any{
 				"channels": []any{
 					map[string]any{
-						"name":       "stable",
-						"currentCSV": "servicemeshoperator3.v3.1.0",
+						"name": "stable",
+						"entries": []any{
+							map[string]any{
+								"name": "servicemeshoperator3.v3.1.0",
+							},
+						},
 					},
 				},
 			},

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,6 +59,7 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonResourceNotFound),
 			check.WithMessage("ingress-operator deployment not found in openshift-ingress-operator namespace"),
+			check.WithRemediation("Check that the openshift-ingress-operator namespace and the ingress-operator deployment exist in the cluster."),
 			check.WithImpact(result.ImpactBlocking),
 		))
 
@@ -70,6 +72,7 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonInsufficientData),
 			check.WithMessage("Unable to read ingress-operator deployment (insufficient permissions)"),
+			check.WithRemediation("Grant read access to deployments in the openshift-ingress-operator namespace."),
 			check.WithImpact(result.ImpactBlocking),
 		))
 
@@ -87,6 +90,7 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonDependencyUnavailable),
 			check.WithMessage("GATEWAY_API_OPERATOR_VERSION env var not found on ingress-operator deployment"),
+			check.WithRemediation("Verify the ingress-operator deployment in the openshift-ingress-operator namespace has the GATEWAY_API_OPERATOR_VERSION environment variable."),
 			check.WithImpact(result.ImpactBlocking),
 		))
 
@@ -99,16 +103,21 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonDependencyUnavailable),
 			check.WithMessage("GATEWAY_API_OPERATOR_VERSION env var is empty on ingress-operator deployment"),
+			check.WithRemediation("Verify the ingress-operator deployment in the openshift-ingress-operator namespace has a non-empty GATEWAY_API_OPERATOR_VERSION environment variable."),
 			check.WithImpact(result.ImpactBlocking),
 		))
 
 		return dr, nil
 	}
 
-	// Step 3: Build the expected CSV name.
-	requiredCSV := "servicemeshoperator3.v" + requiredVersion
+	// Step 3: The env var contains the full CSV name (e.g. "servicemeshoperator3.v3.1.0").
+	requiredCSV := requiredVersion
+	displayVersion := strings.TrimPrefix(requiredCSV, "servicemeshoperator3.v")
 
 	// Step 4: Find the servicemeshoperator3 PackageManifest from redhat-operators in openshift-marketplace.
+	// Multiple catalog sources can produce PackageManifests with the same name, so we list all
+	// PackageManifests and filter by .status.catalogSource. A direct get-by-name would return a
+	// non-deterministic result when multiple catalog sources provide the same package.
 	manifests, err := client.List[*unstructured.Unstructured](ctx, target.Client, resources.PackageManifest,
 		func(pm *unstructured.Unstructured) (bool, error) {
 			if pm.GetName() != "servicemeshoperator3" || pm.GetNamespace() != "openshift-marketplace" {
@@ -132,6 +141,7 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonResourceNotFound),
 			check.WithMessage("servicemeshoperator3 PackageManifest from redhat-operators not found in openshift-marketplace"),
+			check.WithRemediation("Mirror servicemeshoperator3 into the redhat-operators catalog source in the openshift-marketplace namespace."),
 			check.WithImpact(result.ImpactBlocking),
 		))
 
@@ -141,7 +151,7 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 	pm := manifests[0]
 
 	// Step 5: Extract available CSVs from all channels.
-	availableCSVs, err := jq.Query[[]string](pm, "[.status.channels[]?.currentCSV]")
+	availableCSVs, err := jq.Query[[]string](pm, "[.status.channels[]?.entries[]?.name]")
 	if err != nil {
 		return nil, fmt.Errorf("querying available CSVs: %w", err)
 	}
@@ -152,14 +162,14 @@ func (c *Check) Validate(ctx context.Context, target check.Target) (*result.Diag
 			check.ConditionTypeAvailable,
 			metav1.ConditionTrue,
 			check.WithReason(check.ReasonResourceFound),
-			check.WithMessage("%s version %s is available in the cluster catalog", displayName, requiredVersion),
+			check.WithMessage("%s (%s) is available in the 'redhat-operators' cluster catalog", displayName, requiredCSV),
 		))
 	} else {
 		dr.SetCondition(check.NewCondition(
 			check.ConditionTypeAvailable,
 			metav1.ConditionFalse,
 			check.WithReason(check.ReasonDependencyUnavailable),
-			check.WithMessage("%s version %s is not available in the cluster catalog", displayName, requiredVersion),
+			check.WithMessage("%s version %s is not available in the cluster catalog", displayName, displayVersion),
 			check.WithRemediation(fmt.Sprintf("Mirror %s into your environment. It must be available in the redhat-operators catalog source in the openshift-marketplace namespace. See the pre-requisite instructions in the RHOAI 2.x to 3.x upgrade guide.", requiredCSV)),
 			check.WithImpact(result.ImpactBlocking),
 		))
