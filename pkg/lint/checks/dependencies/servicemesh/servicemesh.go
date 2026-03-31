@@ -2,16 +2,19 @@ package servicemesh
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
+	"slices"
 
-	"github.com/blang/semver/v4"
-
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
-	"github.com/opendatahub-io/odh-cli/pkg/lint/check/validate"
+	"github.com/opendatahub-io/odh-cli/pkg/resources"
+	"github.com/opendatahub-io/odh-cli/pkg/util/client"
+	"github.com/opendatahub-io/odh-cli/pkg/util/jq"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
 )
 
@@ -19,12 +22,7 @@ const kind = "servicemesh-v3"
 
 const displayName = "Red Hat Service Mesh v3"
 
-const disconnectedNote = "If performing a disconnected install, ensure the appropriate images are mirrored into your environment."
-
-//nolint:gochecknoglobals
-var minVersion = semver.MustParse("3.1.0")
-
-// Check validates Red Hat Service Mesh v3 operator installation and version.
+// Check validates that the required Service Mesh v3 version is available in the cluster's operator catalog.
 type Check struct {
 	check.BaseCheck
 }
@@ -37,7 +35,7 @@ func NewCheck() *Check {
 			Type:             check.CheckTypeInstalled,
 			CheckID:          "dependencies.servicemesh.installed",
 			CheckName:        "Dependencies :: Service Mesh v3 :: Installed",
-			CheckDescription: "Reports the Red Hat Service Mesh v3 operator installation status and validates minimum version requirement",
+			CheckDescription: "Validates that the required Service Mesh v3 version is available to install from the cluster's operator catalog",
 		},
 	}
 }
@@ -47,67 +45,125 @@ func (c *Check) CanApply(_ context.Context, target check.Target) (bool, error) {
 }
 
 func (c *Check) Validate(ctx context.Context, target check.Target) (*result.DiagnosticResult, error) {
-	return validate.Operator(c, target).
-		WithNames("servicemeshoperator3").
-		WithConditionBuilder(func(found bool, installedCSV string) result.Condition {
-			if !found {
-				return check.NewCondition(
-					check.ConditionTypeAvailable,
-					metav1.ConditionFalse,
-					check.WithReason(check.ReasonResourceNotFound),
-					check.WithMessage("%s is not installed. Install the latest 3.x version (minimum required is %s). %s",
-						displayName, minVersion.String(), disconnectedNote),
-					check.WithImpact(result.ImpactBlocking),
-				)
+	dr := c.NewResult()
+
+	// Step 1: Get the ingress-operator deployment to determine the required version.
+	deploy, err := target.Client.GetResource(ctx, resources.Deployment, "ingress-operator",
+		client.InNamespace("openshift-ingress-operator"))
+
+	switch {
+	case apierrors.IsNotFound(err):
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonResourceNotFound),
+			check.WithMessage("ingress-operator deployment not found in openshift-ingress-operator namespace"),
+			check.WithImpact(result.ImpactBlocking),
+		))
+
+		return dr, nil
+	case err != nil:
+		return nil, fmt.Errorf("getting ingress-operator deployment: %w", err)
+	case deploy == nil:
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonInsufficientData),
+			check.WithMessage("Unable to read ingress-operator deployment (insufficient permissions)"),
+			check.WithImpact(result.ImpactBlocking),
+		))
+
+		return dr, nil
+	}
+
+	// Step 2: Extract the required version from the GATEWAY_API_OPERATOR_VERSION env var.
+	requiredVersion, err := jq.Query[string](deploy,
+		`[.spec.template.spec.containers[].env[]? | select(.name == "GATEWAY_API_OPERATOR_VERSION") | .value] | first`)
+
+	switch {
+	case errors.Is(err, jq.ErrNotFound):
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonDependencyUnavailable),
+			check.WithMessage("GATEWAY_API_OPERATOR_VERSION env var not found on ingress-operator deployment"),
+			check.WithImpact(result.ImpactBlocking),
+		))
+
+		return dr, nil
+	case err != nil:
+		return nil, fmt.Errorf("querying GATEWAY_API_OPERATOR_VERSION: %w", err)
+	case requiredVersion == "":
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonDependencyUnavailable),
+			check.WithMessage("GATEWAY_API_OPERATOR_VERSION env var is empty on ingress-operator deployment"),
+			check.WithImpact(result.ImpactBlocking),
+		))
+
+		return dr, nil
+	}
+
+	// Step 3: Build the expected CSV name.
+	requiredCSV := "servicemeshoperator3.v" + requiredVersion
+
+	// Step 4: Find the servicemeshoperator3 PackageManifest from redhat-operators in openshift-marketplace.
+	manifests, err := client.List[*unstructured.Unstructured](ctx, target.Client, resources.PackageManifest,
+		func(pm *unstructured.Unstructured) (bool, error) {
+			if pm.GetName() != "servicemeshoperator3" || pm.GetNamespace() != "openshift-marketplace" {
+				return false, nil
 			}
 
-			ver, err := parseInstalledCSVVersion(installedCSV)
+			catalogSource, err := jq.Query[string](pm, ".status.catalogSource")
 			if err != nil {
-				return check.NewCondition(
-					check.ConditionTypeAvailable,
-					metav1.ConditionFalse,
-					check.WithReason(check.ReasonVersionIncompatible),
-					check.WithMessage("%s is installed but version could not be determined from %q; minimum required is %s",
-						displayName, installedCSV, minVersion.String()),
-					check.WithImpact(result.ImpactBlocking),
-				)
+				return false, nil
 			}
 
-			if ver.LT(minVersion) {
-				return check.NewCondition(
-					check.ConditionTypeAvailable,
-					metav1.ConditionFalse,
-					check.WithReason(check.ReasonVersionIncompatible),
-					check.WithMessage("%s version %s is below minimum required version %s. %s",
-						displayName, ver.String(), minVersion.String(), disconnectedNote),
-					check.WithImpact(result.ImpactBlocking),
-				)
-			}
-
-			return check.NewCondition(
-				check.ConditionTypeAvailable,
-				metav1.ConditionTrue,
-				check.WithReason(check.ReasonResourceFound),
-				check.WithMessage("%s installed: %s", displayName, ver.String()),
-			)
-		}).
-		Run(ctx)
-}
-
-// parseInstalledCSVVersion extracts a semver.Version from an InstalledCSV string.
-// The expected format is "<name>.v<semver>", e.g. "servicemeshoperator3.v3.1.0".
-func parseInstalledCSVVersion(csv string) (semver.Version, error) {
-	idx := strings.LastIndex(csv, ".v")
-	if idx < 0 {
-		return semver.Version{}, fmt.Errorf("no version segment found in %q", csv)
-	}
-
-	raw := csv[idx+2:] // skip ".v"
-
-	ver, err := semver.ParseTolerant(raw)
+			return catalogSource == "redhat-operators", nil
+		})
 	if err != nil {
-		return semver.Version{}, fmt.Errorf("parsing version %q from %q: %w", raw, csv, err)
+		return nil, fmt.Errorf("listing PackageManifests: %w", err)
 	}
 
-	return ver, nil
+	if len(manifests) == 0 {
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonResourceNotFound),
+			check.WithMessage("servicemeshoperator3 PackageManifest from redhat-operators not found in openshift-marketplace"),
+			check.WithImpact(result.ImpactBlocking),
+		))
+
+		return dr, nil
+	}
+
+	pm := manifests[0]
+
+	// Step 5: Extract available CSVs from all channels.
+	availableCSVs, err := jq.Query[[]string](pm, "[.status.channels[]?.currentCSV]")
+	if err != nil {
+		return nil, fmt.Errorf("querying available CSVs: %w", err)
+	}
+
+	// Step 6: Check if the required CSV is available.
+	if slices.Contains(availableCSVs, requiredCSV) {
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionTrue,
+			check.WithReason(check.ReasonResourceFound),
+			check.WithMessage("%s version %s is available in the cluster catalog", displayName, requiredVersion),
+		))
+	} else {
+		dr.SetCondition(check.NewCondition(
+			check.ConditionTypeAvailable,
+			metav1.ConditionFalse,
+			check.WithReason(check.ReasonDependencyUnavailable),
+			check.WithMessage("%s version %s is not available in the cluster catalog", displayName, requiredVersion),
+			check.WithRemediation(fmt.Sprintf("Mirror %s into your environment. It must be available in the redhat-operators catalog source in the openshift-marketplace namespace. See the pre-requisite instructions in the RHOAI 2.x to 3.x upgrade guide.", requiredCSV)),
+			check.WithImpact(result.ImpactBlocking),
+		))
+	}
+
+	return dr, nil
 }
