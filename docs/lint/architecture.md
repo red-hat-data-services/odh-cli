@@ -105,9 +105,10 @@ func NewCommand(
     registry.MustRegister(modelmesh.NewRemovalCheck())
     registry.MustRegister(trainingoperator.NewDeprecationCheck())
 
-    // Dependencies (2)
+    // Dependencies (3)
     registry.MustRegister(certmanager.NewCheck())
     registry.MustRegister(openshift.NewCheck())
+    registry.MustRegister(servicemesh.NewCheck())
 
     // Workloads (8)
     registry.MustRegister(guardrails.NewImpactedWorkloadsCheck())
