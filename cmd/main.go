@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/opendatahub-io/odh-cli/cmd/lint"
 	"github.com/opendatahub-io/odh-cli/cmd/version"
+	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 )
 
 func main() {
@@ -29,9 +31,12 @@ func main() {
 	lint.AddCommand(cmd, flags)
 
 	if err := cmd.Execute(); err != nil {
-		if _, writeErr := os.Stderr.WriteString(err.Error() + "\n"); writeErr != nil {
-			os.Exit(1)
+		if !errors.Is(err, clierrors.ErrAlreadyHandled) {
+			if _, writeErr := os.Stderr.WriteString(err.Error() + "\n"); writeErr != nil {
+				os.Exit(1)
+			}
 		}
+
 		os.Exit(1)
 	}
 }

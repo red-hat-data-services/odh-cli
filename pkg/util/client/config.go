@@ -5,6 +5,8 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
+
+	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 )
 
 const (
@@ -42,7 +44,7 @@ func NewRESTConfig(
 ) (*rest.Config, error) {
 	restConfig, err := configFlags.ToRESTConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create REST config: %w", err)
+		return nil, fmt.Errorf("failed to create REST config: %w", clierrors.NewConfigError(err))
 	}
 
 	ConfigureThrottling(restConfig, qps, burst)

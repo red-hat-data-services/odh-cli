@@ -9,6 +9,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	lintpkg "github.com/opendatahub-io/odh-cli/pkg/lint"
+	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 )
 
 const (
@@ -85,32 +86,55 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 		SilenceUsage:  true,
 		SilenceErrors: true, // We'll handle error output manually based on --quiet flag
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			outputFormat := string(command.OutputFormat)
+
 			// Complete phase
 			if err := command.Complete(); err != nil {
-				if command.Verbose {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
+					return clierrors.NewAlreadyHandledError(err)
 				}
 
-				return fmt.Errorf("completing command: %w", err)
+				if command.Verbose {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+					clierrors.WriteSuggestion(cmd.ErrOrStderr(), err)
+				} else {
+					clierrors.WriteTextError(cmd.ErrOrStderr(), err)
+				}
+
+				return clierrors.NewAlreadyHandledError(err)
 			}
 
 			// Validate phase
 			if err := command.Validate(); err != nil {
-				if command.Verbose {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
+					return clierrors.NewAlreadyHandledError(err)
 				}
 
-				return fmt.Errorf("validating command: %w", err)
+				if command.Verbose {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+					clierrors.WriteSuggestion(cmd.ErrOrStderr(), err)
+				} else {
+					clierrors.WriteTextError(cmd.ErrOrStderr(), err)
+				}
+
+				return clierrors.NewAlreadyHandledError(err)
 			}
 
 			// Run phase
 			err := command.Run(cmd.Context())
 			if err != nil {
-				if command.Verbose {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
+					return clierrors.NewAlreadyHandledError(err)
 				}
 
-				return fmt.Errorf("running command: %w", err)
+				if command.Verbose {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
+					clierrors.WriteSuggestion(cmd.ErrOrStderr(), err)
+				} else {
+					clierrors.WriteTextError(cmd.ErrOrStderr(), err)
+				}
+
+				return clierrors.NewAlreadyHandledError(err)
 			}
 
 			return nil
