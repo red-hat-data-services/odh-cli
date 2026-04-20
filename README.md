@@ -1,4 +1,4 @@
-# odh-cli
+# odh-cli test
 
 CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes.
 
@@ -120,4 +120,3 @@ For detailed documentation, see:
 - [Development Guide](docs/development.md)
 - [Lint Architecture](docs/lint/architecture.md)
 - [Writing Lint Checks](docs/lint/writing-checks.md)
-
