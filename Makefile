@@ -40,8 +40,8 @@ SHELL = /usr/bin/env bash -o pipefail
 # Build the binary
 .PHONY: build
 build:
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) \
-		go build -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/main.go
+	CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime GOOS=$(GOOS) GOARCH=$(GOARCH) \
+		go build -tags strictfipsruntime -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/main.go
 
 # Run the doctor command
 .PHONY: run
