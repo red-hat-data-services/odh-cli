@@ -45,7 +45,7 @@ USER root
 
 COPY ./yq .
 
-RUN CGO_ENABLED=0 go build -ldflags "-s -w" .
+RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntime -ldflags "-s -w" .
 
 # Runtime stage
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.21.0
