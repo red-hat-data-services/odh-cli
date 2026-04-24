@@ -1,12 +1,17 @@
 package client
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	olmclientset "github.com/operator-framework/operator-lifecycle-manager/pkg/api/client/clientset/versioned"
 
 	apiextensionsclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
@@ -14,6 +19,9 @@ import (
 	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
+
+	"github.com/opendatahub-io/odh-cli/pkg/resources"
+	"github.com/opendatahub-io/odh-cli/pkg/util"
 )
 
 // Compile-time verification that defaultClient implements Client (and therefore Reader + Writer).
@@ -122,4 +130,43 @@ func NewDiscoveryClient(configFlags *genericclioptions.ConfigFlags) (discovery.D
 	}
 
 	return discoveryClient, nil
+}
+
+// Patch applies a patch to an existing cluster-scoped resource.
+func (c *defaultClient) Patch(
+	ctx context.Context,
+	resourceType resources.ResourceType,
+	name string,
+	patchType types.PatchType,
+	data []byte,
+	opts ...PatchOption,
+) (*unstructured.Unstructured, error) {
+	if name == "" {
+		return nil, errors.New("resource name cannot be empty")
+	}
+
+	if len(data) == 0 {
+		return nil, errors.New("patch data cannot be empty")
+	}
+
+	cfg := &PatchConfig{}
+	util.ApplyOptions(cfg, opts...)
+
+	patchOpts := metav1.PatchOptions{}
+	if cfg.DryRun {
+		patchOpts.DryRun = []string{metav1.DryRunAll}
+	}
+
+	if cfg.FieldOwner != "" {
+		patchOpts.FieldManager = cfg.FieldOwner
+	}
+
+	gvr := resourceType.GVR()
+
+	result, err := c.dynamic.Resource(gvr).Patch(ctx, name, patchType, data, patchOpts)
+	if err != nil {
+		return nil, fmt.Errorf("patching resource: %w", err)
+	}
+
+	return result, nil
 }

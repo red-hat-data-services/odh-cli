@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/metadata"
@@ -72,8 +73,19 @@ type Reader interface {
 }
 
 // Writer provides write access to Kubernetes resources.
-// Currently empty -- write operations will be added as needed.
-type Writer any
+type Writer interface {
+	// Patch applies a patch to an existing resource.
+	// patchType should be one of: types.JSONPatchType, types.MergePatchType,
+	// types.StrategicMergePatchType, or types.ApplyPatchType (for server-side apply).
+	Patch(
+		ctx context.Context,
+		resourceType resources.ResourceType,
+		name string,
+		patchType types.PatchType,
+		data []byte,
+		opts ...PatchOption,
+	) (*unstructured.Unstructured, error)
+}
 
 // Client provides full access to Kubernetes resources.
 // Embeds Reader and Writer, and exposes the underlying clientsets

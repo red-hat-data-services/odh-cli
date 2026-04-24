@@ -503,3 +503,26 @@ func isCRDEstablished(crd *apiextensionsv1.CustomResourceDefinition) bool {
 
 	return false
 }
+
+// PatchConfig holds options for customizing Patch operations.
+type PatchConfig struct {
+	DryRun     bool
+	FieldOwner string
+}
+
+// PatchOption is a functional option for configuring Patch operations.
+type PatchOption = util.Option[PatchConfig]
+
+// WithDryRun enables dry-run mode for the patch operation.
+func WithDryRun() PatchOption {
+	return util.FunctionalOption[PatchConfig](func(c *PatchConfig) {
+		c.DryRun = true
+	})
+}
+
+// WithFieldOwner sets the field owner for server-side apply.
+func WithFieldOwner(owner string) PatchOption {
+	return util.FunctionalOption[PatchConfig](func(c *PatchConfig) {
+		c.FieldOwner = owner
+	})
+}

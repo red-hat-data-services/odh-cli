@@ -80,14 +80,14 @@ var (
 	// DataScienceCluster is the OpenShift AI DataScienceCluster resource.
 	DataScienceCluster = ResourceType{
 		Group:    "datasciencecluster.opendatahub.io",
-		Version:  "v1",
+		Version:  "v2",
 		Kind:     "DataScienceCluster",
 		Resource: "datascienceclusters",
 	}
 
 	DSCInitialization = ResourceType{
 		Group:    "dscinitialization.opendatahub.io",
-		Version:  "v1",
+		Version:  "v2",
 		Kind:     "DSCInitialization",
 		Resource: "dscinitializations",
 	}

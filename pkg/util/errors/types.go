@@ -69,6 +69,17 @@ func NewConfigError(err error) *ConfigError {
 	return &ConfigError{cause: err}
 }
 
+// NewValidationError creates a StructuredError for user input validation failures.
+func NewValidationError(code, message, suggestion string) *StructuredError {
+	return &StructuredError{
+		Code:       code,
+		Message:    message,
+		Category:   CategoryValidation,
+		Retriable:  false,
+		Suggestion: suggestion,
+	}
+}
+
 // errorEnvelope wraps a StructuredError for JSON/YAML output rendering.
 type errorEnvelope struct {
 	Error *StructuredError `json:"error" yaml:"error"`

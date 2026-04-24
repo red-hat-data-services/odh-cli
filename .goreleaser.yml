@@ -5,6 +5,7 @@ project_name: kubectl-odh
 before:
   hooks:
     - go mod tidy
+    - make fetch-deps
 
 builds:
   - id: kubectl-odh

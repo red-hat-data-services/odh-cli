@@ -8,6 +8,8 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
+	"github.com/opendatahub-io/odh-cli/cmd/components"
+	"github.com/opendatahub-io/odh-cli/cmd/deps"
 	"github.com/opendatahub-io/odh-cli/cmd/get"
 	"github.com/opendatahub-io/odh-cli/cmd/lint"
 	"github.com/opendatahub-io/odh-cli/cmd/version"
@@ -31,6 +33,8 @@ func main() {
 	version.AddCommand(cmd, flags)
 	lint.AddCommand(cmd, flags)
 	get.AddCommand(cmd, flags)
+	deps.AddCommand(cmd, flags)
+	components.AddCommand(cmd, flags)
 
 	if err := cmd.Execute(); err != nil {
 		if !errors.Is(err, clierrors.ErrAlreadyHandled) {

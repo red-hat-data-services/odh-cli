@@ -6,8 +6,25 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 )
+
+// HandleError writes the error in the appropriate format and returns an already-handled error.
+// It tries structured output (JSON/YAML) first based on outputFormat, then falls back to text.
+func HandleError(cmd *cobra.Command, err error, outputFormat string) error {
+	if err == nil {
+		return nil
+	}
+
+	if WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
+		return NewAlreadyHandledError(err)
+	}
+
+	WriteTextError(cmd.ErrOrStderr(), err)
+
+	return NewAlreadyHandledError(err)
+}
 
 // WriteSuggestion classifies an error and renders only the suggestion line.
 func WriteSuggestion(w io.Writer, err error) {

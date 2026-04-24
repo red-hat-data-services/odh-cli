@@ -30,6 +30,9 @@ ARG DATE=unknown
 
 # Build using Makefile with cross-compilation
 RUN make build \
+    CGO_ENABLED=1 \
+    GOEXPERIMENT=strictfipsruntime \
+    GO_BUILD_TAGS="-tags strictfipsruntime" \
     GOOS=${TARGETOS} \
     GOARCH=${TARGETARCH} \
     VERSION=${VERSION} \

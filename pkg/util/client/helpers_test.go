@@ -380,8 +380,8 @@ func TestListMetadata_NamespaceScoped(t *testing.T) {
 func createDSCInitialization(applicationsNamespace string) runtime.Object {
 	dsci := &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": "dscinitialization.opendatahub.io/v1",
-			"kind":       "DSCInitialization",
+			"apiVersion": resources.DSCInitialization.APIVersion(),
+			"kind":       resources.DSCInitialization.Kind,
 			"metadata": map[string]any{
 				"name": "default-dsci",
 			},
@@ -401,8 +401,8 @@ func createDSCInitialization(applicationsNamespace string) runtime.Object {
 func createDSCInitializationWithEmptySpec() runtime.Object {
 	return &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": "dscinitialization.opendatahub.io/v1",
-			"kind":       "DSCInitialization",
+			"apiVersion": resources.DSCInitialization.APIVersion(),
+			"kind":       resources.DSCInitialization.Kind,
 			"metadata": map[string]any{
 				"name": "default-dsci",
 			},

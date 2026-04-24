@@ -49,3 +49,6 @@ config.local.yaml
 *.local
 .claude/
 bkp
+
+# Embedded dependency manifest (downloaded at build time)
+pkg/deps/data/
