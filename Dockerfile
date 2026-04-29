@@ -73,6 +73,7 @@ RUN set -e; \
     case "$ARCH" in \
         amd64) KUBE_ARCH="amd64" ;; \
         arm64) KUBE_ARCH="arm64" ;; \
+        ppc64le) KUBE_ARCH="ppc64le" ;; \
         *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
     esac; \
     echo "Installing kubectl for architecture: $KUBE_ARCH"; \
@@ -86,6 +87,7 @@ RUN set -e; \
     case "$ARCH" in \
         amd64) OC_ARCH="amd64" ;; \
         arm64) OC_ARCH="arm64" ;; \
+        ppc64le) OC_ARCH="ppc64le" ;; \
         *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
     esac; \
     echo "Installing oc for architecture: $OC_ARCH"; \
@@ -102,6 +104,7 @@ RUN set -e; \
     case "$ARCH" in \
         amd64) YQ_ARCH="amd64" ;; \
         arm64) YQ_ARCH="arm64" ;; \
+        ppc64le) YQ_ARCH="ppc64le" ;; \
         *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
     esac; \
     echo "Installing yq for architecture: $YQ_ARCH"; \
