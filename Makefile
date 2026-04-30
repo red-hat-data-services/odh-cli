@@ -23,7 +23,7 @@ LINT_TIMEOUT := 10m
 # Container registry configuration
 CONTAINER_REGISTRY ?= quay.io
 CONTAINER_REPO ?= $(CONTAINER_REGISTRY)/rhoai/rhoai-upgrade-helpers-rhel9
-CONTAINER_PLATFORMS ?= linux/amd64,linux/arm64
+CONTAINER_PLATFORMS ?= linux/amd64,linux/arm64,linux/ppc64le
 CONTAINER_TAGS ?= $(VERSION)
 
 # Platform for cross-compilation (defaults to current platform)
