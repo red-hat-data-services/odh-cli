@@ -47,6 +47,10 @@ type Command struct {
 	LabelSelector string
 	// OutputFormat controls output rendering: table, json, or yaml.
 	OutputFormat string
+	// Verbose enables verbose output.
+	Verbose bool
+	// Quiet suppresses all non-essential output.
+	Quiet bool
 
 	// ResolvedType is the ResourceType resolved from ResourceName during Complete.
 	ResolvedType resources.ResourceType
@@ -70,10 +74,16 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&c.AllNamespaces, "all-namespaces", "A", false, "List resources across all namespaces")
 	fs.StringVarP(&c.LabelSelector, "selector", "l", "", "Label selector to filter resources (e.g. app=my-model)")
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
+	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
+	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
 }
 
 // Complete resolves derived fields after flag parsing.
 func (c *Command) Complete() error {
+	if c.Verbose && c.Quiet {
+		return errors.New("--verbose and --quiet are mutually exclusive")
+	}
+
 	rt, err := Resolve(c.ResourceName)
 	if err != nil {
 		return fmt.Errorf("resolving resource type: %w", err)
@@ -96,6 +106,11 @@ func (c *Command) Complete() error {
 	}
 
 	c.Client = k8sClient
+
+	// Wrap IO only when --quiet is explicitly passed
+	if c.Quiet {
+		c.IO = iostreams.NewFullQuietWrapper(c.IO)
+	}
 
 	return nil
 }

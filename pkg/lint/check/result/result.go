@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	"github.com/opendatahub-io/odh-cli/pkg/output"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 )
 
@@ -29,6 +30,10 @@ const (
 	// forms, avoiding naive derivation from Kind. Especially useful for multi-kind results
 	// where the result-level AnnotationResourceCRDName cannot represent all types.
 	AnnotationObjectCRDName = "result.opendatahub.io/crd-name"
+)
+
+const (
+	diagnosticResultListKind = "DiagnosticResultList"
 )
 
 const (
@@ -382,21 +387,45 @@ func (r *DiagnosticResult) AddImpactedObjects(
 	}
 }
 
-// DiagnosticResultList represents a list of diagnostic results.
+// DiagnosticResultList represents a list of diagnostic results with a self-describing
+// envelope for schema versioning and tool integration.
 type DiagnosticResultList struct {
+	output.Envelope
+
 	ClusterVersion   *string             `json:"clusterVersion,omitempty"   yaml:"clusterVersion,omitempty"`
 	TargetVersion    *string             `json:"targetVersion,omitempty"    yaml:"targetVersion,omitempty"`
 	OpenShiftVersion *string             `json:"openShiftVersion,omitempty" yaml:"openShiftVersion,omitempty"`
 	Results          []*DiagnosticResult `json:"results"                    yaml:"results"`
 }
 
-// NewDiagnosticResultList creates a new list.
+// ComputeStatus calculates the Status based on Results.
+func (l *DiagnosticResultList) ComputeStatus() {
+	var warnings, errs int
+	for _, r := range l.Results {
+		if r == nil {
+			continue
+		}
+		impact := r.GetImpact()
+		switch impact {
+		case ImpactProhibited, ImpactBlocking:
+			errs++
+		case ImpactAdvisory:
+			warnings++
+		case ImpactNone:
+			// No action needed for passing checks.
+		}
+	}
+	l.SetStatus(warnings, errs)
+}
+
+// NewDiagnosticResultList creates a new list with envelope fields pre-populated.
 func NewDiagnosticResultList(
 	clusterVersion *string,
 	targetVersion *string,
 	openShiftVersion *string,
 ) *DiagnosticResultList {
 	return &DiagnosticResultList{
+		Envelope:         output.NewEnvelope(diagnosticResultListKind, "lint"),
 		ClusterVersion:   clusterVersion,
 		TargetVersion:    targetVersion,
 		OpenShiftVersion: openShiftVersion,

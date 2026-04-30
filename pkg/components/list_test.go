@@ -243,6 +243,14 @@ func TestOutputJSON(t *testing.T) {
 		err = json.Unmarshal(buf.Bytes(), &result)
 		g.Expect(err).ToNot(HaveOccurred())
 
+		// Verify envelope fields
+		g.Expect(result["apiVersion"]).To(Equal("cli.opendatahub.io/v1"))
+		g.Expect(result["kind"]).To(Equal("ComponentList"))
+		g.Expect(result["metadata"]).ToNot(BeNil())
+		metadata := result["metadata"].(map[string]any)
+		g.Expect(metadata["command"]).To(Equal("components-list"))
+		g.Expect(result["status"]).ToNot(BeNil())
+
 		g.Expect(result).To(HaveKey("components"))
 
 		compList, ok := result["components"].([]any)
@@ -297,12 +305,23 @@ func TestOutputYAML(t *testing.T) {
 		err = yaml.Unmarshal(buf.Bytes(), &result)
 		g.Expect(err).ToNot(HaveOccurred())
 
+		// Verify envelope fields
+		g.Expect(result["apiVersion"]).To(Equal("cli.opendatahub.io/v1"))
+		g.Expect(result["kind"]).To(Equal("ComponentList"))
+		g.Expect(result["metadata"]).ToNot(BeNil())
+		metadata, ok := result["metadata"].(map[string]any)
+		g.Expect(ok).To(BeTrue(), "metadata should be a map")
+		g.Expect(metadata["command"]).To(Equal("components-list"))
+		g.Expect(result["status"]).ToNot(BeNil())
+
 		g.Expect(result).To(HaveKey("components"))
 
-		compList := result["components"].([]any)
+		compList, ok := result["components"].([]any)
+		g.Expect(ok).To(BeTrue(), "components should be a list")
 		g.Expect(compList).To(HaveLen(1))
 
-		first := compList[0].(map[string]any)
+		first, ok := compList[0].(map[string]any)
+		g.Expect(ok).To(BeTrue(), "component should be a map")
 		g.Expect(first["name"]).To(Equal("ray"))
 		g.Expect(first["managementState"]).To(Equal("Unmanaged"))
 		g.Expect(first["ready"]).To(BeFalse())

@@ -11,6 +11,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/opendatahub-io/odh-cli/pkg/output"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 )
 
@@ -41,6 +42,47 @@ type DependencyStatus struct {
 	Subscription string   `json:"subscription"         yaml:"subscription"`
 	RequiredBy   []string `json:"requiredBy,omitempty" yaml:"requiredBy,omitempty"`
 	Error        string   `json:"error,omitempty"      yaml:"error,omitempty"`
+}
+
+// DependencyList wraps dependency statuses with a self-describing envelope.
+type DependencyList struct {
+	output.Envelope
+
+	Dependencies []DependencyStatus `json:"dependencies" yaml:"dependencies"`
+}
+
+// NewDependencyList creates a new DependencyList with envelope fields populated.
+func NewDependencyList(statuses []DependencyStatus) *DependencyList {
+	list := &DependencyList{
+		Envelope:     output.NewEnvelope("DependencyList", "deps"),
+		Dependencies: statuses,
+	}
+	list.computeStatus()
+
+	return list
+}
+
+// computeStatus calculates the Status based on Dependencies.
+func (l *DependencyList) computeStatus() {
+	var warnings, errs int
+	for _, d := range l.Dependencies {
+		// Check for per-dependency errors first
+		if d.Error != "" {
+			errs++
+
+			continue
+		}
+
+		switch d.Status {
+		case StatusMissing:
+			errs++
+		case StatusUnknown:
+			warnings++
+		case StatusInstalled, StatusOptional:
+			// No action needed for installed or optional dependencies.
+		}
+	}
+	l.SetStatus(warnings, errs)
 }
 
 // CheckDependencies queries the cluster for dependency installation status.

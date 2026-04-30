@@ -141,6 +141,101 @@ func TestIOStreams_Errorln(t *testing.T) {
 	})
 }
 
+// FullQuietWrapper tests
+
+func TestFullQuietWrapper_SuppressesFprintf(t *testing.T) {
+	g := NewWithT(t)
+
+	var out, errOut bytes.Buffer
+	base := iostreams.NewIOStreams(nil, &out, &errOut)
+	quiet := iostreams.NewFullQuietWrapper(base)
+
+	quiet.Fprintf("should not appear: %s", "test")
+
+	g.Expect(out.String()).To(BeEmpty())
+}
+
+func TestFullQuietWrapper_SuppressesFprintln(t *testing.T) {
+	g := NewWithT(t)
+
+	var out, errOut bytes.Buffer
+	base := iostreams.NewIOStreams(nil, &out, &errOut)
+	quiet := iostreams.NewFullQuietWrapper(base)
+
+	quiet.Fprintln("should not appear")
+
+	g.Expect(out.String()).To(BeEmpty())
+}
+
+func TestFullQuietWrapper_SuppressesErrorf(t *testing.T) {
+	g := NewWithT(t)
+
+	var out, errOut bytes.Buffer
+	base := iostreams.NewIOStreams(nil, &out, &errOut)
+	quiet := iostreams.NewFullQuietWrapper(base)
+
+	quiet.Errorf("should not appear: %s", "error")
+
+	g.Expect(errOut.String()).To(BeEmpty())
+}
+
+func TestFullQuietWrapper_SuppressesErrorln(t *testing.T) {
+	g := NewWithT(t)
+
+	var out, errOut bytes.Buffer
+	base := iostreams.NewIOStreams(nil, &out, &errOut)
+	quiet := iostreams.NewFullQuietWrapper(base)
+
+	quiet.Errorln("should not appear")
+
+	g.Expect(errOut.String()).To(BeEmpty())
+}
+
+func TestFullQuietWrapper_OutReturnsDiscard(t *testing.T) {
+	g := NewWithT(t)
+
+	var out bytes.Buffer
+	base := iostreams.NewIOStreams(nil, &out, nil)
+	quiet := iostreams.NewFullQuietWrapper(base)
+
+	// Out() should return io.Discard, not the original writer
+	g.Expect(quiet.Out()).ToNot(Equal(&out))
+
+	// Writing directly to Out() should produce nothing
+	_, err := quiet.Out().Write([]byte("direct write"))
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(out.String()).To(BeEmpty())
+}
+
+func TestFullQuietWrapper_ErrOutPreserved(t *testing.T) {
+	g := NewWithT(t)
+
+	var errOut bytes.Buffer
+	base := iostreams.NewIOStreams(nil, nil, &errOut)
+	quiet := iostreams.NewFullQuietWrapper(base)
+
+	// ErrOut() returns the real writer so Cobra's error path still works
+	g.Expect(quiet.ErrOut()).To(Equal(&errOut))
+}
+
+func TestFullQuietWrapper_InPreserved(t *testing.T) {
+	g := NewWithT(t)
+
+	var in bytes.Buffer
+	base := iostreams.NewIOStreams(&in, nil, nil)
+	quiet := iostreams.NewFullQuietWrapper(base)
+
+	g.Expect(quiet.In()).To(Equal(&in))
+}
+
+func TestFullQuietWrapper_ImplementsInterface(t *testing.T) {
+	base := iostreams.NewIOStreams(nil, nil, nil)
+	quiet := iostreams.NewFullQuietWrapper(base)
+
+	// Compile-time interface check
+	var _ iostreams.Interface = quiet
+}
+
 // T008: Test nil writer validation (edge case from spec).
 func TestIOStreams_NilWriterValidation(t *testing.T) {
 	t.Run("nil Out writer should not panic", func(t *testing.T) {

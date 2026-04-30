@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/opendatahub-io/odh-cli/pkg/constants"
+	"github.com/opendatahub-io/odh-cli/pkg/output"
 	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 )
 
@@ -22,15 +23,81 @@ type ComponentInfo struct {
 	Message         string `json:"message,omitempty"`
 }
 
-// ComponentList wraps a slice of ComponentInfo for JSON/YAML output.
+// ComponentList wraps a slice of ComponentInfo with a self-describing envelope.
 type ComponentList struct {
-	Components []ComponentInfo `json:"components"`
+	output.Envelope
+
+	Components []ComponentInfo `json:"components" yaml:"components"`
+}
+
+// NewComponentList creates a new ComponentList with envelope fields populated.
+func NewComponentList(components []ComponentInfo) *ComponentList {
+	list := &ComponentList{
+		Envelope:   output.NewEnvelope("ComponentList", "components-list"),
+		Components: components,
+	}
+	list.computeStatus()
+
+	return list
+}
+
+// computeStatus calculates the Status based on component health.
+func (l *ComponentList) computeStatus() {
+	var warnings, errs int
+	for _, c := range l.Components {
+		if !c.IsActive() {
+			continue
+		}
+		if c.Ready == nil {
+			warnings++
+		} else if !*c.Ready {
+			errs++
+		}
+	}
+	l.SetStatus(warnings, errs)
 }
 
 // IsActive returns true if the component is Managed or Unmanaged (not Removed).
 func (c ComponentInfo) IsActive() bool {
 	return c.ManagementState == constants.ManagementStateManaged ||
 		c.ManagementState == constants.ManagementStateUnmanaged
+}
+
+// ComponentDetailsResult wraps ComponentDetails with a self-describing envelope.
+type ComponentDetailsResult struct {
+	output.Envelope
+
+	Component ComponentDetails `json:"component" yaml:"component"`
+}
+
+// NewComponentDetailsResult creates a new ComponentDetailsResult with envelope fields populated.
+func NewComponentDetailsResult(details ComponentDetails) *ComponentDetailsResult {
+	result := &ComponentDetailsResult{
+		Envelope:  output.NewEnvelope("ComponentDetails", "components-describe"),
+		Component: details,
+	}
+	result.computeStatus()
+
+	return result
+}
+
+// computeStatus calculates the Status based on component health.
+func (r *ComponentDetailsResult) computeStatus() {
+	// Skip status computation for inactive (Removed) components
+	if r.Component.ManagementState != constants.ManagementStateManaged &&
+		r.Component.ManagementState != constants.ManagementStateUnmanaged {
+		r.SetStatus(0, 0)
+
+		return
+	}
+
+	var warnings, errs int
+	if r.Component.Ready == nil {
+		warnings++
+	} else if !*r.Component.Ready {
+		errs++
+	}
+	r.SetStatus(warnings, errs)
 }
 
 // ErrComponentNotFound creates a structured error for unknown components.

@@ -2,6 +2,7 @@ package components
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -40,6 +41,8 @@ type ListCommand struct {
 	Client      client.Client
 
 	OutputFormat string
+	Verbose      bool
+	Quiet        bool
 }
 
 // NewListCommand creates a new ListCommand with defaults.
@@ -57,16 +60,27 @@ func NewListCommand(
 // AddFlags registers command-specific flags.
 func (c *ListCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
+	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
+	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
 }
 
 // Complete resolves derived fields after flag parsing.
 func (c *ListCommand) Complete() error {
+	if c.Verbose && c.Quiet {
+		return errors.New("--verbose and --quiet are mutually exclusive")
+	}
+
 	k8sClient, err := client.NewClient(c.ConfigFlags)
 	if err != nil {
 		return fmt.Errorf("creating Kubernetes client: %w", err)
 	}
 
 	c.Client = k8sClient
+
+	// Wrap IO only when --quiet is explicitly passed
+	if c.Quiet {
+		c.IO = iostreams.NewFullQuietWrapper(c.IO)
+	}
 
 	return nil
 }
@@ -175,13 +189,13 @@ func OutputTable(w io.Writer, components []ComponentInfo) error {
 
 // OutputJSON renders components as JSON.
 func OutputJSON(w io.Writer, components []ComponentInfo) error {
-	output := ComponentList{Components: components}
+	list := NewComponentList(components)
 
-	renderer := printerjson.NewRenderer[ComponentList](
-		printerjson.WithWriter[ComponentList](w),
+	renderer := printerjson.NewRenderer[*ComponentList](
+		printerjson.WithWriter[*ComponentList](w),
 	)
 
-	if err := renderer.Render(output); err != nil {
+	if err := renderer.Render(list); err != nil {
 		return fmt.Errorf("rendering JSON: %w", err)
 	}
 
@@ -190,13 +204,13 @@ func OutputJSON(w io.Writer, components []ComponentInfo) error {
 
 // OutputYAML renders components as YAML.
 func OutputYAML(w io.Writer, components []ComponentInfo) error {
-	output := ComponentList{Components: components}
+	list := NewComponentList(components)
 
-	renderer := printeryaml.NewRenderer[ComponentList](
-		printeryaml.WithWriter[ComponentList](w),
+	renderer := printeryaml.NewRenderer[*ComponentList](
+		printeryaml.WithWriter[*ComponentList](w),
 	)
 
-	if err := renderer.Render(output); err != nil {
+	if err := renderer.Render(list); err != nil {
 		return fmt.Errorf("rendering YAML: %w", err)
 	}
 

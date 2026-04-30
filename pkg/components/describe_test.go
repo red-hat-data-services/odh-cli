@@ -126,8 +126,21 @@ func TestDescribeCommand_Run(t *testing.T) {
 		var result map[string]any
 		err = json.Unmarshal(out.Bytes(), &result)
 		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(result["name"]).To(Equal("kserve"))
-		g.Expect(result["managementState"]).To(Equal("Removed"))
+
+		// Verify envelope fields
+		g.Expect(result["apiVersion"]).To(Equal("cli.opendatahub.io/v1"))
+		g.Expect(result["kind"]).To(Equal("ComponentDetails"))
+		g.Expect(result["metadata"]).ToNot(BeNil())
+		metadata, ok := result["metadata"].(map[string]any)
+		g.Expect(ok).To(BeTrue(), "metadata should be a map")
+		g.Expect(metadata["command"]).To(Equal("components-describe"))
+		g.Expect(result["status"]).ToNot(BeNil())
+
+		// Verify component data is nested under "component"
+		component, ok := result["component"].(map[string]any)
+		g.Expect(ok).To(BeTrue(), "component should be a nested object")
+		g.Expect(component["name"]).To(Equal("kserve"))
+		g.Expect(component["managementState"]).To(Equal("Removed"))
 	})
 
 	t.Run("returns error for non-existent component", func(t *testing.T) {

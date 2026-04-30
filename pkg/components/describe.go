@@ -42,6 +42,8 @@ type DescribeCommand struct {
 
 	ComponentName string
 	OutputFormat  string
+	Verbose       bool
+	Quiet         bool
 }
 
 // NewDescribeCommand creates a new DescribeCommand with defaults.
@@ -59,16 +61,27 @@ func NewDescribeCommand(
 // AddFlags registers command-specific flags.
 func (c *DescribeCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
+	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
+	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
 }
 
 // Complete resolves derived fields after flag parsing.
 func (c *DescribeCommand) Complete() error {
+	if c.Verbose && c.Quiet {
+		return errors.New("--verbose and --quiet are mutually exclusive")
+	}
+
 	k8sClient, err := client.NewClient(c.ConfigFlags)
 	if err != nil {
 		return fmt.Errorf("creating Kubernetes client: %w", err)
 	}
 
 	c.Client = k8sClient
+
+	// Wrap IO only when --quiet is explicitly passed
+	if c.Quiet {
+		c.IO = iostreams.NewFullQuietWrapper(c.IO)
+	}
 
 	return nil
 }
@@ -175,11 +188,12 @@ func truncateString(s string, maxLen int) string {
 }
 
 func (c *DescribeCommand) outputJSON(details *ComponentDetails) error {
-	renderer := printerjson.NewRenderer[*ComponentDetails](
-		printerjson.WithWriter[*ComponentDetails](c.IO.Out()),
+	result := NewComponentDetailsResult(*details)
+	renderer := printerjson.NewRenderer[*ComponentDetailsResult](
+		printerjson.WithWriter[*ComponentDetailsResult](c.IO.Out()),
 	)
 
-	if err := renderer.Render(details); err != nil {
+	if err := renderer.Render(result); err != nil {
 		return fmt.Errorf("rendering JSON: %w", err)
 	}
 
@@ -187,11 +201,12 @@ func (c *DescribeCommand) outputJSON(details *ComponentDetails) error {
 }
 
 func (c *DescribeCommand) outputYAML(details *ComponentDetails) error {
-	renderer := printeryaml.NewRenderer[*ComponentDetails](
-		printeryaml.WithWriter[*ComponentDetails](c.IO.Out()),
+	result := NewComponentDetailsResult(*details)
+	renderer := printeryaml.NewRenderer[*ComponentDetailsResult](
+		printeryaml.WithWriter[*ComponentDetailsResult](c.IO.Out()),
 	)
 
-	if err := renderer.Render(details); err != nil {
+	if err := renderer.Render(result); err != nil {
 		return fmt.Errorf("rendering YAML: %w", err)
 	}
 

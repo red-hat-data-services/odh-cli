@@ -210,3 +210,65 @@ func TestCheckDependencies_EmptySubscription(t *testing.T) {
 
 	mockOLM.AssertExpectations(t)
 }
+
+func TestNewDependencyList_EnvelopeFields(t *testing.T) {
+	g := NewWithT(t)
+
+	statuses := []deps.DependencyStatus{
+		{Name: "certManager", DisplayName: "Cert Manager", Status: deps.StatusInstalled},
+		{Name: "serviceMesh", DisplayName: "Service Mesh", Status: deps.StatusMissing},
+	}
+
+	list := deps.NewDependencyList(statuses)
+
+	g.Expect(list.APIVersion).To(Equal("cli.opendatahub.io/v1"))
+	g.Expect(list.Kind).To(Equal("DependencyList"))
+	g.Expect(list.Metadata.Command).To(Equal("deps"))
+	g.Expect(list.Metadata.CLIVersion).ToNot(BeEmpty())
+	g.Expect(list.Metadata.GeneratedAt).ToNot(BeEmpty())
+	g.Expect(list.Status).ToNot(BeNil())
+	g.Expect(list.Dependencies).To(HaveLen(2))
+}
+
+func TestNewDependencyList_ComputesStatus(t *testing.T) {
+	t.Run("success when all installed", func(t *testing.T) {
+		g := NewWithT(t)
+
+		statuses := []deps.DependencyStatus{
+			{Name: "certManager", Status: deps.StatusInstalled},
+			{Name: "serviceMesh", Status: deps.StatusOptional},
+		}
+
+		list := deps.NewDependencyList(statuses)
+
+		g.Expect(list.Status.Result).To(Equal("success"))
+		g.Expect(list.Status.Errors).To(Equal(0))
+		g.Expect(list.Status.Warnings).To(Equal(0))
+	})
+
+	t.Run("failure when missing", func(t *testing.T) {
+		g := NewWithT(t)
+
+		statuses := []deps.DependencyStatus{
+			{Name: "certManager", Status: deps.StatusMissing},
+		}
+
+		list := deps.NewDependencyList(statuses)
+
+		g.Expect(list.Status.Result).To(Equal("failure"))
+		g.Expect(list.Status.Errors).To(Equal(1))
+	})
+
+	t.Run("warning when unknown", func(t *testing.T) {
+		g := NewWithT(t)
+
+		statuses := []deps.DependencyStatus{
+			{Name: "certManager", Status: deps.StatusUnknown},
+		}
+
+		list := deps.NewDependencyList(statuses)
+
+		g.Expect(list.Status.Result).To(Equal("warning"))
+		g.Expect(list.Status.Warnings).To(Equal(1))
+	})
+}

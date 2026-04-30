@@ -251,3 +251,21 @@ func TestGetDependencies_EmptyManifest(t *testing.T) {
 
 	g.Expect(depsInfo).To(BeEmpty())
 }
+
+func TestNewDependencyManifestList_EnvelopeFields(t *testing.T) {
+	g := NewWithT(t)
+
+	depsInfo := []deps.DependencyInfo{
+		{Name: "certManager", DisplayName: "Cert Manager", Enabled: "true"},
+	}
+
+	list := deps.NewDependencyManifestList(depsInfo)
+
+	g.Expect(list.APIVersion).To(Equal("cli.opendatahub.io/v1"))
+	g.Expect(list.Kind).To(Equal("DependencyManifestList"))
+	g.Expect(list.Metadata.Command).To(Equal("deps"))
+	g.Expect(list.Metadata.CLIVersion).ToNot(BeEmpty())
+	g.Expect(list.Metadata.GeneratedAt).ToNot(BeEmpty())
+	g.Expect(list.Status).To(BeNil())
+	g.Expect(list.Dependencies).To(HaveLen(1))
+}

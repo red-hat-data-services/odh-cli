@@ -1,6 +1,7 @@
 package iostreams
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 )
@@ -163,5 +164,53 @@ func (q *QuietWrapper) In() io.Reader {
 
 // ErrOut returns the error output writer from the delegate.
 func (q *QuietWrapper) ErrOut() io.Writer {
+	return q.delegate.ErrOut()
+}
+
+// FullQuietWrapper suppresses stdout output and IOStreams error methods.
+// Out() returns io.Discard; Fprintf/Fprintln/Errorf/Errorln are no-ops.
+// ErrOut() still returns the delegate so Cobra's error handling path works.
+type FullQuietWrapper struct {
+	delegate Interface
+}
+
+// NewFullQuietWrapper creates a wrapper that suppresses all output.
+func NewFullQuietWrapper(delegate Interface) *FullQuietWrapper {
+	return &FullQuietWrapper{delegate: delegate}
+}
+
+// Fprintf is suppressed (no-op) in full quiet mode.
+func (q *FullQuietWrapper) Fprintf(_ string, _ ...any) {}
+
+// Fprintln is suppressed (no-op) in full quiet mode.
+func (q *FullQuietWrapper) Fprintln(_ ...any) {}
+
+// Errorf is suppressed (no-op) in full quiet mode.
+func (q *FullQuietWrapper) Errorf(_ string, _ ...any) {}
+
+// Errorln is suppressed (no-op) in full quiet mode.
+func (q *FullQuietWrapper) Errorln(_ ...any) {}
+
+// Out returns io.Discard so printers writing directly also produce nothing.
+func (q *FullQuietWrapper) Out() io.Writer {
+	return io.Discard
+}
+
+// In returns the input reader from the delegate, or an EOF reader if delegate is nil.
+func (q *FullQuietWrapper) In() io.Reader {
+	if q.delegate == nil {
+		return bytes.NewReader(nil)
+	}
+
+	return q.delegate.In()
+}
+
+// ErrOut returns the error output writer from the delegate, or io.Discard if delegate is nil.
+// Kept functional so Cobra's error handling path can still write errors.
+func (q *FullQuietWrapper) ErrOut() io.Writer {
+	if q.delegate == nil {
+		return io.Discard
+	}
+
 	return q.delegate.ErrOut()
 }

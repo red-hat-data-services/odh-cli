@@ -154,6 +154,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar((*string)(&c.SeverityLevel), "severity", string(SeverityLevelInfo), flagDescSeverity)
 	fs.StringArrayVar(&c.CheckSelectors, "checks", []string{"*"}, flagDescChecks)
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
+	fs.BoolVarP(&c.Quiet, "quiet", "q", false, flagDescQuiet)
 	fs.BoolVar(&c.Debug, "debug", false, flagDescDebug)
 	fs.BoolVar(&c.NoColor, "no-color", false, flagDescNoColor)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescTimeout)
@@ -166,6 +167,11 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 
 // Complete populates Options and performs pre-validation setup.
 func (c *Command) Complete() error {
+	// Validate mutual exclusivity of verbose and quiet
+	if c.Verbose && c.Quiet {
+		return errors.New("--verbose and --quiet are mutually exclusive")
+	}
+
 	// Complete shared options (creates client)
 	if err := c.SharedOptions.Complete(); err != nil {
 		return fmt.Errorf("completing shared options: %w", err)
@@ -176,8 +182,11 @@ func (c *Command) Complete() error {
 	}
 	color.NoColor = c.NoColor
 
-	// Wrap IO with QuietWrapper if NOT in verbose or debug mode (default is quiet)
-	if !c.Verbose && !c.Debug {
+	// Wrap IO based on verbosity settings
+	switch {
+	case c.Quiet:
+		c.IO = iostreams.NewFullQuietWrapper(c.IO)
+	case !c.Verbose && !c.Debug:
 		c.IO = iostreams.NewQuietWrapper(c.IO)
 	}
 

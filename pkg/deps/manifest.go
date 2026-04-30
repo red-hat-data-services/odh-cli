@@ -7,6 +7,8 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/opendatahub-io/odh-cli/pkg/output"
 )
 
 const (
@@ -81,6 +83,23 @@ type DependencyInfo struct {
 	Namespace    string   `json:"namespace"            yaml:"namespace"`
 	Channel      string   `json:"channel,omitempty"    yaml:"channel,omitempty"`
 	RequiredBy   []string `json:"requiredBy,omitempty" yaml:"requiredBy,omitempty"`
+}
+
+// DependencyManifestList wraps dependency manifest info with a self-describing envelope.
+// Used for dry-run output where cluster is not queried. Status is intentionally omitted
+// because no cluster state is available to compute warnings/errors.
+type DependencyManifestList struct {
+	output.Envelope
+
+	Dependencies []DependencyInfo `json:"dependencies" yaml:"dependencies"`
+}
+
+// NewDependencyManifestList creates a new DependencyManifestList with envelope fields populated.
+func NewDependencyManifestList(deps []DependencyInfo) *DependencyManifestList {
+	return &DependencyManifestList{
+		Envelope:     output.NewEnvelope("DependencyManifestList", "deps"),
+		Dependencies: deps,
+	}
 }
 
 // Parse parses values.yaml content into a Manifest.

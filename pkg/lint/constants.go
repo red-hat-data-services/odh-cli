@@ -6,6 +6,7 @@ const (
 	flagDescOutput             = "output format (table|json|yaml)"
 	flagDescSeverity           = "minimum severity level to display (prohibited|critical|warning|info)"
 	flagDescVerbose            = "show impacted objects and summary information"
+	flagDescQuiet              = "suppress all non-essential output (only show structured data or errors)"
 	flagDescDebug              = "show detailed diagnostic logs for troubleshooting"
 	flagDescTimeout            = "operation timeout (e.g., 10m, 30m)"
 	flagDescQPS                = "Kubernetes API QPS limit (queries per second)"

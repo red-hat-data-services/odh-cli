@@ -3,6 +3,7 @@ package deps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -32,7 +33,7 @@ const (
 	outputYAML  = "yaml"
 
 	yamlIndent         = 2
-	tableWidthNormal   = 130
+	tableWidthNormal   = 145
 	tableWidthExpanded = 150
 	semverParts        = 3
 
@@ -60,6 +61,8 @@ type Command struct {
 	DryRun  bool
 	Output  string
 	Version string
+	Verbose bool
+	Quiet   bool
 
 	client          client.Client
 	clusterVersion  string
@@ -82,11 +85,22 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.DryRun, "dry-run", false, "Show manifest data without querying cluster")
 	fs.StringVarP(&c.Output, "output", "o", outputTable, "Output format: table, json, yaml")
 	fs.StringVar(&c.Version, "version", "", "ODH/RHOAI version to show dependencies for")
+	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
+	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
 }
 
 // Complete prepares the command for execution.
 func (c *Command) Complete() error {
+	if c.Verbose && c.Quiet {
+		return errors.New("--verbose and --quiet are mutually exclusive")
+	}
+
 	c.useColor = shouldUseColor(c.IO.Out())
+
+	// Wrap IO only when --quiet is explicitly passed
+	if c.Quiet {
+		c.IO = iostreams.NewFullQuietWrapper(c.IO)
+	}
 
 	if c.DryRun {
 		return nil
@@ -177,7 +191,7 @@ func (c *Command) Run(ctx context.Context) error {
 
 	ver, err := version.Detect(ctx, c.client)
 	if err != nil {
-		_, _ = fmt.Fprintf(c.IO.ErrOut(), "Warning: failed to detect cluster version: %v\n", err)
+		c.IO.Errorf("Warning: failed to detect cluster version: %v", err)
 	} else if ver != nil {
 		c.clusterVersion = ver.String()
 
@@ -203,9 +217,9 @@ func (c *Command) printDryRun(manifest *Manifest) error {
 
 	switch c.Output {
 	case outputJSON:
-		return c.printJSON(deps)
+		return c.printJSON(NewDependencyManifestList(deps))
 	case outputYAML:
-		return c.printYAML(deps)
+		return c.printYAML(NewDependencyManifestList(deps))
 	default:
 		return c.printDryRunTable(deps)
 	}
@@ -214,9 +228,9 @@ func (c *Command) printDryRun(manifest *Manifest) error {
 func (c *Command) printResults(statuses []DependencyStatus) error {
 	switch c.Output {
 	case outputJSON:
-		return c.printJSON(statuses)
+		return c.printJSON(NewDependencyList(statuses))
 	case outputYAML:
-		return c.printYAML(statuses)
+		return c.printYAML(NewDependencyList(statuses))
 	default:
 		return c.printTable(statuses)
 	}
@@ -232,7 +246,7 @@ func (c *Command) printTable(statuses []DependencyStatus) error {
 
 	_, _ = fmt.Fprintln(w)
 
-	_, _ = fmt.Fprintf(w, "%-26s %-10s %-8s %-42s %s\n",
+	_, _ = fmt.Fprintf(w, "%-26s %-12s %-20s %-42s %s\n",
 		"OPERATOR", "STATUS", "VERSION", "NAMESPACE", "REQUIRED BY")
 	_, _ = fmt.Fprint(w, strings.Repeat("-", tableWidthNormal)+"\n")
 
@@ -249,7 +263,7 @@ func (c *Command) printTable(statuses []DependencyStatus) error {
 			requiredBy = "-"
 		}
 
-		_, _ = fmt.Fprintf(w, "%-26s %-10s %-8s %-42s %s\n",
+		_, _ = fmt.Fprintf(w, "%-26s %-12s %-20s %-42s %s\n",
 			s.DisplayName,
 			statusIcon,
 			ver,

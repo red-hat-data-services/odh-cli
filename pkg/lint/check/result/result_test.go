@@ -2,12 +2,14 @@ package result_test
 
 import (
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
+	"github.com/opendatahub-io/odh-cli/pkg/output"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 
 	. "github.com/onsi/gomega"
@@ -1007,4 +1009,77 @@ func TestAddImpactedObjects(t *testing.T) {
 	g.Expect(dr.ImpactedObjects[0].Name).To(Equal("obj1"))
 	g.Expect(dr.ImpactedObjects[1].Name).To(Equal("obj2"))
 	g.Expect(dr.ImpactedObjects[2].Name).To(Equal("obj3"))
+}
+
+// DiagnosticResultList envelope tests
+
+func TestNewDiagnosticResultList_EnvelopeFields(t *testing.T) {
+	g := NewWithT(t)
+
+	clusterVer := "2.25.0"
+	targetVer := "3.0.0"
+	ocpVer := "4.16.0"
+
+	list := result.NewDiagnosticResultList(&clusterVer, &targetVer, &ocpVer)
+
+	g.Expect(list.APIVersion).To(Equal(output.APIVersion))
+	g.Expect(list.Kind).To(Equal("DiagnosticResultList"))
+	g.Expect(list.Metadata.Command).To(Equal("lint"))
+	g.Expect(list.Metadata.CLIVersion).ToNot(BeEmpty())
+}
+
+func TestNewDiagnosticResultList_GeneratedAtIsValidTimestamp(t *testing.T) {
+	g := NewWithT(t)
+
+	before := time.Now().UTC().Truncate(time.Second)
+	list := result.NewDiagnosticResultList(nil, nil, nil)
+	after := time.Now().UTC().Truncate(time.Second).Add(time.Second)
+
+	parsed, err := time.Parse(time.RFC3339, list.Metadata.GeneratedAt)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(parsed).To(BeTemporally(">=", before))
+	g.Expect(parsed).To(BeTemporally("<=", after))
+}
+
+func TestNewDiagnosticResultList_ExistingFieldsUnchanged(t *testing.T) {
+	g := NewWithT(t)
+
+	clusterVer := "2.25.0"
+	targetVer := "3.0.0"
+	ocpVer := "4.16.0"
+
+	list := result.NewDiagnosticResultList(&clusterVer, &targetVer, &ocpVer)
+
+	g.Expect(list.ClusterVersion).To(HaveValue(Equal("2.25.0")))
+	g.Expect(list.TargetVersion).To(HaveValue(Equal("3.0.0")))
+	g.Expect(list.OpenShiftVersion).To(HaveValue(Equal("4.16.0")))
+	g.Expect(list.Results).ToNot(BeNil())
+	g.Expect(list.Results).To(BeEmpty())
+}
+
+func TestNewDiagnosticResultList_NilVersions(t *testing.T) {
+	g := NewWithT(t)
+
+	list := result.NewDiagnosticResultList(nil, nil, nil)
+
+	g.Expect(list.APIVersion).To(Equal(output.APIVersion))
+	g.Expect(list.Kind).To(Equal("DiagnosticResultList"))
+	g.Expect(list.ClusterVersion).To(BeNil())
+	g.Expect(list.TargetVersion).To(BeNil())
+	g.Expect(list.OpenShiftVersion).To(BeNil())
+}
+
+func TestDiagnosticResultList_ComputeStatus_NilResults(t *testing.T) {
+	g := NewWithT(t)
+
+	list := result.NewDiagnosticResultList(nil, nil, nil)
+
+	// Append a nil entry to Results
+	list.Results = append(list.Results, nil)
+	list.Results = append(list.Results, result.New("component", "test", "check", "description"))
+
+	// Should not panic and should compute status correctly
+	g.Expect(func() { list.ComputeStatus() }).ToNot(Panic())
+	g.Expect(list.Status).ToNot(BeNil())
+	g.Expect(list.Status.Result).To(Equal(output.StatusSuccess))
 }

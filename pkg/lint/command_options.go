@@ -83,6 +83,9 @@ type SharedOptions struct {
 	// Verbose enables progress messages (default: false, quiet by default)
 	Verbose bool
 
+	// Quiet suppresses all non-essential output (mutually exclusive with Verbose)
+	Quiet bool
+
 	// Debug enables detailed diagnostic logging for troubleshooting (default: false)
 	Debug bool
 
@@ -440,10 +443,14 @@ func OutputJSON(
 	// Create the list
 	list := result.NewDiagnosticResultList(clusterVersion, targetVersion, openShiftVersion)
 
-	// Add all results in execution order
+	// Add all results in execution order, skipping nil results
 	for _, exec := range results {
-		list.Results = append(list.Results, exec.Result)
+		if exec.Result != nil {
+			list.Results = append(list.Results, exec.Result)
+		}
 	}
+
+	list.ComputeStatus()
 
 	renderer := printerjson.NewRenderer[*result.DiagnosticResultList](
 		printerjson.WithWriter[*result.DiagnosticResultList](out),
@@ -467,10 +474,14 @@ func OutputYAML(
 	// Create the list
 	list := result.NewDiagnosticResultList(clusterVersion, targetVersion, openShiftVersion)
 
-	// Add all results in execution order
+	// Add all results in execution order, skipping nil results
 	for _, exec := range results {
-		list.Results = append(list.Results, exec.Result)
+		if exec.Result != nil {
+			list.Results = append(list.Results, exec.Result)
+		}
 	}
+
+	list.ComputeStatus()
 
 	renderer := printeryaml.NewRenderer[*result.DiagnosticResultList](
 		printeryaml.WithWriter[*result.DiagnosticResultList](out),
