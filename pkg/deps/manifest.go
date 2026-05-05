@@ -74,15 +74,15 @@ type Component struct {
 	Dependencies map[string]any `yaml:"dependencies"`
 }
 
-// DependencyInfo is a flattened view of a dependency for display.
+// DependencyInfo is a flattened view of a dependency for display (dry-run mode).
 type DependencyInfo struct {
-	Name         string   `json:"name"                 yaml:"name"`
-	DisplayName  string   `json:"displayName"          yaml:"displayName"`
-	Enabled      string   `json:"enabled"              yaml:"enabled"`
-	Subscription string   `json:"subscription"         yaml:"subscription"`
-	Namespace    string   `json:"namespace"            yaml:"namespace"`
-	Channel      string   `json:"channel,omitempty"    yaml:"channel,omitempty"`
-	RequiredBy   []string `json:"requiredBy,omitempty" yaml:"requiredBy,omitempty"`
+	Name         string   `json:"name"                 jsonschema:"description=Dependency identifier"                yaml:"name"`
+	DisplayName  string   `json:"displayName"          jsonschema:"description=Human-readable name"                  yaml:"displayName"`
+	Enabled      string   `json:"enabled"              jsonschema:"description=Enable state (auto/true/false)"       yaml:"enabled"`
+	Subscription string   `json:"subscription"         jsonschema:"description=OLM subscription name"                yaml:"subscription"`
+	Namespace    string   `json:"namespace"            jsonschema:"description=Operator namespace"                   yaml:"namespace"`
+	Channel      string   `json:"channel,omitempty"    jsonschema:"description=OLM channel"                          yaml:"channel,omitempty"`
+	RequiredBy   []string `json:"requiredBy,omitempty" jsonschema:"description=Components requiring this dependency" yaml:"requiredBy,omitempty"`
 }
 
 // DependencyManifestList wraps dependency manifest info with a self-describing envelope.

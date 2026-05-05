@@ -121,9 +121,20 @@ func addDescribeCommand(parent *cobra.Command, flags *genericclioptions.ConfigFl
 		Short:         "Show detailed information about a component",
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args:          cobra.ExactArgs(1),
+		// Note: This closure captures `describeCommand` which is mutated by flag binding.
+		// This works because Cobra parses flags before calling Args validation.
+		Args: func(cmd *cobra.Command, args []string) error {
+			// Require 0 args when --schema is set
+			if describeCommand.OutputSchema {
+				return cobra.NoArgs(cmd, args)
+			}
+
+			return cobra.ExactArgs(1)(cmd, args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			describeCommand.ComponentName = args[0]
+			if len(args) > 0 {
+				describeCommand.ComponentName = args[0]
+			}
 
 			return runCommand(cmd, describeCommand, describeCommand.OutputFormat)
 		},

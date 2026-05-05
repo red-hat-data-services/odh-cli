@@ -38,6 +38,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/ray"
 	trainingoperatorworkloads "github.com/opendatahub-io/odh-cli/pkg/lint/checks/workloads/trainingoperator"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
+	"github.com/opendatahub-io/odh-cli/pkg/schema"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
@@ -49,6 +50,7 @@ var _ cmd.Command = (*Command)(nil)
 // Command contains the lint command configuration.
 type Command struct {
 	*SharedOptions
+	schema.OutputOptions
 
 	// TargetVersion is the optional target version for upgrade assessment.
 	// If empty, runs in lint mode (validates current state).
@@ -163,10 +165,18 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, flagDescQPS)
 	fs.IntVar(&c.Burst, "burst", c.Burst, flagDescBurst)
+
+	// Schema output
+	c.OutputOptions.AddFlags(fs)
 }
 
 // Complete populates Options and performs pre-validation setup.
 func (c *Command) Complete() error {
+	// Skip client creation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	// Validate mutual exclusivity of verbose and quiet
 	if c.Verbose && c.Quiet {
 		return errors.New("--verbose and --quiet are mutually exclusive")
@@ -206,6 +216,11 @@ func (c *Command) Complete() error {
 
 // Validate checks that all required options are valid.
 func (c *Command) Validate() error {
+	// Skip validation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	// Validate shared options
 	if err := c.SharedOptions.Validate(); err != nil {
 		return fmt.Errorf("validating shared options: %w", err)
@@ -222,6 +237,15 @@ func (c *Command) Validate() error {
 
 // Run executes the lint command in either lint or upgrade mode.
 func (c *Command) Run(ctx context.Context) error {
+	// Short-circuit if --schema was requested (no cluster connection needed)
+	if c.OutputSchema {
+		if err := schema.WriteTo(c.IO.Out(), schema.SchemaDiagnosticResultList); err != nil {
+			return fmt.Errorf("outputting schema: %w", err)
+		}
+
+		return nil
+	}
+
 	// Create context with timeout to prevent hanging on slow clusters
 	ctx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()

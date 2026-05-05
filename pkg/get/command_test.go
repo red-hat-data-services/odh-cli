@@ -2,6 +2,7 @@ package get_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -335,6 +336,98 @@ func TestListReturnsEmptyTable(t *testing.T) {
 	output := out.String()
 	g.Expect(output).To(ContainSubstring("NAME"))
 	g.Expect(output).ToNot(ContainSubstring(testNotebook1))
+}
+
+// --- JSON/YAML Output Tests ---
+
+func TestJSONOutput_MultipleItems_ReturnsList(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	nb1 := newNotebook(testNotebook1, testNamespace, testImage1)
+	nb2 := newNotebook(testNotebook2, testNamespace, testImage2)
+
+	k8sClient := newDynamicClient(nb1, nb2)
+	cmd, out := newTestCommand(k8sClient)
+	cmd.ResourceName = "nb"
+	cmd.OutputFormat = "json"
+	cmd.ResolvedType = resources.Notebook
+
+	err := cmd.Run(ctx)
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Parse the JSON output
+	var result map[string]any
+	err = json.Unmarshal(out.Bytes(), &result)
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Multiple items should be wrapped in List
+	g.Expect(result).To(HaveKeyWithValue("apiVersion", "v1"))
+	g.Expect(result).To(HaveKeyWithValue("kind", "List"))
+	g.Expect(result).To(HaveKey("items"))
+
+	items, ok := result["items"].([]any)
+	g.Expect(ok).To(BeTrue(), "items should be an array")
+	g.Expect(items).To(HaveLen(2))
+}
+
+func TestJSONOutput_SingleItem_ReturnsBareObject(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	isvc := newInferenceService(testISVCName, testNamespace)
+
+	k8sClient := newDynamicClient(isvc)
+	cmd, out := newTestCommand(k8sClient)
+	cmd.ResourceName = "isvc"
+	cmd.ItemName = testISVCName
+	cmd.OutputFormat = "json"
+	cmd.ResolvedType = resources.InferenceService
+
+	err := cmd.Run(ctx)
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Parse the JSON output
+	var result map[string]any
+	err = json.Unmarshal(out.Bytes(), &result)
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Single item should be returned as bare object (not wrapped in List)
+	g.Expect(result).To(HaveKeyWithValue("apiVersion", "serving.kserve.io/v1beta1"))
+	g.Expect(result).To(HaveKeyWithValue("kind", "InferenceService"))
+	g.Expect(result).To(HaveKey("metadata"))
+
+	metadata, ok := result["metadata"].(map[string]any)
+	g.Expect(ok).To(BeTrue(), "metadata should be a map")
+	g.Expect(metadata["name"]).To(Equal(testISVCName))
+}
+
+func TestJSONOutput_EmptyList(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	k8sClient := newDynamicClient()
+	cmd, out := newTestCommand(k8sClient)
+	cmd.ResourceName = "nb"
+	cmd.OutputFormat = "json"
+	cmd.ResolvedType = resources.Notebook
+
+	err := cmd.Run(ctx)
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Parse the JSON output
+	var result map[string]any
+	err = json.Unmarshal(out.Bytes(), &result)
+	g.Expect(err).ToNot(HaveOccurred())
+
+	// Empty result should still have List structure
+	g.Expect(result).To(HaveKeyWithValue("apiVersion", "v1"))
+	g.Expect(result).To(HaveKeyWithValue("kind", "List"))
+	g.Expect(result).To(HaveKey("items"))
+
+	items, ok := result["items"].([]any)
+	g.Expect(ok).To(BeTrue(), "items should be an array")
+	g.Expect(items).To(BeEmpty())
 }
 
 // --- Helpers ---

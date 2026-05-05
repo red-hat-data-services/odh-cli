@@ -14,6 +14,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	printerjson "github.com/opendatahub-io/odh-cli/pkg/printer/json"
 	printeryaml "github.com/opendatahub-io/odh-cli/pkg/printer/yaml"
+	"github.com/opendatahub-io/odh-cli/pkg/schema"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 )
@@ -27,15 +28,17 @@ const (
 
 // ComponentDetails holds detailed information about a component.
 type ComponentDetails struct {
-	Name            string             `json:"name"`
-	ManagementState string             `json:"managementState"`
-	Ready           *bool              `json:"ready,omitempty"`
-	Message         string             `json:"message,omitempty"`
-	Conditions      []metav1.Condition `json:"conditions,omitempty"`
+	Name            string             `json:"name"                 jsonschema:"description=Component name"`
+	ManagementState string             `json:"managementState"      jsonschema:"description=Component management state,enum=Managed,enum=Unmanaged,enum=Removed"`
+	Ready           *bool              `json:"ready,omitempty"      jsonschema:"description=Whether the component is ready"`
+	Message         string             `json:"message,omitempty"    jsonschema:"description=Status message"`
+	Conditions      []metav1.Condition `json:"conditions,omitempty" jsonschema:"description=Kubernetes-style conditions"`
 }
 
 // DescribeCommand contains the describe subcommand configuration.
 type DescribeCommand struct {
+	schema.OutputOptions
+
 	IO          iostreams.Interface
 	ConfigFlags *genericclioptions.ConfigFlags
 	Client      client.Client
@@ -63,10 +66,16 @@ func (c *DescribeCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
 	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
+	c.OutputOptions.AddFlags(fs)
 }
 
 // Complete resolves derived fields after flag parsing.
 func (c *DescribeCommand) Complete() error {
+	// Skip client creation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	if c.Verbose && c.Quiet {
 		return errors.New("--verbose and --quiet are mutually exclusive")
 	}
@@ -88,6 +97,11 @@ func (c *DescribeCommand) Complete() error {
 
 // Validate checks that all options are valid before execution.
 func (c *DescribeCommand) Validate() error {
+	// Skip validation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	if c.ComponentName == "" {
 		return errors.New("component name is required")
 	}
@@ -103,6 +117,15 @@ func (c *DescribeCommand) Validate() error {
 
 // Run executes the describe command.
 func (c *DescribeCommand) Run(ctx context.Context) error {
+	// Short-circuit if --schema was requested (no cluster connection needed)
+	if c.OutputSchema {
+		if err := schema.WriteTo(c.IO.Out(), schema.SchemaComponentDetails); err != nil {
+			return fmt.Errorf("outputting schema: %w", err)
+		}
+
+		return nil
+	}
+
 	component, err := GetComponent(ctx, c.Client, c.ComponentName)
 	if err != nil {
 		return fmt.Errorf("getting component: %w", err)

@@ -6,6 +6,7 @@ before:
   hooks:
     - go mod tidy
     - make fetch-deps
+    - make gen-schemas
 
 builds:
   - id: kubectl-odh

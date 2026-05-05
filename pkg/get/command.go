@@ -14,6 +14,7 @@ import (
 
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
+	"github.com/opendatahub-io/odh-cli/pkg/schema"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 )
@@ -30,6 +31,8 @@ const (
 
 // Command contains the get command configuration.
 type Command struct {
+	schema.OutputOptions
+
 	IO          iostreams.Interface
 	ConfigFlags *genericclioptions.ConfigFlags
 	Client      client.Client
@@ -76,10 +79,16 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
 	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
+	c.OutputOptions.AddFlags(fs)
 }
 
 // Complete resolves derived fields after flag parsing.
 func (c *Command) Complete() error {
+	// Skip client creation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	if c.Verbose && c.Quiet {
 		return errors.New("--verbose and --quiet are mutually exclusive")
 	}
@@ -117,6 +126,11 @@ func (c *Command) Complete() error {
 
 // Validate checks that all options are valid before execution.
 func (c *Command) Validate() error {
+	// Skip validation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	if c.AllNamespaces && c.ConfigFlags.Namespace != nil && *c.ConfigFlags.Namespace != "" {
 		return errors.New("--all-namespaces and --namespace are mutually exclusive")
 	}
@@ -132,6 +146,15 @@ func (c *Command) Validate() error {
 
 // Run executes the get command.
 func (c *Command) Run(ctx context.Context) error {
+	// Short-circuit if --schema was requested (no cluster connection needed)
+	if c.OutputSchema {
+		if err := schema.WriteTo(c.IO.Out(), schema.SchemaKubernetesList); err != nil {
+			return fmt.Errorf("outputting schema: %w", err)
+		}
+
+		return nil
+	}
+
 	if c.ItemName != "" {
 		return c.getResource(ctx)
 	}

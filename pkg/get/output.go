@@ -231,3 +231,10 @@ func toOutputList(items []*unstructured.Unstructured) any {
 		"items":      rawItems,
 	}
 }
+
+// KubernetesList represents the standard Kubernetes v1.List output format.
+type KubernetesList struct {
+	APIVersion string           `json:"apiVersion" jsonschema:"description=API version (v1),const=v1"`
+	Kind       string           `json:"kind"       jsonschema:"description=Resource kind (List),const=List"`
+	Items      []map[string]any `json:"items"      jsonschema:"description=Array of Kubernetes resources"`
+}

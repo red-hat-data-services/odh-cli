@@ -17,17 +17,17 @@ const (
 
 // ComponentInfo holds the state and health information for a DSC component.
 type ComponentInfo struct {
-	Name            string `json:"name"`
-	ManagementState string `json:"managementState"`
-	Ready           *bool  `json:"ready,omitempty"`
-	Message         string `json:"message,omitempty"`
+	Name            string `json:"name"              jsonschema:"description=Component name"`
+	ManagementState string `json:"managementState"   jsonschema:"description=Component management state,enum=Managed,enum=Unmanaged,enum=Removed"`
+	Ready           *bool  `json:"ready,omitempty"   jsonschema:"description=Whether the component is ready"`
+	Message         string `json:"message,omitempty" jsonschema:"description=Status message"`
 }
 
 // ComponentList wraps a slice of ComponentInfo with a self-describing envelope.
 type ComponentList struct {
 	output.Envelope
 
-	Components []ComponentInfo `json:"components" yaml:"components"`
+	Components []ComponentInfo `json:"components" jsonschema:"description=List of ODH/RHOAI components with their state and health" yaml:"components"`
 }
 
 // NewComponentList creates a new ComponentList with envelope fields populated.

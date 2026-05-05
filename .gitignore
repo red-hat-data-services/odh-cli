@@ -52,3 +52,7 @@ bkp
 
 # Embedded dependency manifest (downloaded at build time)
 pkg/deps/data/
+
+# Generated JSON schemas (created by gen-schemas at build time)
+pkg/schema/data/
+

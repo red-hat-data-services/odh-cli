@@ -63,7 +63,16 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 		Example:       cmdExample,
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args:          cobra.RangeArgs(1, maxArgs),
+		// Note: This closure captures `command` which is mutated by flag binding.
+		// This works because Cobra parses flags before calling Args validation.
+		Args: func(cmd *cobra.Command, args []string) error {
+			// Allow 0 args when --schema is set, but still enforce max
+			if command.OutputSchema {
+				return cobra.RangeArgs(0, maxArgs)(cmd, args)
+			}
+
+			return cobra.RangeArgs(1, maxArgs)(cmd, args)
+		},
 		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				return getpkg.Names(), cobra.ShellCompDirectiveNoFileComp
@@ -72,7 +81,9 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 			return nil, cobra.ShellCompDirectiveNoFileComp
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			command.ResourceName = args[0]
+			if len(args) > 0 {
+				command.ResourceName = args[0]
+			}
 			if len(args) > 1 {
 				command.ItemName = args[1]
 			}

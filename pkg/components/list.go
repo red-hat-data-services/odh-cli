@@ -15,6 +15,7 @@ import (
 	printerjson "github.com/opendatahub-io/odh-cli/pkg/printer/json"
 	"github.com/opendatahub-io/odh-cli/pkg/printer/table"
 	printeryaml "github.com/opendatahub-io/odh-cli/pkg/printer/yaml"
+	"github.com/opendatahub-io/odh-cli/pkg/schema"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 )
@@ -36,6 +37,8 @@ const (
 
 // ListCommand contains the components list command configuration.
 type ListCommand struct {
+	schema.OutputOptions
+
 	IO          iostreams.Interface
 	ConfigFlags *genericclioptions.ConfigFlags
 	Client      client.Client
@@ -62,10 +65,16 @@ func (c *ListCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
 	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
+	c.OutputOptions.AddFlags(fs)
 }
 
 // Complete resolves derived fields after flag parsing.
 func (c *ListCommand) Complete() error {
+	// Skip client creation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	if c.Verbose && c.Quiet {
 		return errors.New("--verbose and --quiet are mutually exclusive")
 	}
@@ -87,6 +96,11 @@ func (c *ListCommand) Complete() error {
 
 // Validate checks that all options are valid before execution.
 func (c *ListCommand) Validate() error {
+	// Skip validation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	switch c.OutputFormat {
 	case outputFormatTable, outputFormatJSON, outputFormatYAML:
 	default:
@@ -98,6 +112,15 @@ func (c *ListCommand) Validate() error {
 
 // Run executes the components list command.
 func (c *ListCommand) Run(ctx context.Context) error {
+	// Short-circuit if --schema was requested (no cluster connection needed)
+	if c.OutputSchema {
+		if err := schema.WriteTo(c.IO.Out(), schema.SchemaComponentList); err != nil {
+			return fmt.Errorf("outputting schema: %w", err)
+		}
+
+		return nil
+	}
+
 	components, err := DiscoverComponents(ctx, c.Client)
 	if err != nil {
 		return fmt.Errorf("discovering components: %w", err)

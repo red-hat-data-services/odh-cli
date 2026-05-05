@@ -34,14 +34,14 @@ const (
 
 // DependencyStatus represents the checked status of a dependency on the cluster.
 type DependencyStatus struct {
-	Name         string   `json:"name"                 yaml:"name"`
-	DisplayName  string   `json:"displayName"          yaml:"displayName"`
-	Status       Status   `json:"status"               yaml:"status"`
-	Version      string   `json:"version,omitempty"    yaml:"version,omitempty"`
-	Namespace    string   `json:"namespace"            yaml:"namespace"`
-	Subscription string   `json:"subscription"         yaml:"subscription"`
-	RequiredBy   []string `json:"requiredBy,omitempty" yaml:"requiredBy,omitempty"`
-	Error        string   `json:"error,omitempty"      yaml:"error,omitempty"`
+	Name         string   `json:"name"                 jsonschema:"description=Operator package name"                                                      yaml:"name"`
+	DisplayName  string   `json:"displayName"          jsonschema:"description=Human-readable operator name"                                               yaml:"displayName"`
+	Status       Status   `json:"status"               jsonschema:"description=Installation status,enum=installed,enum=missing,enum=optional,enum=unknown" yaml:"status"`
+	Version      string   `json:"version,omitempty"    jsonschema:"description=Installed operator version"                                                 yaml:"version,omitempty"`
+	Namespace    string   `json:"namespace"            jsonschema:"description=Operator namespace"                                                         yaml:"namespace"`
+	Subscription string   `json:"subscription"         jsonschema:"description=OLM subscription name"                                                      yaml:"subscription"`
+	RequiredBy   []string `json:"requiredBy,omitempty" jsonschema:"description=Components that require this dependency"                                    yaml:"requiredBy,omitempty"`
+	Error        string   `json:"error,omitempty"      jsonschema:"description=Error message if status check failed"                                       yaml:"error,omitempty"`
 }
 
 // DependencyList wraps dependency statuses with a self-describing envelope.

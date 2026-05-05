@@ -58,15 +58,21 @@ fetch-deps:
 	@curl -fsSL "https://raw.githubusercontent.com/opendatahub-io/odh-gitops/$(ODH_GITOPS_COMMIT)/charts/rhai-on-openshift-chart/Chart.yaml" \
 		-o pkg/deps/data/Chart.yaml
 
+# Generate JSON schemas from Go types (creates placeholders first for go:embed)
+.PHONY: gen-schemas
+gen-schemas:
+	@mkdir -p pkg/schema/data && cd pkg/schema/data && touch diagnostic_result_list.json component_list.json component_details.json dependency_status_list.json dependency_info_list.json version_info.json version_info_verbose.json kubernetes_list.json
+	@go run tools/gen-schemas/main.go
+
 # Build the binary
 .PHONY: build
-build: fetch-deps
+build: fetch-deps gen-schemas
 	CGO_ENABLED=$(CGO_ENABLED) GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 		go build $(GO_BUILD_TAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/main.go
 
 # Run the doctor command
 .PHONY: run
-run:
+run: gen-schemas
 	go run -ldflags "$(LDFLAGS)" cmd/main.go doctor
 
 # Tidy up dependencies
@@ -89,17 +95,17 @@ fmt:
 
 # Run linter
 .PHONY: lint
-lint:
+lint: gen-schemas
 	@$(GOLANGCI) run --config .golangci.yml --timeout $(LINT_TIMEOUT)
 
 # Run linter with auto-fix
 .PHONY: lint/fix
-lint/fix:
+lint/fix: gen-schemas
 	@$(GOLANGCI) run --config .golangci.yml --timeout $(LINT_TIMEOUT) --fix
 
 # Run vulnerability check
 .PHONY: vulncheck
-vulncheck:
+vulncheck: gen-schemas
 	@$(GOVULNCHECK) ./...
 
 # Run all checks
@@ -108,7 +114,7 @@ check: lint
 
 # Run tests
 .PHONY: test
-test: fetch-deps
+test: fetch-deps gen-schemas
 	go test -coverprofile=coverage.out ./...
 
 # Build container image without pushing (creates local manifest)
@@ -156,4 +162,5 @@ help:
 	@echo "  check       - Run all checks (lint)"
 	@echo "  test        - Run tests"
 	@echo "  fetch-deps  - Fetch dependency manifest from odh-gitops"
+	@echo "  gen-schemas - Generate JSON schemas from Go types"
 	@echo "  help        - Show this help message"

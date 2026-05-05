@@ -18,6 +18,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
+	"github.com/opendatahub-io/odh-cli/pkg/schema"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	utilserrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
@@ -54,6 +55,8 @@ const (
 
 // Command holds the deps command configuration.
 type Command struct {
+	schema.OutputOptions
+
 	IO          iostreams.Interface
 	ConfigFlags *genericclioptions.ConfigFlags
 
@@ -87,10 +90,16 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.Version, "version", "", "ODH/RHOAI version to show dependencies for")
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
 	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
+	c.OutputOptions.AddFlags(fs)
 }
 
 // Complete prepares the command for execution.
 func (c *Command) Complete() error {
+	// Skip client creation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	if c.Verbose && c.Quiet {
 		return errors.New("--verbose and --quiet are mutually exclusive")
 	}
@@ -133,6 +142,11 @@ func shouldUseColor(w io.Writer) bool {
 
 // Validate checks the command options.
 func (c *Command) Validate() error {
+	// Skip validation when only outputting schema
+	if c.OutputSchema {
+		return nil
+	}
+
 	switch c.Output {
 	case outputTable, outputJSON, outputYAML:
 	default:
@@ -163,6 +177,20 @@ func (c *Command) Validate() error {
 
 // Run executes the command.
 func (c *Command) Run(ctx context.Context) error {
+	// Short-circuit if --schema was requested (no cluster connection needed)
+	if c.OutputSchema {
+		schemaType := schema.SchemaDependencyStatusList
+		if c.DryRun {
+			schemaType = schema.SchemaDependencyInfoList
+		}
+
+		if err := schema.WriteTo(c.IO.Out(), schemaType); err != nil {
+			return fmt.Errorf("outputting schema: %w", err)
+		}
+
+		return nil
+	}
+
 	result, err := GetManifest(ctx, c.Refresh)
 	if err != nil {
 		return fmt.Errorf(msgGetManifest, err)

@@ -67,7 +67,7 @@ type Condition struct {
 
 	// Impact indicates the upgrade impact level.
 	// Auto-derived from Status unless explicitly overridden via WithImpact option.
-	Impact Impact `json:"impact,omitempty" yaml:"impact,omitempty"`
+	Impact Impact `json:"impact,omitempty" jsonschema:"enum=prohibited,enum=blocking,enum=advisory" yaml:"impact,omitempty"`
 
 	// Remediation provides actionable guidance on how to resolve the condition.
 	// Set via WithRemediation option during condition creation.
@@ -392,10 +392,10 @@ func (r *DiagnosticResult) AddImpactedObjects(
 type DiagnosticResultList struct {
 	output.Envelope
 
-	ClusterVersion   *string             `json:"clusterVersion,omitempty"   yaml:"clusterVersion,omitempty"`
-	TargetVersion    *string             `json:"targetVersion,omitempty"    yaml:"targetVersion,omitempty"`
-	OpenShiftVersion *string             `json:"openShiftVersion,omitempty" yaml:"openShiftVersion,omitempty"`
-	Results          []*DiagnosticResult `json:"results"                    yaml:"results"`
+	ClusterVersion   *string             `json:"clusterVersion,omitempty"   jsonschema:"description=The installed ODH/RHOAI operator version"  yaml:"clusterVersion,omitempty"`
+	TargetVersion    *string             `json:"targetVersion,omitempty"    jsonschema:"description=The target version for upgrade assessment" yaml:"targetVersion,omitempty"`
+	OpenShiftVersion *string             `json:"openShiftVersion,omitempty" jsonschema:"description=The OpenShift platform version"            yaml:"openShiftVersion,omitempty"`
+	Results          []*DiagnosticResult `json:"results"                    jsonschema:"description=Array of diagnostic check results"         yaml:"results"`
 }
 
 // ComputeStatus calculates the Status based on Results.
