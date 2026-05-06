@@ -6,41 +6,75 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
+	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	depspkg "github.com/opendatahub-io/odh-cli/pkg/deps"
 	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 )
 
 const (
 	cmdName  = "deps"
-	cmdShort = "Show operator dependencies for ODH/RHOAI"
+	cmdShort = "Manage operator dependencies for ODH/RHOAI"
 )
 
 const cmdLong = `
-Shows operator dependencies required by ODH/RHOAI components.
+Manage operator dependencies required by ODH/RHOAI components.
 
-Displays dependency status by querying OLM subscriptions on the cluster.
+Without a subcommand, displays dependency status by querying OLM subscriptions.
 Each dependency shows:
   - Installation status (installed, missing, optional)
   - Installed version (if available)
   - Namespace where the operator runs
   - Components that require this dependency
 
-Examples:
+Subcommands:
+  install     Install missing operator dependencies via OLM
+  graph       Show dependency relationships
+`
+
+const cmdExample = `
   # Show all dependencies
   kubectl odh deps
 
   # Show dependencies for a specific version
   kubectl odh deps --version 3.4.0
 
-  # Refresh manifest from odh-gitops (fetch latest)
-  kubectl odh deps --refresh
-
   # Output as JSON
   kubectl odh deps -o json
 
   # Dry run (show manifest data without cluster query)
   kubectl odh deps --dry-run
+
+  # Install all missing required dependencies
+  kubectl odh deps install
+
+  # Install a specific dependency
+  kubectl odh deps install cert-manager
+
+  # Show what would be installed without executing
+  kubectl odh deps install --dry-run
+
+  # Show dependency graph
+  kubectl odh deps graph
 `
+
+// runCommand executes the Complete/Validate/Run lifecycle with error handling.
+//
+//nolint:wrapcheck // HandleError returns an already-handled error
+func runCommand(cobraCmd *cobra.Command, c cmd.Command, outputFormat string) error {
+	if err := c.Complete(); err != nil {
+		return clierrors.HandleError(cobraCmd, err, outputFormat)
+	}
+
+	if err := c.Validate(); err != nil {
+		return clierrors.HandleError(cobraCmd, err, outputFormat)
+	}
+
+	if err := c.Run(cobraCmd.Context()); err != nil {
+		return clierrors.HandleError(cobraCmd, err, outputFormat)
+	}
+
+	return nil
+}
 
 // AddCommand adds the deps command to the root command.
 func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
@@ -50,52 +84,86 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 		ErrOut: root.ErrOrStderr(),
 	}
 
-	command := depspkg.NewCommand(streams, flags)
+	// Default list command (backward compatibility)
+	listCommand := depspkg.NewCommand(streams, flags)
 
-	cmd := &cobra.Command{
+	depsCmd := &cobra.Command{
 		Use:           cmdName,
 		Short:         cmdShort,
 		Long:          cmdLong,
+		Example:       cmdExample,
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			outputFormat := command.Output
-
-			if err := command.Complete(); err != nil {
-				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
-					return clierrors.NewAlreadyHandledError(err)
-				}
-
-				clierrors.WriteTextError(cmd.ErrOrStderr(), err)
-
-				return clierrors.NewAlreadyHandledError(err)
-			}
-
-			if err := command.Validate(); err != nil {
-				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
-					return clierrors.NewAlreadyHandledError(err)
-				}
-
-				clierrors.WriteTextError(cmd.ErrOrStderr(), err)
-
-				return clierrors.NewAlreadyHandledError(err)
-			}
-
-			if err := command.Run(cmd.Context()); err != nil {
-				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
-					return clierrors.NewAlreadyHandledError(err)
-				}
-
-				clierrors.WriteTextError(cmd.ErrOrStderr(), err)
-
-				return clierrors.NewAlreadyHandledError(err)
-			}
-
-			return nil
+		RunE: func(cobraCmd *cobra.Command, _ []string) error {
+			return runCommand(cobraCmd, listCommand, listCommand.Output)
 		},
 	}
 
-	command.AddFlags(cmd.Flags())
+	listCommand.AddFlags(depsCmd.Flags())
 
-	root.AddCommand(cmd)
+	// Add subcommands
+	addInstallCommand(depsCmd, flags, streams)
+	addGraphCommand(depsCmd, flags, streams)
+
+	root.AddCommand(depsCmd)
+}
+
+// addInstallCommand adds the install subcommand.
+// Note: This command is text-only (progress messages) and does not support --output flag.
+func addInstallCommand(parent *cobra.Command, flags *genericclioptions.ConfigFlags, streams genericiooptions.IOStreams) {
+	installCommand := depspkg.NewInstallCommand(streams, flags)
+
+	installCmd := &cobra.Command{
+		Use:   "install [DEPENDENCY]",
+		Short: "Install missing operator dependencies via OLM",
+		Long: `Install missing operator dependencies required by ODH/RHOAI.
+
+Creates namespace, OperatorGroup, and OLM Subscription for each missing dependency.
+Waits for the CSV (ClusterServiceVersion) to reach Succeeded phase.
+
+If a dependency name is provided, only that dependency is installed.
+Otherwise, all missing required dependencies are installed.
+
+Note: This command outputs progress text only; the parent's --output flag does not apply.`,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          cobra.MaximumNArgs(1),
+		RunE: func(cobraCmd *cobra.Command, args []string) error {
+			installCommand.TargetDep = ""
+			if len(args) > 0 {
+				installCommand.TargetDep = args[0]
+			}
+
+			return runCommand(cobraCmd, installCommand, "")
+		},
+	}
+
+	installCommand.AddFlags(installCmd.Flags())
+	parent.AddCommand(installCmd)
+}
+
+// addGraphCommand adds the graph subcommand.
+// Note: This command is text-only (ASCII visualization) and does not support --output flag.
+func addGraphCommand(parent *cobra.Command, flags *genericclioptions.ConfigFlags, streams genericiooptions.IOStreams) {
+	graphCommand := depspkg.NewGraphCommand(streams, flags)
+
+	graphCmd := &cobra.Command{
+		Use:   "graph",
+		Short: "Show dependency relationships visually",
+		Long: `Display dependency relationships as a formatted list.
+
+Shows which components require which operators, and which operators
+depend on other operators (transitive dependencies).
+
+Note: This command outputs text visualization only; the parent's --output flag does not apply.`,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          cobra.NoArgs,
+		RunE: func(cobraCmd *cobra.Command, _ []string) error {
+			return runCommand(cobraCmd, graphCommand, "")
+		},
+	}
+
+	graphCommand.AddFlags(graphCmd.Flags())
+	parent.AddCommand(graphCmd)
 }

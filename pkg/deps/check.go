@@ -142,6 +142,16 @@ func checkSingleDependency(ctx context.Context, olmReader client.OLMReader, dep 
 		status.Error = err.Error()
 	}
 
+	// Fallback: if InstalledCSV is empty (not error), search for matching CSV in namespace
+	if err == nil && version == "" {
+		var fallbackErr error
+
+		version, fallbackErr = findMatchingCSVVersion(ctx, olmReader, dep.Namespace, dep.Subscription)
+		if fallbackErr != nil && status.Error == "" {
+			status.Error = fallbackErr.Error()
+		}
+	}
+
 	status.Version = version
 
 	return status
@@ -200,4 +210,27 @@ func getCSV(ctx context.Context, olm client.OLMReader, namespace, name string) (
 	}
 
 	return csv, nil
+}
+
+// findMatchingCSVVersion searches for a Succeeded CSV matching the subscription name.
+// Used as fallback when subscription's InstalledCSV is empty (e.g., OLM resolution issues).
+func findMatchingCSVVersion(ctx context.Context, olm client.OLMReader, namespace, subName string) (string, error) {
+	csvList, err := olm.ClusterServiceVersions(namespace).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return "", fmt.Errorf("list CSVs in %s: %w", namespace, err)
+	}
+
+	for i := range csvList.Items {
+		csv := &csvList.Items[i]
+
+		if csv.Status.Phase != operatorsv1alpha1.CSVPhaseSucceeded {
+			continue
+		}
+
+		if MatchesSubscription(csv.Name, subName) {
+			return csv.Spec.Version.String(), nil
+		}
+	}
+
+	return "", nil
 }

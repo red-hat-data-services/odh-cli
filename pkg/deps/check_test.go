@@ -130,6 +130,8 @@ func TestCheckDependencies_Installed(t *testing.T) {
 	mockCSVReader := &mockclient.MockCSVReader{}
 	mockCSVReader.On("Get", mock.Anything, "cert-manager.v1.14.0", mock.Anything).
 		Return(nil, apierrors.NewNotFound(schema.GroupResource{Group: "operators.coreos.com", Resource: "clusterserviceversions"}, "cert-manager.v1.14.0"))
+	mockCSVReader.On("List", mock.Anything, mock.Anything).
+		Return(&operatorsv1alpha1.ClusterServiceVersionList{Items: []operatorsv1alpha1.ClusterServiceVersion{}}, nil)
 
 	mockOLM := &mockclient.MockOLMReader{}
 	mockOLM.On("Available").Return(true)
