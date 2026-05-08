@@ -49,6 +49,22 @@ make clean
 - ❌ `gofmt` - Use `make fmt` instead
 - ❌ `goimports` - Use `make fmt` instead
 
+## Dependency Manifests
+
+The `pkg/deps/data/` directory contains `values.yaml` and `Chart.yaml` fetched
+from [odh-gitops](https://github.com/opendatahub-io/odh-gitops) at a pinned
+commit. These files are committed to the repo so that builds work in
+hermetic/offline environments (e.g. Konflux).
+
+When `ODH_GITOPS_COMMIT` is bumped in the Makefile, refresh and commit the
+updated files:
+
+```bash
+make fetch-deps
+git add pkg/deps/data/
+git commit -m "chore: update dependency manifests to <new-commit>"
+```
+
 ## Building Container Image
 
 ```bash

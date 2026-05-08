@@ -2,10 +2,14 @@ package errors_test
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
+	"os"
 	"testing"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -35,6 +39,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryAuthentication)))
 		g.Expect(result).To(HaveField("Code", Equal("AUTH_FAILED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitAuth))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 		g.Expect(result).To(HaveField("Suggestion", Not(BeEmpty())))
 		g.Expect(result.Unwrap()).To(Equal(err))
@@ -48,6 +53,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryAuthorization)))
 		g.Expect(result).To(HaveField("Code", Equal("AUTHZ_DENIED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitAuth))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -59,6 +65,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryNotFound)))
 		g.Expect(result).To(HaveField("Code", Equal("NOT_FOUND")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -70,6 +77,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryConflict)))
 		g.Expect(result).To(HaveField("Code", Equal("CONFLICT")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -81,6 +89,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryTimeout)))
 		g.Expect(result).To(HaveField("Code", Equal("SERVER_TIMEOUT")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitConnection))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -91,6 +100,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryServer)))
 		g.Expect(result).To(HaveField("Code", Equal("SERVER_UNAVAILABLE")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -101,6 +111,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryServer)))
 		g.Expect(result).To(HaveField("Code", Equal("SERVER_ERROR")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -112,6 +123,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryConflict)))
 		g.Expect(result).To(HaveField("Code", Equal("ALREADY_EXISTS")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -123,6 +135,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -133,6 +146,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("BAD_REQUEST")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -144,6 +158,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("METHOD_NOT_SUPPORTED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -155,6 +170,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("NOT_ACCEPTABLE")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -166,6 +182,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("UNSUPPORTED_MEDIA_TYPE")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -176,6 +193,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("REQUEST_TOO_LARGE")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -187,6 +205,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryServer)))
 		g.Expect(result).To(HaveField("Code", Equal("GONE")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -197,6 +216,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryServer)))
 		g.Expect(result).To(HaveField("Code", Equal("RESOURCE_EXPIRED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -207,6 +227,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryTimeout)))
 		g.Expect(result).To(HaveField("Code", Equal("GATEWAY_TIMEOUT")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitConnection))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -217,6 +238,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryServer)))
 		g.Expect(result).To(HaveField("Code", Equal("RATE_LIMITED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -228,6 +250,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryServer)))
 		g.Expect(result).To(HaveField("Code", Equal("UNEXPECTED_SERVER_ERROR")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -238,6 +261,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryServer)))
 		g.Expect(result).To(HaveField("Code", Equal("UNEXPECTED_OBJECT")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -251,6 +275,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryServer)))
 		g.Expect(result).To(HaveField("Code", Equal("STORE_READ_ERROR")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -262,6 +287,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryAuthentication)))
 		g.Expect(result).To(HaveField("Code", Equal("AUTH_FAILED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitAuth))))
 	})
 
 	t.Run("should classify network timeout", func(t *testing.T) {
@@ -271,6 +297,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryTimeout)))
 		g.Expect(result).To(HaveField("Code", Equal("NET_TIMEOUT")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitConnection))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -281,6 +308,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryConnection)))
 		g.Expect(result).To(HaveField("Code", Equal("CONN_FAILED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitConnection))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -290,6 +318,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryTimeout)))
 		g.Expect(result).To(HaveField("Code", Equal("TIMEOUT")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitConnection))))
 		g.Expect(result).To(HaveField("Retriable", BeTrue()))
 	})
 
@@ -299,6 +328,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryInternal)))
 		g.Expect(result).To(HaveField("Code", Equal("CANCELED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -309,6 +339,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("CONFIG_INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 		g.Expect(result).To(HaveField("Suggestion", Not(BeEmpty())))
 	})
@@ -321,6 +352,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("CONFIG_INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 	})
 
 	t.Run("should classify config error as validation", func(t *testing.T) {
@@ -330,6 +362,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("CONFIG_INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 		g.Expect(result).To(HaveField("Suggestion", ContainSubstring("kubeconfig")))
 	})
@@ -342,6 +375,109 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
 		g.Expect(result).To(HaveField("Code", Equal("CONFIG_INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
+	})
+
+	t.Run("should classify x509 unknown authority as TLS error", func(t *testing.T) {
+		g := NewWithT(t)
+		err := x509.UnknownAuthorityError{}
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryAuthentication)))
+		g.Expect(result).To(HaveField("Code", Equal("TLS_CERT_INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitAuth))))
+		g.Expect(result).To(HaveField("Retriable", BeFalse()))
+		g.Expect(result).To(HaveField("Suggestion", ContainSubstring("certificate")))
+	})
+
+	t.Run("should classify x509 certificate invalid as TLS error", func(t *testing.T) {
+		g := NewWithT(t)
+		err := x509.CertificateInvalidError{Reason: x509.Expired}
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryAuthentication)))
+		g.Expect(result).To(HaveField("Code", Equal("TLS_CERT_INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitAuth))))
+		g.Expect(result).To(HaveField("Retriable", BeFalse()))
+	})
+
+	t.Run("should classify x509 hostname error as TLS error", func(t *testing.T) {
+		g := NewWithT(t)
+		err := x509.HostnameError{
+			Host:        "wrong.example.com",
+			Certificate: &x509.Certificate{DNSNames: []string{"actual.example.com"}},
+		}
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryAuthentication)))
+		g.Expect(result).To(HaveField("Code", Equal("TLS_CERT_INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitAuth))))
+	})
+
+	t.Run("should classify TLS record header error as TLS error", func(t *testing.T) {
+		g := NewWithT(t)
+		err := tls.RecordHeaderError{Msg: "first record does not look like a TLS handshake"}
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryAuthentication)))
+		g.Expect(result).To(HaveField("Code", Equal("TLS_CERT_INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitAuth))))
+	})
+
+	t.Run("should classify wrapped TLS error as TLS error", func(t *testing.T) {
+		g := NewWithT(t)
+		tlsErr := x509.UnknownAuthorityError{}
+		wrapped := fmt.Errorf("failed to connect: %w", tlsErr)
+		result := clierrors.Classify(wrapped)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryAuthentication)))
+		g.Expect(result).To(HaveField("Code", Equal("TLS_CERT_INVALID")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitAuth))))
+	})
+
+	t.Run("should classify DNS error as connection", func(t *testing.T) {
+		g := NewWithT(t)
+		err := &net.DNSError{Err: "no such host", Name: "api.cluster.example.com"}
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryConnection)))
+		g.Expect(result).To(HaveField("Code", Equal("DNS_FAILED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitConnection))))
+		g.Expect(result).To(HaveField("Retriable", BeTrue()))
+		g.Expect(result).To(HaveField("Suggestion", ContainSubstring("hostname")))
+	})
+
+	t.Run("should classify wrapped DNS error as connection", func(t *testing.T) {
+		g := NewWithT(t)
+		dnsErr := &net.DNSError{Err: "no such host", Name: "api.cluster.example.com"}
+		wrapped := fmt.Errorf("dial tcp: %w", dnsErr)
+		result := clierrors.Classify(wrapped)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryConnection)))
+		g.Expect(result).To(HaveField("Code", Equal("DNS_FAILED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitConnection))))
+	})
+
+	t.Run("should classify OS permission denied as validation", func(t *testing.T) {
+		g := NewWithT(t)
+		err := fmt.Errorf("socket bind: %w", os.ErrPermission)
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
+		g.Expect(result).To(HaveField("Code", Equal("PERMISSION_DENIED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
+		g.Expect(result).To(HaveField("Retriable", BeFalse()))
+		g.Expect(result).To(HaveField("Suggestion", ContainSubstring("permissions")))
+	})
+
+	t.Run("should classify filesystem permission error as permission denied", func(t *testing.T) {
+		g := NewWithT(t)
+		err := &fs.PathError{Op: "open", Path: "/etc/secret", Err: os.ErrPermission}
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
+		g.Expect(result).To(HaveField("Code", Equal("PERMISSION_DENIED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
 	})
 
 	t.Run("should classify unknown error as internal", func(t *testing.T) {
@@ -350,6 +486,7 @@ func TestClassify(t *testing.T) {
 
 		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryInternal)))
 		g.Expect(result).To(HaveField("Code", Equal("INTERNAL")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
 		g.Expect(result).To(HaveField("Retriable", BeFalse()))
 	})
 
@@ -375,5 +512,84 @@ func TestClassify(t *testing.T) {
 		g.Expect(wrapped).To(MatchError(ContainSubstring("token expired")))
 		g.Expect(errors.Is(wrapped, clierrors.ErrAlreadyHandled)).To(BeTrue())
 		g.Expect(errors.Is(wrapped, original)).To(BeTrue())
+	})
+
+	t.Run("should classify ExitCodeError with ExitWarning as LINT_ADVISORY", func(t *testing.T) {
+		g := NewWithT(t)
+		err := clierrors.NewExitCodeError(clierrors.ExitWarning, errors.New("lint advisory found"))
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
+		g.Expect(result).To(HaveField("Code", Equal("LINT_ADVISORY")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitWarning))))
+		g.Expect(result).To(HaveField("Retriable", BeFalse()))
+		g.Expect(result).To(HaveField("Suggestion", Not(BeEmpty())))
+	})
+
+	t.Run("should classify wrapped ExitCodeError with ExitWarning as LINT_ADVISORY", func(t *testing.T) {
+		g := NewWithT(t)
+		inner := clierrors.NewExitCodeError(clierrors.ExitWarning, errors.New("advisory detected"))
+		wrapped := fmt.Errorf("lint check failed: %w", inner)
+		result := clierrors.Classify(wrapped)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
+		g.Expect(result).To(HaveField("Code", Equal("LINT_ADVISORY")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitWarning))))
+	})
+
+	t.Run("should classify ExitCodeError with ExitValidation as VALIDATION_FAILED", func(t *testing.T) {
+		g := NewWithT(t)
+		err := clierrors.NewExitCodeError(clierrors.ExitValidation, errors.New("validation failed"))
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
+		g.Expect(result).To(HaveField("Code", Equal("VALIDATION_FAILED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitValidation))))
+		g.Expect(result).To(HaveField("Retriable", BeFalse()))
+	})
+
+	t.Run("should classify ExitCodeError with ExitAuth as AUTH_FAILED", func(t *testing.T) {
+		g := NewWithT(t)
+		err := clierrors.NewExitCodeError(clierrors.ExitAuth, errors.New("auth failed"))
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryAuthentication)))
+		g.Expect(result).To(HaveField("Code", Equal("AUTH_FAILED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitAuth))))
+		g.Expect(result).To(HaveField("Retriable", BeFalse()))
+	})
+
+	t.Run("should classify ExitCodeError with ExitConnection as CONN_FAILED", func(t *testing.T) {
+		g := NewWithT(t)
+		err := clierrors.NewExitCodeError(clierrors.ExitConnection, errors.New("connection failed"))
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryConnection)))
+		g.Expect(result).To(HaveField("Code", Equal("CONN_FAILED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitConnection))))
+		g.Expect(result).To(HaveField("Retriable", BeTrue()))
+	})
+
+	t.Run("should classify ExitCodeError with unknown code as INTERNAL", func(t *testing.T) {
+		g := NewWithT(t)
+		err := clierrors.NewExitCodeError(clierrors.ExitError, errors.New("generic error"))
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryInternal)))
+		g.Expect(result).To(HaveField("Code", Equal("INTERNAL")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
+		g.Expect(result).To(HaveField("Retriable", BeFalse()))
+	})
+
+	t.Run("should classify ExitCodeError with ErrLintBlocked as LINT_BLOCKED", func(t *testing.T) {
+		g := NewWithT(t)
+		err := clierrors.NewExitCodeError(clierrors.ExitError,
+			fmt.Errorf("%w: upgrade cannot proceed", clierrors.ErrLintBlocked))
+		result := clierrors.Classify(err)
+
+		g.Expect(result).To(HaveField("Category", Equal(clierrors.CategoryValidation)))
+		g.Expect(result).To(HaveField("Code", Equal("LINT_BLOCKED")))
+		g.Expect(result).To(HaveField("ExitCode", Equal(int(clierrors.ExitError))))
+		g.Expect(result).To(HaveField("Suggestion", ContainSubstring("prohibited or blocking findings")))
 	})
 }

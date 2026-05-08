@@ -1,6 +1,7 @@
 package lint
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -67,6 +68,15 @@ const cmdExample = `
   kubectl odh lint --target-version 3.1
 `
 
+// wrapHandledError wraps an error as already-handled with its derived exit code,
+// used when the error has been rendered to output and should not be printed again.
+func wrapHandledError(err error) error {
+	//nolint:wrapcheck // NewAlreadyHandledError is a same-module constructor
+	return clierrors.NewAlreadyHandledError(
+		clierrors.NewExitCodeError(clierrors.ExitCodeFromError(err), err),
+	)
+}
+
 // AddCommand adds the lint command to the root command.
 func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 	streams := genericiooptions.IOStreams{
@@ -91,7 +101,7 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 			// Complete phase
 			if err := command.Complete(); err != nil {
 				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
-					return clierrors.NewAlreadyHandledError(err)
+					return wrapHandledError(err)
 				}
 
 				if command.Verbose {
@@ -101,13 +111,15 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 					clierrors.WriteTextError(cmd.ErrOrStderr(), err)
 				}
 
-				return clierrors.NewAlreadyHandledError(err)
+				return wrapHandledError(err)
 			}
 
 			// Validate phase
 			if err := command.Validate(); err != nil {
-				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
-					return clierrors.NewAlreadyHandledError(err)
+				exitErr := clierrors.NewExitCodeError(clierrors.ExitValidation, err)
+
+				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), exitErr, outputFormat) {
+					return clierrors.NewAlreadyHandledError(exitErr)
 				}
 
 				if command.Verbose {
@@ -117,14 +129,19 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 					clierrors.WriteTextError(cmd.ErrOrStderr(), err)
 				}
 
-				return clierrors.NewAlreadyHandledError(err)
+				return clierrors.NewAlreadyHandledError(exitErr)
 			}
 
 			// Run phase
 			err := command.Run(cmd.Context())
 			if err != nil {
+				// Verdict errors (findings already rendered) propagate directly
+				if errors.Is(err, clierrors.ErrAlreadyHandled) {
+					return err //nolint:wrapcheck // already wrapped by NewAlreadyHandledError
+				}
+
 				if clierrors.WriteStructuredError(cmd.ErrOrStderr(), err, outputFormat) {
-					return clierrors.NewAlreadyHandledError(err)
+					return wrapHandledError(err)
 				}
 
 				if command.Verbose {
@@ -134,7 +151,7 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 					clierrors.WriteTextError(cmd.ErrOrStderr(), err)
 				}
 
-				return clierrors.NewAlreadyHandledError(err)
+				return wrapHandledError(err)
 			}
 
 			return nil

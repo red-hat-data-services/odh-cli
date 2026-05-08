@@ -65,6 +65,60 @@ kubectl odh lint --target-version 3.3.0
 kubectl odh version
 ```
 
+## Exit Codes
+
+The CLI uses differentiated exit codes to help automation tools and CI/CD pipelines
+take appropriate action based on the type of outcome.
+
+| Exit Code | Category   | Description                                              |
+|-----------|------------|----------------------------------------------------------|
+| 0         | Success    | Process completed without issues.                        |
+| 1         | Error      | General runtime or unexpected errors.                    |
+| 2         | Warning    | Process finished, but advisory warnings were found.      |
+| 3         | Validation | Invalid user input or configuration errors.              |
+| 4         | Auth       | Authentication or authorization failures.                |
+| 5         | Connection | Network issues, timeouts, or service unavailability.     |
+
+### Precedence
+
+When multiple issues occur, the exit code reflects the highest priority error:
+
+1. Connection/Timeout (5) - Infrastructure failure
+2. Auth (4) - Security-related failures
+3. Validation (3) - Input-related failures
+4. Error (1) - Catch-all runtime errors
+5. Warning (2) - Only used if no higher-level errors exist
+
+### Lint Command Exit Codes
+
+The lint command maps finding impact levels to exit codes:
+
+- **Prohibited or Blocking findings** → Exit 1 (upgrade cannot proceed)
+- **Advisory findings only** → Exit 2 (upgrade can proceed, review recommended)
+- **No findings** → Exit 0 (clean)
+
+If a lint check fails to execute due to infrastructure issues (auth, connection),
+the corresponding exit code (4 or 5) takes precedence over finding-based exit codes.
+
+### Structured Error Output
+
+When using `-o json` or `-o yaml`, error responses include an `exitCode` field
+in the structured output, allowing automation tools to parse the exit code without
+relying on shell `$?`:
+
+```json
+{
+  "error": {
+    "code": "AUTH_FAILED",
+    "message": "token expired",
+    "category": "authentication",
+    "exitCode": 4,
+    "retriable": false,
+    "suggestion": "Refresh your kubeconfig credentials with 'oc login' or 'kubectl config'"
+  }
+}
+```
+
 ## Key Architecture Decisions
 
 ### Core Principles

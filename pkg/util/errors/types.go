@@ -10,6 +10,12 @@ import (
 // be printed again by the caller.
 var ErrAlreadyHandled = errors.New("error already rendered to output")
 
+// ErrLintBlocked is a sentinel error for prohibited or blocking lint findings.
+var ErrLintBlocked = errors.New("prohibited or blocking findings detected")
+
+// ErrLintAdvisory is a sentinel error for advisory-only lint findings.
+var ErrLintAdvisory = errors.New("advisory findings detected")
+
 // ErrorCategory represents the classification of a structured error.
 type ErrorCategory string
 
@@ -31,6 +37,7 @@ type StructuredError struct {
 	Code       string        `json:"code"       yaml:"code"`
 	Message    string        `json:"message"    yaml:"message"`
 	Category   ErrorCategory `json:"category"   yaml:"category"`
+	ExitCode   int           `json:"exitCode"   yaml:"exitCode"`
 	Retriable  bool          `json:"retriable"  yaml:"retriable"`
 	Suggestion string        `json:"suggestion" yaml:"suggestion"`
 
@@ -78,6 +85,36 @@ func NewValidationError(code, message, suggestion string) *StructuredError {
 		Retriable:  false,
 		Suggestion: suggestion,
 	}
+}
+
+// ExitCodeError wraps an error with an explicit exit code.
+// Used when a command needs to signal a specific exit code that
+// cannot be derived from error classification (e.g., exit 2 for warnings).
+type ExitCodeError struct {
+	Code ExitCode
+	Err  error
+}
+
+// Error implements the error interface.
+func (e *ExitCodeError) Error() string {
+	return e.Err.Error()
+}
+
+// Unwrap returns the underlying error, preserving the error chain.
+func (e *ExitCodeError) Unwrap() error {
+	return e.Err
+}
+
+// NewExitCodeError creates an error that carries an explicit exit code.
+// Returns nil when err is nil so callers can safely write
+// return NewExitCodeError(code, maybeNilErr) without creating a non-nil interface
+// wrapping a nil pointer (a common Go pitfall).
+func NewExitCodeError(code ExitCode, err error) error {
+	if err == nil {
+		return nil
+	}
+
+	return &ExitCodeError{Code: code, Err: err}
 }
 
 // errorEnvelope wraps a StructuredError for JSON/YAML output rendering.

@@ -50,8 +50,9 @@ config.local.yaml
 .claude/
 bkp
 
-# Embedded dependency manifest (downloaded at build time)
-pkg/deps/data/
+# Embedded dependency manifest (refreshed via: make fetch-deps)
+# These files are committed so builds work in hermetic/offline environments.
+# To update, bump ODH_GITOPS_COMMIT in the Makefile and run: make fetch-deps
 
 # Generated JSON schemas (created by gen-schemas at build time)
 pkg/schema/data/

@@ -40,12 +40,20 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/schema"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
+	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
 )
 
 // Verify Command implements cmd.Command interface at compile time.
 var _ cmd.Command = (*Command)(nil)
+
+const (
+	msgProhibitedOrBlocking = "prohibited or blocking findings detected: upgrade cannot proceed"
+	msgAdvisoryFindings     = "advisory findings detected: review recommended before upgrade"
+	msgInfrastructureErrors = "one or more checks failed due to infrastructure errors"
+	msgCheckExecErrors      = "check execution errors detected: %w"
+)
 
 // Command contains the lint command configuration.
 type Command struct {
@@ -282,8 +290,10 @@ func (c *Command) Run(ctx context.Context) error {
 
 	// Reject downgrades when explicit --target-version is provided
 	if targetVersion.LT(*currentVersion) {
-		return fmt.Errorf("target version %s is older than current version %s (downgrades not supported)",
-			c.TargetVersion, currentVersion.String())
+		//nolint:wrapcheck // NewExitCodeError is a same-module constructor, not an external error
+		return clierrors.NewExitCodeError(clierrors.ExitValidation,
+			fmt.Errorf("target version %s is older than current version %s (downgrades not supported)",
+				c.TargetVersion, currentVersion.String()))
 	}
 
 	return c.runUpgradeMode(ctx, currentVersion)
@@ -367,8 +377,12 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 		resultsByGroup[group] = results
 	}
 
-	// Flatten, strip nil results, and apply severity filter
+	// Flatten results and compute the highest-priority exit code from execution
+	// errors BEFORE filtering, so failures with Result == nil are not dropped.
 	flatResults := FlattenResults(resultsByGroup)
+	execSummary := highestPriorityExecError(flatResults)
+
+	// Strip nil results and apply severity filter for display/verdict
 	flatResults = slices.DeleteFunc(flatResults, func(exec check.CheckExecution) bool {
 		return exec.Result == nil
 	})
@@ -379,13 +393,15 @@ func (c *Command) runUpgradeMode(ctx context.Context, currentVersion *semver.Ver
 		return err
 	}
 
-	// Print verdict and determine exit code
-	return c.printVerdictAndExit(flatResults)
+	// Print verdict and determine exit code from findings
+	findingsErr := c.evaluateVerdict(flatResults)
+
+	return resolveExitError(execSummary, findingsErr, c.OutputFormat)
 }
 
-// printVerdictAndExit prints a prominent result verdict for table output and returns
-// an error if fail-on conditions are met (to control exit code).
-func (c *Command) printVerdictAndExit(results []check.CheckExecution) error {
+// evaluateVerdict prints a prominent result verdict for table output and returns
+// an error carrying the appropriate ExitCode when fail-on conditions are met.
+func (c *Command) evaluateVerdict(results []check.CheckExecution) error {
 	var hasProhibited, hasBlocking, hasAdvisory bool
 
 	for _, exec := range results {
@@ -409,8 +425,80 @@ func (c *Command) printVerdictAndExit(results []check.CheckExecution) error {
 		printVerdict(c.IO.Out(), hasProhibited, hasBlocking, hasAdvisory)
 	}
 
-	if hasProhibited {
-		return errors.New("prohibited findings detected: upgrade is not possible")
+	if hasProhibited || hasBlocking {
+		//nolint:wrapcheck // NewExitCodeError is a same-module constructor
+		return clierrors.NewExitCodeError(
+			clierrors.ExitError,
+			fmt.Errorf("%w: %s", clierrors.ErrLintBlocked, msgProhibitedOrBlocking),
+		)
+	}
+
+	if hasAdvisory {
+		//nolint:wrapcheck // NewExitCodeError is a same-module constructor
+		return clierrors.NewExitCodeError(
+			clierrors.ExitWarning,
+			fmt.Errorf("%w: %s", clierrors.ErrLintAdvisory, msgAdvisoryFindings),
+		)
+	}
+
+	return nil
+}
+
+// execErrorSummary holds the highest-priority execution error info.
+type execErrorSummary struct {
+	exitCode clierrors.ExitCode
+	err      error
+}
+
+// highestPriorityExecError scans check executions for infrastructure errors
+// (auth, connection, etc.) and returns the highest-priority exit code found.
+func highestPriorityExecError(results []check.CheckExecution) execErrorSummary {
+	summary := execErrorSummary{exitCode: clierrors.ExitSuccess}
+
+	for _, exec := range results {
+		if exec.Error != nil {
+			code := clierrors.ExitCodeFromError(exec.Error)
+			if clierrors.IsHigherPriority(code, summary.exitCode) {
+				summary.exitCode = code
+				summary.err = exec.Error
+			}
+		}
+	}
+
+	return summary
+}
+
+// resolveExitError determines the final error to return based on execution
+// errors and findings verdict, preferring infrastructure errors when they
+// have higher or equal priority.
+//
+// When exit codes are equal (e.g., both ExitError), infrastructure errors
+// take precedence because they indicate a check couldn't run properly,
+// which is more actionable than findings from checks that did complete.
+func resolveExitError(execSummary execErrorSummary, findingsErr error, outputFormat OutputFormat) error {
+	if execSummary.exitCode != clierrors.ExitSuccess {
+		findingsExitCode := clierrors.ExitCodeFromError(findingsErr)
+		// Prefer exec errors when priority is higher OR equal (see comment above)
+		if clierrors.IsHigherPriority(execSummary.exitCode, findingsExitCode) ||
+			execSummary.exitCode == findingsExitCode {
+			if findingsErr != nil {
+				//nolint:wrapcheck // NewExitCodeError is a same-module constructor
+				return clierrors.NewExitCodeError(execSummary.exitCode,
+					fmt.Errorf(msgCheckExecErrors, execSummary.err))
+			}
+
+			//nolint:wrapcheck // NewExitCodeError is a same-module constructor
+			return clierrors.NewExitCodeError(execSummary.exitCode,
+				fmt.Errorf(msgInfrastructureErrors+": %w", execSummary.err))
+		}
+	}
+
+	if findingsErr != nil {
+		if outputFormat == OutputFormatTable {
+			return clierrors.NewAlreadyHandledError(findingsErr) //nolint:wrapcheck // wrapping is done by NewAlreadyHandledError
+		}
+
+		return findingsErr
 	}
 
 	return nil

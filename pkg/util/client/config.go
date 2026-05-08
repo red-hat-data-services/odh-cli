@@ -1,8 +1,6 @@
 package client
 
 import (
-	"fmt"
-
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/rest"
 
@@ -44,7 +42,7 @@ func NewRESTConfig(
 ) (*rest.Config, error) {
 	restConfig, err := configFlags.ToRESTConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create REST config: %w", clierrors.NewConfigError(err))
+		return nil, clierrors.NewConfigError(err)
 	}
 
 	ConfigureThrottling(restConfig, qps, burst)

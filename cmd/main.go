@@ -39,12 +39,12 @@ func main() {
 	status.AddCommand(cmd, flags)
 
 	if err := cmd.Execute(); err != nil {
+		exitCode := int(clierrors.ExitCodeFromError(err))
+
 		if !errors.Is(err, clierrors.ErrAlreadyHandled) {
-			if _, writeErr := os.Stderr.WriteString(err.Error() + "\n"); writeErr != nil {
-				os.Exit(1)
-			}
+			_, _ = os.Stderr.WriteString(err.Error() + "\n")
 		}
 
-		os.Exit(1)
+		os.Exit(exitCode)
 	}
 }

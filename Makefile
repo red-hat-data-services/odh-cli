@@ -66,7 +66,7 @@ gen-schemas:
 
 # Build the binary
 .PHONY: build
-build: fetch-deps gen-schemas
+build: gen-schemas
 	CGO_ENABLED=$(CGO_ENABLED) GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 		go build $(GO_BUILD_TAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/main.go
 
@@ -114,7 +114,7 @@ check: lint
 
 # Run tests
 .PHONY: test
-test: fetch-deps gen-schemas
+test: gen-schemas
 	go test -coverprofile=coverage.out ./...
 
 # Build container image without pushing (creates local manifest)
