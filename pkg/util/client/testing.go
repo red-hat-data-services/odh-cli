@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/metadata"
 )
 
@@ -17,6 +18,7 @@ type TestClientConfig struct {
 	APIExtensions apiextensionsclientset.Interface
 	OLM           olmclientset.Interface
 	Metadata      metadata.Interface
+	Kubernetes    kubernetes.Interface
 	RESTMapper    meta.RESTMapper
 }
 
@@ -29,6 +31,7 @@ func NewForTesting(cfg TestClientConfig) Client {
 		apiExtensions: cfg.APIExtensions,
 		olm:           cfg.OLM,
 		metadata:      cfg.Metadata,
+		kubernetes:    cfg.Kubernetes,
 		restMapper:    cfg.RESTMapper,
 		olmReader:     newOLMReader(cfg.OLM),
 	}

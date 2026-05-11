@@ -16,6 +16,8 @@ import (
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
@@ -34,6 +36,7 @@ type defaultClient struct {
 	apiExtensions apiextensionsclientset.Interface
 	olm           olmclientset.Interface
 	metadata      metadata.Interface
+	kubernetes    kubernetes.Interface
 	restMapper    meta.RESTMapper
 
 	olmReader OLMReader
@@ -46,6 +49,13 @@ func (c *defaultClient) Metadata() metadata.Interface                    { retur
 func (c *defaultClient) RESTMapper() meta.RESTMapper                     { return c.restMapper }
 func (c *defaultClient) OLM() OLMReader                                  { return c.olmReader }
 func (c *defaultClient) OLMClient() olmclientset.Interface               { return c.olm }
+func (c *defaultClient) CoreV1() corev1client.CoreV1Interface {
+	if c.kubernetes == nil {
+		panic("CoreV1 called on a client with no kubernetes client configured")
+	}
+
+	return c.kubernetes.CoreV1()
+}
 
 // NewClientWithConfig creates a client from a pre-configured REST config.
 // This allows callers to customize throttling settings before client creation.
@@ -75,6 +85,11 @@ func NewClientWithConfig(restConfig *rest.Config) (Client, error) {
 		return nil, fmt.Errorf("failed to create metadata client: %w", err)
 	}
 
+	kubeClient, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
+	}
+
 	// Create RESTMapper with caching for efficient GVK->GVR mapping.
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(
 		memory.NewMemCacheClient(discoveryClient),
@@ -86,6 +101,7 @@ func NewClientWithConfig(restConfig *rest.Config) (Client, error) {
 		apiExtensions: apiExtensionsClient,
 		olm:           olmClient,
 		metadata:      metadataClient,
+		kubernetes:    kubeClient,
 		restMapper:    restMapper,
 		olmReader:     newOLMReader(olmClient),
 	}, nil

@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/metadata"
 
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
@@ -112,6 +113,9 @@ type Client interface {
 	// OLMClient returns the full OLM clientset for write operations (subscriptions, CSVs).
 	// Use OLM() from Reader for read-only access.
 	OLMClient() olmclientset.Interface
+
+	// CoreV1 returns the typed CoreV1 client for pod operations like GetLogs.
+	CoreV1() corev1client.CoreV1Interface
 }
 
 // OLMReader provides read-only access to OLM resources.
