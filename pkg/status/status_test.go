@@ -15,6 +15,7 @@ func TestCommandValidate_OutputFormat(t *testing.T) {
 	}{
 		{"table format", status.OutputFormatTable, false},
 		{"json format", status.OutputFormatJSON, false},
+		{"yaml format", status.OutputFormatYAML, false},
 		{"invalid format", status.OutputFormat("xml"), true},
 		{"empty format", status.OutputFormat(""), true},
 	}
@@ -83,6 +84,37 @@ func TestCommandValidate_Timeout(t *testing.T) {
 			err := cmd.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Command.Validate() with timeout %v error = %v, wantErr %v", tt.timeout, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCommandValidate_Layers(t *testing.T) {
+	tests := []struct {
+		name    string
+		layers  []string
+		wantErr bool
+	}{
+		{"nil layers", nil, false},
+		{"empty layers", []string{}, false},
+		{"infrastructure layer", []string{"infrastructure"}, false},
+		{"workload layer", []string{"workload"}, false},
+		{"operator layer", []string{"operator"}, false},
+		{"all layers", []string{"infrastructure", "workload", "operator"}, false},
+		{"invalid layer", []string{"invalid"}, true},
+		{"mixed valid and invalid", []string{"infrastructure", "invalid"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &status.Command{
+				OutputFormat: status.OutputFormatTable,
+				Timeout:      30 * time.Second,
+				Layers:       tt.layers,
+			}
+			err := cmd.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Command.Validate() with layers %v error = %v, wantErr %v", tt.layers, err, tt.wantErr)
 			}
 		})
 	}

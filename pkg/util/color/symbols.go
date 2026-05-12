@@ -32,6 +32,11 @@ func StatusFail() string {
 	return red.Sprint("✗")
 }
 
+// StatusUnknown returns a yellow question mark for permission/unknown errors.
+func StatusUnknown() string {
+	return yellow.Sprint("?")
+}
+
 // Severity level formatting.
 
 // SeverityCritical returns "critical" in red.

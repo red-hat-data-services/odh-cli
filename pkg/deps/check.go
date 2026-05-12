@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	"golang.org/x/sync/errgroup"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,18 +87,26 @@ func (l *DependencyList) computeStatus() {
 }
 
 // CheckDependencies queries the cluster for dependency installation status.
+// Checks run concurrently for improved performance.
 func CheckDependencies(ctx context.Context, olmReader client.OLMReader, manifest *Manifest) ([]DependencyStatus, error) {
 	if !olmReader.Available() {
 		return nil, ErrOLMNotAvailable
 	}
 
 	deps := manifest.GetDependencies()
-	results := make([]DependencyStatus, 0, len(deps))
+	results := make([]DependencyStatus, len(deps))
 
-	for _, dep := range deps {
-		status := checkSingleDependency(ctx, olmReader, dep)
-		results = append(results, status)
+	g, gctx := errgroup.WithContext(ctx)
+
+	for i, dep := range deps {
+		g.Go(func() error {
+			results[i] = checkSingleDependency(gctx, olmReader, dep)
+
+			return nil
+		})
 	}
+
+	_ = g.Wait() // errors are captured in DependencyStatus.Error, not returned
 
 	// Sort by name for consistent output
 	sort.Slice(results, func(i, j int) bool {

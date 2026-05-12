@@ -1,6 +1,7 @@
 package logs_test
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/spf13/pflag"
@@ -8,6 +9,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/opendatahub-io/odh-cli/pkg/logs"
+	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 
 	. "github.com/onsi/gomega"
 )
@@ -27,6 +29,18 @@ func TestValidate(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 	})
 
+	t.Run("accepts component targets", func(t *testing.T) {
+		g := NewWithT(t)
+
+		componentTargets := []string{"dashboard", "kserve", "ray", "workbenches"}
+		for _, target := range componentTargets {
+			cmd := &logs.Command{Target: target}
+			err := cmd.Validate()
+
+			g.Expect(err).ToNot(HaveOccurred(), "expected %q to be valid", target)
+		}
+	})
+
 	t.Run("rejects unknown target", func(t *testing.T) {
 		g := NewWithT(t)
 
@@ -34,8 +48,26 @@ func TestValidate(t *testing.T) {
 		err := cmd.Validate()
 
 		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("unsupported target"))
-		g.Expect(err.Error()).To(ContainSubstring("unknown"))
+
+		var structErr *clierrors.StructuredError
+		g.Expect(errors.As(err, &structErr)).To(BeTrue(), "expected StructuredError")
+		g.Expect(structErr.Code).To(Equal("INVALID_TARGET"))
+		g.Expect(structErr.Message).To(ContainSubstring("unsupported target"))
+		g.Expect(structErr.Message).To(ContainSubstring("unknown"))
+	})
+
+	t.Run("error message lists valid targets", func(t *testing.T) {
+		g := NewWithT(t)
+
+		cmd := &logs.Command{Target: "invalid"}
+		err := cmd.Validate()
+
+		g.Expect(err).To(HaveOccurred())
+
+		var structErr *clierrors.StructuredError
+		g.Expect(errors.As(err, &structErr)).To(BeTrue(), "expected StructuredError")
+		g.Expect(structErr.Message).To(ContainSubstring("operator"))
+		g.Expect(structErr.Message).To(ContainSubstring("dashboard"))
 	})
 
 	t.Run("rejects empty target", func(t *testing.T) {
@@ -45,6 +77,10 @@ func TestValidate(t *testing.T) {
 		err := cmd.Validate()
 
 		g.Expect(err).To(HaveOccurred())
+
+		var structErr *clierrors.StructuredError
+		g.Expect(errors.As(err, &structErr)).To(BeTrue(), "expected StructuredError")
+		g.Expect(structErr.Code).To(Equal("INVALID_TARGET"))
 	})
 }
 

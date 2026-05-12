@@ -36,9 +36,22 @@ Shows the health status of an OpenShift AI / Open Data Hub installation.
 Runs health checks across eight sections and displays a summary table:
   Operator, DSCI, DSC, Nodes, Deployments, Pods, Quotas, Events
 
+Status indicators:
+  ✓  Section healthy (all checks passed)
+  ✗  Section unhealthy (problems found)
+  ?  Section skipped (insufficient permissions)
+
+Sections are grouped into layers:
+  infrastructure: nodes
+  workload:       deployments, pods, events, quotas
+  operator:       operator, dsci, dsc
+
 The applications and operator namespaces are auto-detected from the
 DSCInitialization resource and OLM ClusterServiceVersions. Use
 --apps-namespace and --operator-namespace to override.
+
+By default, also checks required operator dependencies (ServiceMesh,
+Serverless, etc.) and shows which components need them.
 
 Examples:
   # Show platform health summary
@@ -50,8 +63,12 @@ Examples:
   # Check only nodes and deployments
   kubectl odh status --section nodes --section deployments
 
-  # Output full report as JSON
+  # Check only operator-related sections
+  kubectl odh status --layer operator
+
+  # Output full report as JSON or YAML
   kubectl odh status -o json
+  kubectl odh status -o yaml
 `
 
 const cmdExample = `
@@ -64,8 +81,15 @@ const cmdExample = `
   # Filter to specific sections
   kubectl odh status --section operator --section dsci --section dsc
 
-  # JSON output for scripting
+  # Filter by layer (infrastructure, workload, operator)
+  kubectl odh status --layer operator
+
+  # JSON or YAML output for scripting
   kubectl odh status -o json
+  kubectl odh status -o yaml
+
+  # Skip dependency checking
+  kubectl odh status --include-deps=false
 
   # Override namespace detection
   kubectl odh status --apps-namespace my-apps --operator-namespace my-operator

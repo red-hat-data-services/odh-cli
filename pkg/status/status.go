@@ -2,12 +2,16 @@ package status
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"time"
 
+	"github.com/blang/semver/v4"
 	"github.com/fatih/color"
 	"github.com/opendatahub-io/opendatahub-operator/pkg/clusterhealth"
 	"github.com/spf13/pflag"
+	"golang.org/x/sync/errgroup"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -17,6 +21,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
+	"github.com/opendatahub-io/odh-cli/pkg/deps"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
@@ -30,6 +35,7 @@ type OutputFormat string
 const (
 	OutputFormatTable OutputFormat = "table"
 	OutputFormatJSON  OutputFormat = "json"
+	OutputFormatYAML  OutputFormat = "yaml"
 
 	DefaultTimeout = 30 * time.Second
 
@@ -37,22 +43,26 @@ const (
 	defaultRHOAIOperatorName = "rhods-operator"
 
 	// Output format strings.
-	fmtPlatformVersion  = "Platform version: %s\n"
-	fmtOpenShiftVersion = "OpenShift version: %s\n"
+	fmtPlatformStatus   = "PLATFORM STATUS: %s\n"
+	fmtEnvironmentHdr   = "\nEnvironment:\n"
+	fmtPlatformVersion  = "  RHOAI Version:      %s\n"
+	fmtOpenShiftVersion = "  OpenShift Version:  %s\n"
 )
 
 const (
-	flagDescOutput   = `Output format: "table" or "json"`
-	flagDescVerbose  = "Show per-item details for each section"
-	flagDescSection  = "Limit output to specific sections (repeatable): nodes, deployments, pods, events, quotas, operator, dsci, dsc"
-	flagDescNoColor  = "Disable color output"
-	flagDescTimeout  = "Maximum time to wait for health checks to complete"
-	flagDescAppsNS   = "Override the applications namespace (auto-detected from DSCI)"
-	flagDescOperNS   = "Override the operator namespace (auto-detected from OLM/CSV)"
-	flagDescOperName = "Override the operator deployment name (auto-detected from CSV)"
-	flagDescInfra    = "Also scan kube-system for core infrastructure health"
-	flagDescQPS      = "Kubernetes API queries per second"
-	flagDescBurst    = "Kubernetes API burst capacity"
+	flagDescOutput      = `Output format: "table", "json", or "yaml"`
+	flagDescVerbose     = "Show per-item details for each section"
+	flagDescSection     = "Limit output to specific sections (repeatable): nodes, deployments, pods, events, quotas, operator, dsci, dsc"
+	flagDescLayer       = "Limit output to a layer (repeatable): infrastructure (nodes), workload (deployments, pods, events, quotas), operator (operator, dsci, dsc)"
+	flagDescNoColor     = "Disable color output"
+	flagDescTimeout     = "Maximum time to wait for health checks to complete"
+	flagDescAppsNS      = "Override the applications namespace (auto-detected from DSCI)"
+	flagDescOperNS      = "Override the operator namespace (auto-detected from OLM/CSV)"
+	flagDescOperName    = "Override the operator deployment name (auto-detected from CSV)"
+	flagDescInfra       = "Also scan kube-system for core infrastructure health"
+	flagDescIncludeDeps = "Include dependency operator status in output"
+	flagDescQPS         = "Kubernetes API queries per second"
+	flagDescBurst       = "Kubernetes API burst capacity"
 )
 
 // Command contains the status command configuration.
@@ -65,11 +75,13 @@ type Command struct {
 	NoColor      bool
 	Timeout      time.Duration
 	Sections     []string
+	Layers       []string
 
 	AppsNamespace     string
 	OperatorNamespace string
 	OperatorName      string
 	IncludeInfra      bool
+	IncludeDeps       bool
 
 	QPS   float32
 	Burst int
@@ -89,6 +101,7 @@ func NewCommand(
 		ConfigFlags:  configFlags,
 		OutputFormat: OutputFormatTable,
 		Timeout:      DefaultTimeout,
+		IncludeDeps:  true,
 		QPS:          client.DefaultQPS,
 		Burst:        client.DefaultBurst,
 	}
@@ -99,12 +112,14 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescOutput)
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
 	fs.StringArrayVar(&c.Sections, "section", nil, flagDescSection)
+	fs.StringArrayVar(&c.Layers, "layer", nil, flagDescLayer)
 	fs.BoolVar(&c.NoColor, "no-color", false, flagDescNoColor)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescTimeout)
 	fs.StringVar(&c.AppsNamespace, "apps-namespace", "", flagDescAppsNS)
 	fs.StringVar(&c.OperatorNamespace, "operator-namespace", "", flagDescOperNS)
 	fs.StringVar(&c.OperatorName, "operator-name", "", flagDescOperName)
 	fs.BoolVar(&c.IncludeInfra, "include-infra", false, flagDescInfra)
+	fs.BoolVar(&c.IncludeDeps, "include-deps", c.IncludeDeps, flagDescIncludeDeps)
 	fs.Float32Var(&c.QPS, "qps", c.QPS, flagDescQPS)
 	fs.IntVar(&c.Burst, "burst", c.Burst, flagDescBurst)
 }
@@ -125,7 +140,7 @@ func (c *Command) Complete() error {
 
 	c.client = k8sClient
 
-	if c.OutputFormat == OutputFormatJSON {
+	if c.OutputFormat == OutputFormatJSON || c.OutputFormat == OutputFormatYAML {
 		c.NoColor = true
 	}
 
@@ -141,6 +156,10 @@ func (c *Command) Validate() error {
 	}
 
 	if err := validateSections(c.Sections); err != nil {
+		return err
+	}
+
+	if err := validateLayers(c.Layers); err != nil {
 		return err
 	}
 
@@ -199,66 +218,175 @@ func (c *Command) Run(ctx context.Context) error {
 		DSCI:         dsciName,
 		DSC:          dscName,
 		OnlySections: c.Sections,
+		Layers:       c.Layers,
 	}
 
-	report, err := clusterhealth.Run(ctx, cfg)
+	var report *clusterhealth.Report
+	var depStatuses []deps.DependencyStatus
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		var err error
+		report, err = clusterhealth.Run(gctx, cfg)
+		if err != nil {
+			return fmt.Errorf("health checks: %w", err)
+		}
+
+		return nil
+	})
+
+	if c.IncludeDeps {
+		g.Go(func() error {
+			depStatuses = c.checkDependencies(gctx)
+
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("running status checks: %w", err)
+	}
+
+	return c.output(ctx, report, depStatuses)
+}
+
+// checkDependencies checks operator dependency status.
+// Returns nil slice on error (non-fatal).
+func (c *Command) checkDependencies(ctx context.Context) []deps.DependencyStatus {
+	result, err := deps.GetManifest(ctx, false)
 	if err != nil {
-		return fmt.Errorf("running health checks: %w", err)
+		if c.Verbose || c.IncludeDeps {
+			_, _ = fmt.Fprintf(c.IO.ErrOut(), "Dependencies: skipped (manifest unavailable: %v)\n", err)
+		}
+
+		return nil
 	}
 
-	return c.output(ctx, report)
+	statuses, err := deps.CheckDependencies(ctx, c.client.OLM(), result.Manifest)
+	if err != nil {
+		if c.Verbose || c.IncludeDeps {
+			if errors.Is(err, deps.ErrOLMNotAvailable) {
+				_, _ = fmt.Fprintln(c.IO.ErrOut(), "Dependencies: skipped (OLM not available)")
+			} else {
+				_, _ = fmt.Fprintf(c.IO.ErrOut(), "Dependencies: skipped (check failed: %v)\n", err)
+			}
+		}
+
+		return nil
+	}
+
+	return statuses
 }
 
 // output renders the report in the requested format.
-func (c *Command) output(ctx context.Context, report *clusterhealth.Report) error {
+func (c *Command) output(ctx context.Context, report *clusterhealth.Report, depStatuses []deps.DependencyStatus) error {
 	switch c.OutputFormat {
 	case OutputFormatTable:
-		return c.outputTable(ctx, report)
+		return c.outputTable(ctx, report, depStatuses)
 	case OutputFormatJSON:
-		return c.outputJSON(report)
+		return c.outputJSON(report, depStatuses)
+	case OutputFormatYAML:
+		return c.outputYAML(report, depStatuses)
 	default:
 		return fmt.Errorf("unsupported output format: %s", c.OutputFormat)
 	}
 }
 
 // outputTable renders the report as a human-readable table.
-func (c *Command) outputTable(ctx context.Context, report *clusterhealth.Report) error {
+func (c *Command) outputTable(ctx context.Context, report *clusterhealth.Report, depStatuses []deps.DependencyStatus) error {
 	w := c.IO.Out()
 
-	ver, err := version.Detect(ctx, c.client)
-	if err == nil && ver != nil {
-		if _, err := fmt.Fprintf(w, fmtPlatformVersion, ver.String()); err != nil {
-			return fmt.Errorf("writing platform version: %w", err)
+	// Detect versions concurrently
+	var ver, ocpVer *semver.Version
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		v, err := version.Detect(gctx, c.client)
+		if err == nil {
+			ver = v
 		}
+
+		return nil
+	})
+
+	g.Go(func() error {
+		v, err := version.DetectOpenShiftVersion(gctx, c.client)
+		if err == nil {
+			ocpVer = v
+		}
+
+		return nil
+	})
+
+	_ = g.Wait()
+
+	// Print PLATFORM STATUS header
+	if _, err := fmt.Fprintf(w, fmtPlatformStatus, formatPlatformStatus(report)); err != nil {
+		return fmt.Errorf("writing platform status: %w", err)
 	}
 
-	ocpVer, err := version.DetectOpenShiftVersion(ctx, c.client)
-	if err == nil && ocpVer != nil {
-		if _, err := fmt.Fprintf(w, fmtOpenShiftVersion, ocpVer.String()); err != nil {
-			return fmt.Errorf("writing OpenShift version: %w", err)
-		}
+	// Print Environment section
+	if err := c.writeEnvironmentSection(w, ver, ocpVer); err != nil {
+		return err
 	}
 
 	if _, err := fmt.Fprintln(w); err != nil {
 		return fmt.Errorf("writing newline: %w", err)
 	}
 
-	if _, err := fmt.Fprint(w, report.PrettyPrint(c.Verbose)); err != nil {
-		return fmt.Errorf("writing health report: %w", err)
+	return c.renderTableOutput(report, depStatuses)
+}
+
+// formatPlatformStatus returns colored "Healthy" or "Unhealthy" based on report state.
+func formatPlatformStatus(report *clusterhealth.Report) string {
+	if report.Healthy() {
+		return color.GreenString("Healthy")
+	}
+
+	return color.RedString("Unhealthy")
+}
+
+// writeEnvironmentSection writes the Environment header and version info if available.
+func (c *Command) writeEnvironmentSection(w io.Writer, ver, ocpVer *semver.Version) error {
+	if ver == nil && ocpVer == nil {
+		return nil
+	}
+
+	if _, err := fmt.Fprint(w, fmtEnvironmentHdr); err != nil {
+		return fmt.Errorf("writing environment header: %w", err)
+	}
+
+	if ver != nil {
+		if _, err := fmt.Fprintf(w, fmtPlatformVersion, ver.String()); err != nil {
+			return fmt.Errorf("writing platform version: %w", err)
+		}
+	}
+
+	if ocpVer != nil {
+		if _, err := fmt.Fprintf(w, fmtOpenShiftVersion, ocpVer.String()); err != nil {
+			return fmt.Errorf("writing OpenShift version: %w", err)
+		}
 	}
 
 	return nil
 }
 
-// outputJSON renders the report as JSON.
-func (c *Command) outputJSON(report *clusterhealth.Report) error {
-	return renderJSON(c.IO.Out(), report)
+// outputJSON renders the report as JSON with envelope.
+func (c *Command) outputJSON(report *clusterhealth.Report, depStatuses []deps.DependencyStatus) error {
+	return renderJSON(c.IO.Out(), report, depStatuses)
+}
+
+// outputYAML renders the report as YAML with envelope.
+func (c *Command) outputYAML(report *clusterhealth.Report, depStatuses []deps.DependencyStatus) error {
+	return renderYAML(c.IO.Out(), report, depStatuses)
 }
 
 // Validate checks if the output format is valid.
 func (o OutputFormat) Validate() error {
 	switch o {
-	case OutputFormatTable, OutputFormatJSON:
+	case OutputFormatTable, OutputFormatJSON, OutputFormatYAML:
 		return nil
 	default:
 		return ErrInvalidOutputFormat(string(o))
@@ -285,6 +413,27 @@ func validateSections(sections []string) error {
 	for _, s := range sections {
 		if !isValidSection(s) {
 			return ErrInvalidSection(s)
+		}
+	}
+
+	return nil
+}
+
+func isValidLayer(layer string) bool {
+	switch layer {
+	case clusterhealth.LayerInfrastructure,
+		clusterhealth.LayerWorkload,
+		clusterhealth.LayerOperator:
+		return true
+	default:
+		return false
+	}
+}
+
+func validateLayers(layers []string) error {
+	for _, l := range layers {
+		if !isValidLayer(l) {
+			return ErrInvalidLayer(l)
 		}
 	}
 

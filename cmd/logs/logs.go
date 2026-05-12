@@ -22,23 +22,13 @@ The command auto-discovers pods based on the target name, eliminating the need
 to manually find pod names with kubectl get pods.
 
 Supported targets:
-  operator    ODH/RHOAI operator pod
+  operator     ODH/RHOAI operator pod
+  <component>  Any DSC component (dashboard, kserve, ray, workbenches, etc.)
 
-Examples:
-  # Show operator logs
-  kubectl odh logs operator
+Use tab completion to see all available targets.
 
-  # Follow operator logs (stream new logs as they appear)
-  kubectl odh logs operator -f
-
-  # Show last 100 lines
-  kubectl odh logs operator --tail 100
-
-  # Show logs from the last hour
-  kubectl odh logs operator --since 1h
-
-  # Show previous container logs (useful for crash investigation)
-  kubectl odh logs operator --previous
+For pods with multiple containers, logs from all containers are streamed
+with a [container-name] prefix. Use -c to select a specific container.
 `
 
 const cmdExample = `
@@ -56,6 +46,15 @@ const cmdExample = `
 
   # Show previous container logs (after a crash)
   kubectl odh logs operator --previous
+
+  # Show dashboard component logs
+  kubectl odh logs dashboard
+
+  # Follow kserve logs
+  kubectl odh logs kserve -f
+
+  # Show last 50 lines from ray pods
+  kubectl odh logs ray --tail 50
 `
 
 // AddCommand adds the logs command to the root command.
@@ -78,7 +77,7 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 		Args:          cobra.ExactArgs(1),
 		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
-				return []string{"operator"}, cobra.ShellCompDirectiveNoFileComp
+				return logspkg.ValidTargets, cobra.ShellCompDirectiveNoFileComp
 			}
 
 			return nil, cobra.ShellCompDirectiveNoFileComp

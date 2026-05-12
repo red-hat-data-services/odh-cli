@@ -8,17 +8,20 @@ import (
 
 const (
 	errCodeInvalidSection      = "INVALID_SECTION"
+	errCodeInvalidLayer        = "INVALID_LAYER"
 	errCodeInvalidOutputFormat = "INVALID_OUTPUT_FORMAT"
 	errCodeInvalidTimeout      = "INVALID_TIMEOUT"
 	errCodeDSCINotFound        = "DSCI_NOT_FOUND"
 
 	msgInvalidSection      = "invalid section %q"
+	msgInvalidLayer        = "invalid layer %q"
 	msgInvalidOutputFormat = "invalid output format %q"
 	msgInvalidTimeout      = "timeout must be greater than 0"
 	msgDSCINotFound        = "no DSCInitialization found"
 
 	suggestValidSections   = "Valid sections: nodes, deployments, pods, events, quotas, operator, dsci, dsc"
-	suggestValidFormats    = "Use --output with one of: table, json"
+	suggestValidLayers     = "Valid layers: infrastructure, workload, operator"
+	suggestValidFormats    = "Use --output with one of: table, json, yaml"
 	suggestValidTimeout    = "Use --timeout with a positive duration (e.g., 30s, 1m)"
 	suggestInstallODHRHOAI = "Ensure ODH/RHOAI is installed on the cluster"
 )
@@ -31,6 +34,17 @@ func ErrInvalidSection(section string) *clierrors.StructuredError {
 		Category:   clierrors.CategoryValidation,
 		Retriable:  false,
 		Suggestion: suggestValidSections,
+	}
+}
+
+// ErrInvalidLayer creates a structured error for invalid layer names.
+func ErrInvalidLayer(layer string) *clierrors.StructuredError {
+	return &clierrors.StructuredError{
+		Code:       errCodeInvalidLayer,
+		Message:    fmt.Sprintf(msgInvalidLayer, layer),
+		Category:   clierrors.CategoryValidation,
+		Retriable:  false,
+		Suggestion: suggestValidLayers,
 	}
 }
 
