@@ -70,6 +70,42 @@ build: gen-schemas
 	CGO_ENABLED=$(CGO_ENABLED) GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) \
 		go build $(GO_BUILD_TAGS) -ldflags "$(LDFLAGS)" -o $(BINARY_NAME) cmd/main.go
 
+# Install completion (defaults to bash)
+.PHONY: install-completion
+install-completion: install-completion-bash
+
+# Install bash completion for the current user
+.PHONY: install-completion-bash
+install-completion-bash: build
+	@echo "Installing bash completion..."
+	@mkdir -p ~/.local/share/bash-completion/completions
+	@"$(BINARY_NAME)" completion bash > ~/.local/share/bash-completion/completions/kubectl-odh
+	@echo "Done! Start a new terminal for completions to take effect."
+
+# Install zsh completion for the current user
+.PHONY: install-completion-zsh
+install-completion-zsh: build
+	@echo "Installing zsh completion..."
+	@mkdir -p ~/.zsh/completions
+	@"$(BINARY_NAME)" completion zsh > ~/.zsh/completions/_kubectl-odh
+	@if ! grep -q 'fpath=(~/.zsh/completions' ~/.zshrc 2>/dev/null; then \
+		echo 'fpath=(~/.zsh/completions $$fpath)' >> ~/.zshrc; \
+		echo "Added fpath to ~/.zshrc"; \
+	fi
+	@if ! grep -q 'autoload -Uz compinit' ~/.zshrc 2>/dev/null; then \
+		echo 'autoload -Uz compinit && compinit' >> ~/.zshrc; \
+		echo "Added compinit to ~/.zshrc"; \
+	fi
+	@echo "Done! Run 'source ~/.zshrc' or start a new terminal."
+
+# Install fish completion for the current user
+.PHONY: install-completion-fish
+install-completion-fish: build
+	@echo "Installing fish completion..."
+	@mkdir -p ~/.config/fish/completions
+	@"$(BINARY_NAME)" completion fish > ~/.config/fish/completions/kubectl-odh.fish
+	@echo "Done! Start a new terminal or run 'source ~/.config/fish/completions/kubectl-odh.fish'"
+
 # Run the doctor command
 .PHONY: run
 run: gen-schemas
@@ -149,18 +185,22 @@ publish: build-image
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  build       - Build the kubectl-odh binary"
-	@echo "  build-image - Build container image without pushing (creates local manifest)"
-	@echo "  publish     - Build and push container image using Podman manifest"
-	@echo "  run         - Run the doctor command"
-	@echo "  tidy        - Tidy up Go module dependencies"
-	@echo "  clean       - Remove build artifacts and test cache"
-	@echo "  fmt         - Format Go code"
-	@echo "  lint        - Run golangci-lint"
-	@echo "  lint/fix    - Run golangci-lint with auto-fix"
-	@echo "  vulncheck   - Run vulnerability scanner"
-	@echo "  check       - Run all checks (lint)"
-	@echo "  test        - Run tests"
-	@echo "  fetch-deps  - Fetch dependency manifest from odh-gitops"
-	@echo "  gen-schemas - Generate JSON schemas from Go types"
-	@echo "  help        - Show this help message"
+	@echo "  build                   - Build the kubectl-odh binary"
+	@echo "  install-completion      - Install shell completion (defaults to bash)"
+	@echo "  install-completion-bash - Install bash completion for current user"
+	@echo "  install-completion-zsh  - Install zsh completion for current user"
+	@echo "  install-completion-fish - Install fish completion for current user"
+	@echo "  build-image             - Build container image without pushing (creates local manifest)"
+	@echo "  publish                 - Build and push container image using Podman manifest"
+	@echo "  run                     - Run the doctor command"
+	@echo "  tidy                    - Tidy up Go module dependencies"
+	@echo "  clean                   - Remove build artifacts and test cache"
+	@echo "  fmt                     - Format Go code"
+	@echo "  lint                    - Run golangci-lint"
+	@echo "  lint/fix                - Run golangci-lint with auto-fix"
+	@echo "  vulncheck               - Run vulnerability scanner"
+	@echo "  check                   - Run all checks (lint)"
+	@echo "  test                    - Run tests"
+	@echo "  fetch-deps              - Fetch dependency manifest from odh-gitops"
+	@echo "  gen-schemas             - Generate JSON schemas from Go types"
+	@echo "  help                    - Show this help message"

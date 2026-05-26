@@ -8,6 +8,7 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
+	"github.com/opendatahub-io/odh-cli/cmd/completion"
 	"github.com/opendatahub-io/odh-cli/cmd/components"
 	"github.com/opendatahub-io/odh-cli/cmd/deps"
 	"github.com/opendatahub-io/odh-cli/cmd/get"
@@ -39,6 +40,7 @@ func main() {
 	components.AddCommand(cmd, flags)
 	status.AddCommand(cmd, flags)
 	logs.AddCommand(cmd, flags)
+	completion.AddCommand(cmd, flags)
 
 	if err := cmd.Execute(); err != nil {
 		exitCode := int(clierrors.ExitCodeFromError(err))
