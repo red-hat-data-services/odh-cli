@@ -25,8 +25,9 @@ var _ cmd.Command = (*ListCommand)(nil)
 type migrationRow struct {
 	ID          string
 	Name        string
-	Description string
+	Phase       string
 	Applicable  string
+	Description string
 }
 
 type ListCommand struct {
@@ -34,6 +35,7 @@ type ListCommand struct {
 
 	TargetVersion string
 	ShowAll       bool
+	Phase         string
 
 	parsedTargetVersion *semver.Version
 
@@ -60,6 +62,7 @@ func (c *ListCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescListVerbose)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescListTargetVersion)
 	fs.BoolVar(&c.ShowAll, "all", false, flagDescListAll)
+	fs.StringVar(&c.Phase, "phase", "", flagDescListPhase)
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
@@ -100,6 +103,10 @@ func (c *ListCommand) Validate() error {
 		return errors.New("--target-version flag is required")
 	}
 
+	if err := action.ActionPhase(c.Phase).Validate(); err != nil {
+		return fmt.Errorf("validating phase: %w", err)
+	}
+
 	return nil
 }
 
@@ -122,9 +129,49 @@ func (c *ListCommand) Run(ctx context.Context) error {
 		return nil
 	}
 
+	allActions = filterByPhase(allActions, action.ActionPhase(c.Phase))
+
+	if len(allActions) == 0 {
+		c.IO.Errorf("No migrations found for phase %q", c.Phase)
+
+		return nil
+	}
+
+	rows := c.buildRows(allActions, currentVersion)
+
+	if len(rows) == 0 {
+		c.IO.Errorf("no migrations applicable for version %s", c.TargetVersion)
+
+		return nil
+	}
+
+	if err := c.printRows(rows); err != nil {
+		return err
+	}
+
+	c.printPhaseHint(currentVersion)
+
+	return nil
+}
+
+func (c *ListCommand) printPhaseHint(currentVersion *semver.Version) {
+	if c.Phase != "" || currentVersion == nil || c.OutputFormat != OutputFormatTable {
+		return
+	}
+
+	detectedPhase, err := DetectPhase(currentVersion, c.parsedTargetVersion)
+	if err != nil {
+		return
+	}
+
+	c.IO.Fprintf("\nNote: 'migrate run' will auto-detect phase as %q for this cluster.\n", string(detectedPhase))
+	c.IO.Fprintf("Use --phase to filter the list by lifecycle phase.\n")
+}
+
+func (c *ListCommand) buildRows(actions []action.Action, currentVersion *semver.Version) []migrationRow {
 	rows := make([]migrationRow, 0)
 
-	for _, act := range allActions {
+	for _, act := range actions {
 		var applicableStr string
 
 		if c.ShowAll && c.parsedTargetVersion == nil {
@@ -152,17 +199,16 @@ func (c *ListCommand) Run(ctx context.Context) error {
 		rows = append(rows, migrationRow{
 			ID:          act.ID(),
 			Name:        act.Name(),
-			Description: act.Description(),
+			Phase:       string(act.Phase()),
 			Applicable:  applicableStr,
+			Description: act.Description(),
 		})
 	}
 
-	if len(rows) == 0 {
-		c.IO.Errorf("no migrations applicable for version %s", c.TargetVersion)
+	return rows
+}
 
-		return nil
-	}
-
+func (c *ListCommand) printRows(rows []migrationRow) error {
 	switch c.OutputFormat {
 	case OutputFormatTable:
 		return c.printTable(rows)
@@ -178,7 +224,7 @@ func (c *ListCommand) Run(ctx context.Context) error {
 func (c *ListCommand) printTable(rows []migrationRow) error {
 	renderer := table.NewRenderer(
 		table.WithWriter[migrationRow](c.IO.Out()),
-		table.WithHeaders[migrationRow]("ID", "NAME", "APPLICABLE", "DESCRIPTION"),
+		table.WithHeaders[migrationRow]("ID", "NAME", "PHASE", "APPLICABLE", "DESCRIPTION"),
 		table.WithTableOptions[migrationRow](table.DefaultTableOptions...),
 	)
 

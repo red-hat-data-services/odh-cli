@@ -2,6 +2,7 @@ package action
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/blang/semver/v4"
 
@@ -18,6 +19,31 @@ const (
 	GroupValidation ActionGroup = "validation"
 )
 
+type ActionPhase string
+
+const (
+	PhasePreUpgrade    ActionPhase = "pre-upgrade"
+	PhasePostUpgrade   ActionPhase = "post-upgrade"
+	PhasePreEnablement ActionPhase = "pre-enablement"
+)
+
+func PhaseValues() []string {
+	return []string{
+		string(PhasePreUpgrade),
+		string(PhasePostUpgrade),
+		string(PhasePreEnablement),
+	}
+}
+
+func (p ActionPhase) Validate() error {
+	switch p {
+	case PhasePreUpgrade, PhasePostUpgrade, PhasePreEnablement, "":
+		return nil
+	default:
+		return fmt.Errorf("invalid phase %q: must be one of: pre-upgrade, post-upgrade, pre-enablement", p)
+	}
+}
+
 // Task represents a single executable phase (prepare or run) with validation and execution.
 type Task interface {
 	Validate(ctx context.Context, target Target) (*result.ActionResult, error)
@@ -29,6 +55,7 @@ type Action interface {
 	Name() string
 	Description() string
 	Group() ActionGroup
+	Phase() ActionPhase
 
 	// CanApply returns whether this action should run for the given target context.
 	// Actions can use target.CurrentVersion, target.TargetVersion, or target.Client for filtering.

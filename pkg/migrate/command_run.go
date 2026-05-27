@@ -25,8 +25,10 @@ type RunCommand struct {
 	Yes           bool
 	MigrationIDs  []string
 	TargetVersion string
+	Phase         string
 
 	parsedTargetVersion *semver.Version
+	parsedPhase         action.ActionPhase
 
 	// registry is the action registry for this command instance.
 	// Explicitly populated to avoid global state and enable test isolation.
@@ -46,6 +48,10 @@ func NewRunCommand(streams genericiooptions.IOStreams) *RunCommand {
 	}
 }
 
+func (c *RunCommand) ActionIDs() []string {
+	return c.registry.ActionIDs()
+}
+
 func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescRunVerbose)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescRunTimeout)
@@ -53,6 +59,7 @@ func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&c.Yes, "yes", "y", false, flagDescRunYes)
 	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescRunMigration)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescRunTargetVersion)
+	fs.StringVar(&c.Phase, "phase", "", flagDescRunPhase)
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
@@ -66,6 +73,11 @@ func (c *RunCommand) Complete() error {
 
 	// Always enable verbose for migrate run (both dry-run and actual execution)
 	c.Verbose = true
+
+	c.parsedPhase = ""
+	if c.Phase != "" {
+		c.parsedPhase = action.ActionPhase(c.Phase)
+	}
 
 	if c.TargetVersion != "" {
 		// Use ParseTolerant to accept partial versions (e.g., "3.0" → "3.0.0")
@@ -84,12 +96,16 @@ func (c *RunCommand) Validate() error {
 		return fmt.Errorf("validating shared options: %w", err)
 	}
 
-	if len(c.MigrationIDs) == 0 {
-		return errors.New("--migration flag is required")
+	if len(c.MigrationIDs) == 0 && c.Phase == "" {
+		return errors.New("--migration flag is required (or use --phase to run all actions for a lifecycle phase)")
 	}
 
 	if c.TargetVersion == "" {
 		return errors.New("--target-version flag is required")
+	}
+
+	if err := c.parsedPhase.Validate(); err != nil {
+		return fmt.Errorf("validating phase: %w", err)
 	}
 
 	return nil
@@ -104,26 +120,53 @@ func (c *RunCommand) Run(ctx context.Context) error {
 		return fmt.Errorf("detecting cluster version: %w", err)
 	}
 
-	return c.runMigrationMode(ctx, currentVersion, c.parsedTargetVersion, c.registry)
+	effectivePhase, resolvedIDs, err := resolvePhaseAndMigrations(phaseResolverInput{
+		ParsedPhase:    c.parsedPhase,
+		MigrationIDs:   c.MigrationIDs,
+		CurrentVersion: currentVersion,
+		TargetVersion:  c.parsedTargetVersion,
+		Registry:       c.registry,
+		Client:         c.Client,
+		IO:             c.IO,
+	})
+	if err != nil {
+		return err
+	}
+
+	c.MigrationIDs = resolvedIDs
+
+	if len(c.MigrationIDs) == 0 {
+		return fmt.Errorf("no applicable migrations found for phase %s", string(effectivePhase))
+	}
+
+	return c.runMigrationMode(ctx, currentVersion, c.parsedTargetVersion, effectivePhase)
 }
 
 func (c *RunCommand) runMigrationMode(
 	ctx context.Context,
 	currentVersion *semver.Version,
 	targetVersion *semver.Version,
-	registry *action.ActionRegistry,
+	effectivePhase action.ActionPhase,
 ) error {
 	c.IO.Errorf("Current OpenShift AI version: %s", currentVersion.String())
-	c.IO.Errorf("Target OpenShift AI version: %s\n", targetVersion.String())
+	c.IO.Errorf("Target OpenShift AI version: %s", targetVersion.String())
+	c.IO.Errorf("Phase: %s\n", string(effectivePhase))
+
+	hasSkips := false
 
 	for idx, migrationID := range c.MigrationIDs {
 		if len(c.MigrationIDs) > 1 {
 			c.IO.Errorf("\n=== Migration %d/%d: %s ===\n", idx+1, len(c.MigrationIDs), migrationID)
 		}
 
-		selectedAction, ok := registry.Get(migrationID)
+		selectedAction, ok := c.registry.Get(migrationID)
 		if !ok {
 			return fmt.Errorf("migration %q not found", migrationID)
+		}
+
+		if selectedAction.Phase() != effectivePhase {
+			c.IO.Errorf("WARNING: migration %s has phase %s but effective phase is %s; proceeding because --migration was explicit",
+				migrationID, string(selectedAction.Phase()), string(effectivePhase))
 		}
 
 		// Use verbose recorder for real-time streaming output
@@ -165,11 +208,22 @@ func (c *RunCommand) runMigrationMode(
 
 			return fmt.Errorf("migration halted: %s", migrationID)
 		}
-		c.IO.Errorf("Migration %s completed successfully!", migrationID)
+		if actionResult.HasSkippedSteps() {
+			c.IO.Errorf("Migration %s completed with skipped steps", migrationID)
+
+			hasSkips = true
+		} else {
+			c.IO.Errorf("Migration %s completed successfully!", migrationID)
+		}
 	}
 
 	c.IO.Fprintln()
-	c.IO.Errorf("All migrations completed successfully!")
+
+	if hasSkips {
+		c.IO.Errorf("All migrations completed (some steps were skipped).")
+	} else {
+		c.IO.Errorf("All migrations completed successfully!")
+	}
 
 	return nil
 }

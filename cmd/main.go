@@ -14,6 +14,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/cmd/get"
 	"github.com/opendatahub-io/odh-cli/cmd/lint"
 	"github.com/opendatahub-io/odh-cli/cmd/logs"
+	"github.com/opendatahub-io/odh-cli/cmd/migrate"
 	"github.com/opendatahub-io/odh-cli/cmd/status"
 	"github.com/opendatahub-io/odh-cli/cmd/version"
 	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
@@ -41,6 +42,7 @@ func main() {
 	status.AddCommand(cmd, flags)
 	logs.AddCommand(cmd, flags)
 	completion.AddCommand(cmd, flags)
+	migrate.AddCommand(cmd, flags)
 
 	if err := cmd.Execute(); err != nil {
 		exitCode := int(clierrors.ExitCodeFromError(err))

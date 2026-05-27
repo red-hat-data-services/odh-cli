@@ -37,8 +37,9 @@ func (e *Executor) ExecuteSelective(
 	target Target,
 	pattern string,
 	group ActionGroup,
+	phase ActionPhase,
 ) ([]ActionExecution, error) {
-	actions, err := e.registry.ListByPattern(pattern, group)
+	actions, err := e.registry.ListByFilter(pattern, group, phase)
 	if err != nil {
 		return nil, fmt.Errorf("selecting actions: %w", err)
 	}

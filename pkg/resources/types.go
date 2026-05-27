@@ -77,10 +77,18 @@ func (r ResourceType) Unstructured() unstructured.Unstructured {
 //
 //nolint:gochecknoglobals // Required by Constitution Principle VIII - centralized GVK/GVR definitions
 var (
-	// DataScienceCluster is the OpenShift AI DataScienceCluster resource.
+	// DataScienceCluster is the OpenShift AI DataScienceCluster resource (v2, served by RHOAI 3.x).
 	DataScienceCluster = ResourceType{
 		Group:    "datasciencecluster.opendatahub.io",
 		Version:  "v2",
+		Kind:     "DataScienceCluster",
+		Resource: "datascienceclusters",
+	}
+
+	// DataScienceClusterV1 is the v1 API version, served by RHOAI 2.x clusters.
+	DataScienceClusterV1 = ResourceType{
+		Group:    "datasciencecluster.opendatahub.io",
+		Version:  "v1",
 		Kind:     "DataScienceCluster",
 		Resource: "datascienceclusters",
 	}

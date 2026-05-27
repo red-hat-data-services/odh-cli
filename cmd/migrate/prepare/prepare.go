@@ -7,6 +7,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/opendatahub-io/odh-cli/pkg/migrate"
+	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 )
 
 const (
@@ -31,6 +32,9 @@ Use --output-dir to specify where backups should be written.
 const cmdExample = `
   # Prepare for a single migration (creates timestamped backup directory)
   kubectl odh migrate prepare --migration kueue.rhbok.migrate --target-version 3.0.0
+
+  # Prepare all pre-upgrade migrations
+  kubectl odh migrate prepare --phase pre-upgrade --target-version 3.0.0
 
   # Prepare with custom backup directory
   kubectl odh migrate prepare --migration kueue.rhbok.migrate --target-version 3.0.0 --output-dir /path/to/backups
@@ -76,5 +80,18 @@ func AddCommand(
 	}
 
 	command.AddFlags(cmd.Flags())
+
+	_ = cmd.RegisterFlagCompletionFunc("phase",
+		func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+			return action.PhaseValues(), cobra.ShellCompDirectiveNoFileComp
+		},
+	)
+
+	_ = cmd.RegisterFlagCompletionFunc("migration",
+		func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+			return command.ActionIDs(), cobra.ShellCompDirectiveNoFileComp
+		},
+	)
+
 	parent.AddCommand(cmd)
 }

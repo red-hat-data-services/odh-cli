@@ -22,7 +22,7 @@ func (a *RHBOKMigrationAction) checkCurrentKueueState(
 		"Verify current Kueue state",
 	)
 
-	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
+	dsc, err := client.GetSingleton(ctx, target.Client, resources.DataScienceClusterV1)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			step.Complete(result.StepFailed, "DataScienceCluster not found - OpenShift AI may not be installed")

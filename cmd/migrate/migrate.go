@@ -37,6 +37,9 @@ const cmdExample = `
   # List available migrations for version 3.0
   kubectl odh migrate list --target-version 3.0.0
 
+  # List only pre-upgrade migrations
+  kubectl odh migrate list --target-version 3.0.0 --phase pre-upgrade
+
   # List all migrations including non-applicable ones
   kubectl odh migrate list --all
 
@@ -45,6 +48,9 @@ const cmdExample = `
 
   # Run a migration with confirmation prompts
   kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0
+
+  # Run all pre-upgrade migrations
+  kubectl odh migrate run --phase pre-upgrade --target-version 3.0.0
 
   # Run migration in dry-run mode (preview changes only)
   kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0 --dry-run

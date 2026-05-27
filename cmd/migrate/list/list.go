@@ -7,6 +7,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/opendatahub-io/odh-cli/pkg/migrate"
+	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 )
 
 const (
@@ -27,6 +28,9 @@ migrations without version filtering, or --target-version to filter by applicabi
 const cmdExample = `
   # List applicable migrations for version 3.0
   kubectl odh migrate list --target-version 3.0.0
+
+  # List only pre-upgrade migrations
+  kubectl odh migrate list --target-version 3.0.0 --phase pre-upgrade
 
   # List all migrations without version filtering
   kubectl odh migrate list --all
@@ -66,5 +70,12 @@ func AddCommand(
 	}
 
 	command.AddFlags(cmd.Flags())
+
+	_ = cmd.RegisterFlagCompletionFunc("phase",
+		func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+			return action.PhaseValues(), cobra.ShellCompDirectiveNoFileComp
+		},
+	)
+
 	parent.AddCommand(cmd)
 }

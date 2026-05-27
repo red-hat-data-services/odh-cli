@@ -11,9 +11,9 @@ import (
 )
 
 func TestRunCommand_Validate(t *testing.T) {
-	g := NewWithT(t)
-
 	t.Run("should require migration ID", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
 		cmd.MigrationIDs = []string{}
 		cmd.TargetVersion = "3.0.0"
@@ -24,6 +24,8 @@ func TestRunCommand_Validate(t *testing.T) {
 	})
 
 	t.Run("should require target version", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
 		cmd.MigrationIDs = []string{"test.migration"}
 		cmd.TargetVersion = ""
@@ -34,6 +36,8 @@ func TestRunCommand_Validate(t *testing.T) {
 	})
 
 	t.Run("should validate successfully with required fields", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
 		cmd.MigrationIDs = []string{"test.migration"}
 		cmd.TargetVersion = "3.0.0"
@@ -46,6 +50,8 @@ func TestRunCommand_Validate(t *testing.T) {
 	})
 
 	t.Run("should accept multiple migration IDs", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
 		cmd.MigrationIDs = []string{"migration1", "migration2", "migration3"}
 		cmd.TargetVersion = "3.0.0"
@@ -59,10 +65,71 @@ func TestRunCommand_Validate(t *testing.T) {
 	})
 }
 
-func TestRunCommand_Complete(t *testing.T) {
-	g := NewWithT(t)
+func TestRunCommand_Validate_Phase(t *testing.T) {
+	t.Run("should accept valid phase", func(t *testing.T) {
+		g := NewWithT(t)
 
+		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
+		cmd.MigrationIDs = []string{"test.migration"}
+		cmd.TargetVersion = "3.0.0"
+		cmd.Phase = "pre-upgrade"
+
+		err := cmd.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		err = cmd.Validate()
+		g.Expect(err).ToNot(HaveOccurred())
+	})
+
+	t.Run("should reject invalid phase", func(t *testing.T) {
+		g := NewWithT(t)
+
+		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
+		cmd.MigrationIDs = []string{"test.migration"}
+		cmd.TargetVersion = "3.0.0"
+		cmd.Phase = "invalid"
+
+		err := cmd.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		err = cmd.Validate()
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("invalid phase"))
+	})
+
+	t.Run("should accept phase without migration IDs", func(t *testing.T) {
+		g := NewWithT(t)
+
+		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
+		cmd.MigrationIDs = []string{}
+		cmd.TargetVersion = "3.0.0"
+		cmd.Phase = "pre-upgrade"
+
+		err := cmd.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		err = cmd.Validate()
+		g.Expect(err).ToNot(HaveOccurred())
+	})
+
+	t.Run("should require migration or phase", func(t *testing.T) {
+		g := NewWithT(t)
+
+		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
+		cmd.MigrationIDs = []string{}
+		cmd.TargetVersion = "3.0.0"
+		cmd.Phase = ""
+
+		err := cmd.Validate()
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("--migration"))
+	})
+}
+
+func TestRunCommand_Complete(t *testing.T) {
 	t.Run("should parse valid target version", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
 		cmd.TargetVersion = "3.0.0"
 
@@ -71,6 +138,8 @@ func TestRunCommand_Complete(t *testing.T) {
 	})
 
 	t.Run("should reject invalid target version", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
 		cmd.TargetVersion = "invalid"
 
@@ -80,6 +149,8 @@ func TestRunCommand_Complete(t *testing.T) {
 	})
 
 	t.Run("should enable verbose when dry-run is true", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
 		cmd.DryRun = true
 		cmd.Verbose = false
@@ -90,6 +161,8 @@ func TestRunCommand_Complete(t *testing.T) {
 	})
 
 	t.Run("should enable verbose when dry-run is false", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewRunCommand(genericiooptions.IOStreams{})
 		cmd.DryRun = false
 		cmd.Verbose = false

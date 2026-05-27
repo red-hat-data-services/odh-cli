@@ -47,6 +47,17 @@ func (r *ActionRegistry) Get(id string) (Action, bool) {
 	return action, ok
 }
 
+func (r *ActionRegistry) ActionIDs() []string {
+	actions := r.ListAll()
+	ids := make([]string, 0, len(actions))
+
+	for _, a := range actions {
+		ids = append(ids, a.ID())
+	}
+
+	return ids
+}
+
 func (r *ActionRegistry) ListAll() []Action {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -67,6 +78,33 @@ func (r *ActionRegistry) ListByPattern(
 	pattern string,
 	group ActionGroup,
 ) ([]Action, error) {
+	return r.ListByFilter(pattern, group, "")
+}
+
+func (r *ActionRegistry) ListByPhase(phase ActionPhase) []Action {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var filtered []Action
+
+	for _, action := range r.actions {
+		if action.Phase() == phase {
+			filtered = append(filtered, action)
+		}
+	}
+
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].ID() < filtered[j].ID()
+	})
+
+	return filtered
+}
+
+func (r *ActionRegistry) ListByFilter(
+	pattern string,
+	group ActionGroup,
+	phase ActionPhase,
+) ([]Action, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -74,6 +112,10 @@ func (r *ActionRegistry) ListByPattern(
 
 	for id, action := range r.actions {
 		if group != "" && action.Group() != group {
+			continue
+		}
+
+		if phase != "" && action.Phase() != phase {
 			continue
 		}
 

@@ -7,6 +7,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/opendatahub-io/odh-cli/pkg/migrate"
+	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 )
 
 const (
@@ -33,6 +34,9 @@ const cmdExample = `
 
   # Run migration without confirmation prompts
   kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0 --yes
+
+  # Run all pre-upgrade migrations (auto-selects applicable actions)
+  kubectl odh migrate run --phase pre-upgrade --target-version 3.0.0
 
   # Run multiple migrations sequentially
   kubectl odh migrate run -m kueue.rhbok.migrate -m other.migration --target-version 3.0.0
@@ -73,5 +77,18 @@ func AddCommand(
 	}
 
 	command.AddFlags(cmd.Flags())
+
+	_ = cmd.RegisterFlagCompletionFunc("phase",
+		func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+			return action.PhaseValues(), cobra.ShellCompDirectiveNoFileComp
+		},
+	)
+
+	_ = cmd.RegisterFlagCompletionFunc("migration",
+		func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+			return command.ActionIDs(), cobra.ShellCompDirectiveNoFileComp
+		},
+	)
+
 	parent.AddCommand(cmd)
 }

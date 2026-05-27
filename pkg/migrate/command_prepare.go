@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -28,8 +29,10 @@ type PrepareCommand struct {
 	OutputDir     string
 	MigrationIDs  []string
 	TargetVersion string
+	Phase         string
 
 	parsedTargetVersion *semver.Version
+	parsedPhase         action.ActionPhase
 
 	// registry is the action registry for this command instance.
 	// Explicitly populated to avoid global state and enable test isolation.
@@ -49,6 +52,10 @@ func NewPrepareCommand(streams genericiooptions.IOStreams) *PrepareCommand {
 	}
 }
 
+func (c *PrepareCommand) ActionIDs() []string {
+	return c.registry.ActionIDs()
+}
+
 func (c *PrepareCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescPrepareVerbose)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescPrepareTimeout)
@@ -57,6 +64,7 @@ func (c *PrepareCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.OutputDir, "output-dir", "", flagDescPrepareOutputDir)
 	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescPrepareMigration)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescPrepareTargetVersion)
+	fs.StringVar(&c.Phase, "phase", "", flagDescPreparePhase)
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
@@ -70,6 +78,11 @@ func (c *PrepareCommand) Complete() error {
 
 	// Always enable verbose for migrate prepare
 	c.Verbose = true
+
+	c.parsedPhase = ""
+	if c.Phase != "" {
+		c.parsedPhase = action.ActionPhase(c.Phase)
+	}
 
 	if c.TargetVersion != "" {
 		// Use ParseTolerant to accept partial versions (e.g., "3.0" → "3.0.0")
@@ -94,12 +107,16 @@ func (c *PrepareCommand) Validate() error {
 		return fmt.Errorf("validating shared options: %w", err)
 	}
 
-	if len(c.MigrationIDs) == 0 {
-		return errors.New("--migration flag is required")
+	if len(c.MigrationIDs) == 0 && c.Phase == "" {
+		return errors.New("--migration flag is required (or use --phase to prepare all actions for a lifecycle phase)")
 	}
 
 	if c.TargetVersion == "" {
 		return errors.New("--target-version flag is required")
+	}
+
+	if err := c.parsedPhase.Validate(); err != nil {
+		return fmt.Errorf("validating phase: %w", err)
 	}
 
 	return nil
@@ -114,8 +131,37 @@ func (c *PrepareCommand) Run(ctx context.Context) error {
 		return fmt.Errorf("detecting cluster version: %w", err)
 	}
 
+	effectivePhase, resolvedIDs, err := resolvePhaseAndMigrations(phaseResolverInput{
+		ParsedPhase:    c.parsedPhase,
+		MigrationIDs:   c.MigrationIDs,
+		CurrentVersion: currentVersion,
+		TargetVersion:  c.parsedTargetVersion,
+		Registry:       c.registry,
+		Client:         c.Client,
+		IO:             c.IO,
+	})
+	if err != nil {
+		return err
+	}
+
+	c.MigrationIDs = resolvedIDs
+
+	if len(c.MigrationIDs) == 0 {
+		return fmt.Errorf("no applicable migrations found for phase %s", string(effectivePhase))
+	}
+
+	return c.runPrepareMode(ctx, currentVersion, c.parsedTargetVersion, effectivePhase)
+}
+
+func (c *PrepareCommand) runPrepareMode(
+	ctx context.Context,
+	currentVersion *semver.Version,
+	targetVersion *semver.Version,
+	effectivePhase action.ActionPhase,
+) error {
 	c.IO.Errorf("Current OpenShift AI version: %s", currentVersion.String())
-	c.IO.Errorf("Target OpenShift AI version: %s", c.parsedTargetVersion.String())
+	c.IO.Errorf("Target OpenShift AI version: %s", targetVersion.String())
+	c.IO.Errorf("Phase: %s", string(effectivePhase))
 	c.IO.Errorf("Backup directory: %s\n", c.OutputDir)
 
 	for idx, migrationID := range c.MigrationIDs {
@@ -126,6 +172,11 @@ func (c *PrepareCommand) Run(ctx context.Context) error {
 		selectedAction, ok := c.registry.Get(migrationID)
 		if !ok {
 			return fmt.Errorf("migration %q not found", migrationID)
+		}
+
+		if selectedAction.Phase() != effectivePhase {
+			c.IO.Errorf("WARNING: migration %s has phase %s but effective phase is %s; proceeding because --migration was explicit",
+				migrationID, string(selectedAction.Phase()), string(effectivePhase))
 		}
 
 		prepareTask := selectedAction.Prepare()
@@ -142,7 +193,7 @@ func (c *PrepareCommand) Run(ctx context.Context) error {
 		target := action.Target{
 			Client:         c.Client,
 			CurrentVersion: currentVersion,
-			TargetVersion:  c.parsedTargetVersion,
+			TargetVersion:  targetVersion,
 			DryRun:         c.DryRun,
 			SkipConfirm:    c.Yes,
 			OutputDir:      c.OutputDir,
@@ -174,7 +225,16 @@ func (c *PrepareCommand) Run(ctx context.Context) error {
 		c.IO.Errorf("Dry-run complete. Run without --dry-run to create backups.")
 	} else {
 		c.IO.Errorf("All preparations completed successfully!")
-		c.IO.Errorf("Backups saved to: %s", c.OutputDir)
+
+		entries, err := os.ReadDir(c.OutputDir)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			c.IO.Errorf("Warning: could not read backup directory: %v", err)
+		} else if len(entries) > 0 {
+			c.IO.Errorf("Backups saved to: %s", c.OutputDir)
+		} else {
+			c.IO.Errorf("No backups were created — all backup steps were skipped (see output above for details).")
+		}
+
 		c.IO.Errorf("\nRun 'migrate run' to execute the migration.")
 	}
 

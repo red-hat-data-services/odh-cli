@@ -71,6 +71,24 @@ func New(
 	}
 }
 
+func (r *ActionResult) HasSkippedSteps() bool {
+	return hasSkipped(r.Status.Steps)
+}
+
+func hasSkipped(steps []ActionStep) bool {
+	for _, s := range steps {
+		if s.Status == StepSkipped {
+			return true
+		}
+
+		if hasSkipped(s.Children) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func NewStep(
 	name string,
 	description string,

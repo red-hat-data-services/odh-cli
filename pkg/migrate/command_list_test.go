@@ -11,9 +11,9 @@ import (
 )
 
 func TestListCommand_Validate(t *testing.T) {
-	g := NewWithT(t)
-
 	t.Run("should require target version when all is false", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewListCommand(genericiooptions.IOStreams{})
 		cmd.TargetVersion = ""
 		cmd.ShowAll = false
@@ -24,6 +24,8 @@ func TestListCommand_Validate(t *testing.T) {
 	})
 
 	t.Run("should not require target version when all is true", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewListCommand(genericiooptions.IOStreams{})
 		cmd.TargetVersion = ""
 		cmd.ShowAll = true
@@ -33,6 +35,8 @@ func TestListCommand_Validate(t *testing.T) {
 	})
 
 	t.Run("should reject both all and target-version together", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewListCommand(genericiooptions.IOStreams{})
 		cmd.TargetVersion = "3.0.0"
 		cmd.ShowAll = true
@@ -46,6 +50,8 @@ func TestListCommand_Validate(t *testing.T) {
 	})
 
 	t.Run("should validate successfully with target version", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewListCommand(genericiooptions.IOStreams{})
 		cmd.TargetVersion = "3.0.0"
 
@@ -57,10 +63,55 @@ func TestListCommand_Validate(t *testing.T) {
 	})
 }
 
-func TestListCommand_Complete(t *testing.T) {
-	g := NewWithT(t)
+func TestListCommand_Validate_Phase(t *testing.T) {
+	t.Run("should accept valid phase", func(t *testing.T) {
+		g := NewWithT(t)
 
+		cmd := migrate.NewListCommand(genericiooptions.IOStreams{})
+		cmd.TargetVersion = "3.0.0"
+		cmd.Phase = "pre-upgrade"
+
+		err := cmd.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		err = cmd.Validate()
+		g.Expect(err).ToNot(HaveOccurred())
+	})
+
+	t.Run("should reject invalid phase", func(t *testing.T) {
+		g := NewWithT(t)
+
+		cmd := migrate.NewListCommand(genericiooptions.IOStreams{})
+		cmd.TargetVersion = "3.0.0"
+		cmd.Phase = "invalid"
+
+		err := cmd.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		err = cmd.Validate()
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("invalid phase"))
+	})
+
+	t.Run("should accept empty phase", func(t *testing.T) {
+		g := NewWithT(t)
+
+		cmd := migrate.NewListCommand(genericiooptions.IOStreams{})
+		cmd.TargetVersion = "3.0.0"
+		cmd.Phase = ""
+
+		err := cmd.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		err = cmd.Validate()
+		g.Expect(err).ToNot(HaveOccurred())
+	})
+}
+
+func TestListCommand_Complete(t *testing.T) {
 	t.Run("should parse valid target version", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewListCommand(genericiooptions.IOStreams{})
 		cmd.TargetVersion = "3.0.0"
 
@@ -69,6 +120,8 @@ func TestListCommand_Complete(t *testing.T) {
 	})
 
 	t.Run("should reject invalid target version", func(t *testing.T) {
+		g := NewWithT(t)
+
 		cmd := migrate.NewListCommand(genericiooptions.IOStreams{})
 		cmd.TargetVersion = "invalid"
 

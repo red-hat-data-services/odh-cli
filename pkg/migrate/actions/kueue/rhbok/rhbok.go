@@ -71,6 +71,10 @@ func (a *RHBOKMigrationAction) Group() action.ActionGroup {
 	return action.GroupMigration
 }
 
+func (a *RHBOKMigrationAction) Phase() action.ActionPhase {
+	return action.PhasePreUpgrade
+}
+
 func (a *RHBOKMigrationAction) CanApply(target action.Target) bool {
 	return target.CurrentVersion.Major == 2 && target.CurrentVersion.Minor >= 25
 }
@@ -92,7 +96,7 @@ func (a *RHBOKMigrationAction) checkKueueManaged(
 		"Check if Kueue is managed by DataScienceCluster",
 	)
 
-	dsc, err := target.Client.Dynamic().Resource(resources.DataScienceCluster.GVR()).
+	dsc, err := target.Client.Dynamic().Resource(resources.DataScienceClusterV1.GVR()).
 		Namespace("").
 		Get(ctx, "default-dsc", metav1.GetOptions{})
 
@@ -265,7 +269,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 		"Update DataScienceCluster Kueue managementState",
 	)
 
-	dsc, err := client.GetDataScienceCluster(ctx, target.Client)
+	dsc, err := client.GetSingleton(ctx, target.Client, resources.DataScienceClusterV1)
 	if err != nil {
 		step.Complete(result.StepFailed, "Failed to get DataScienceCluster: %v", err)
 
@@ -305,7 +309,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 		Steps:    retryMaxSteps,
 	}, func() (bool, error) {
 		// Get latest version
-		latestDSC, err := client.GetDataScienceCluster(ctx, target.Client)
+		latestDSC, err := client.GetSingleton(ctx, target.Client, resources.DataScienceClusterV1)
 		if err != nil {
 			return false, fmt.Errorf("failed to get DataScienceCluster: %w", err)
 		}
@@ -316,7 +320,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 		}
 
 		// Attempt update
-		_, err = target.Client.Dynamic().Resource(resources.DataScienceCluster.GVR()).
+		_, err = target.Client.Dynamic().Resource(resources.DataScienceClusterV1.GVR()).
 			Update(ctx, latestDSC, metav1.UpdateOptions{})
 		if err != nil {
 			// Retry on conflict errors
