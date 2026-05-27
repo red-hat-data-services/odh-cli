@@ -10,41 +10,42 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-// mockAction implements Action and ActionConfigurer.
-type mockAction struct {
+// mockActionWithFlags implements Action and ActionConfigurer.
+type mockActionWithFlags struct {
 	id    string
 	flags map[string]string // Flag name -> default value
 }
 
-func (m *mockAction) ID() string                { return m.id }
-func (m *mockAction) Name() string              { return "Mock " + m.id }
-func (m *mockAction) Description() string       { return "Mock description" }
-func (m *mockAction) Group() action.ActionGroup { return action.GroupMigration }
+func (m *mockActionWithFlags) ID() string                { return m.id }
+func (m *mockActionWithFlags) Name() string              { return "Mock " + m.id }
+func (m *mockActionWithFlags) Description() string       { return "Mock description" }
+func (m *mockActionWithFlags) Group() action.ActionGroup { return action.GroupMigration }
+func (m *mockActionWithFlags) Phase() action.ActionPhase { return action.PhasePreUpgrade }
 
-func (m *mockAction) CanApply(target action.Target) bool { return true }
-func (m *mockAction) Prepare() action.Task               { return nil }
-func (m *mockAction) Run() action.Task                   { return nil }
+func (m *mockActionWithFlags) CanApply(target action.Target) bool { return true }
+func (m *mockActionWithFlags) Prepare() action.Task               { return nil }
+func (m *mockActionWithFlags) Run() action.Task                   { return nil }
 
-func (m *mockAction) AddFlags(fs *pflag.FlagSet) {
+func (m *mockActionWithFlags) AddFlags(fs *pflag.FlagSet) {
 	for name, val := range m.flags {
 		fs.String(name, val, "mock flag")
 	}
 }
 
-var _ action.ActionConfigurer = (*mockAction)(nil)
+var _ action.ActionConfigurer = (*mockActionWithFlags)(nil)
 
 func TestRegisterActionFlags(t *testing.T) {
 	t.Run("merges distinct flags successfully", func(t *testing.T) {
 		g := NewWithT(t)
 		registry := action.NewActionRegistry()
 
-		err := registry.Register(&mockAction{
+		err := registry.Register(&mockActionWithFlags{
 			id:    "action.one",
 			flags: map[string]string{"flag-one": "val1"},
 		})
 		g.Expect(err).NotTo(HaveOccurred())
 
-		err = registry.Register(&mockAction{
+		err = registry.Register(&mockActionWithFlags{
 			id:    "action.two",
 			flags: map[string]string{"flag-two": "val2"},
 		})
@@ -62,13 +63,13 @@ func TestRegisterActionFlags(t *testing.T) {
 		g := NewWithT(t)
 		registry := action.NewActionRegistry()
 
-		err := registry.Register(&mockAction{
+		err := registry.Register(&mockActionWithFlags{
 			id:    "action.one",
 			flags: map[string]string{"shared-flag": "val1"},
 		})
 		g.Expect(err).NotTo(HaveOccurred())
 
-		err = registry.Register(&mockAction{
+		err = registry.Register(&mockActionWithFlags{
 			id:    "action.two",
 			flags: map[string]string{"shared-flag": "val2"},
 		})
@@ -85,7 +86,7 @@ func TestRegisterActionFlags(t *testing.T) {
 		g := NewWithT(t)
 		registry := action.NewActionRegistry()
 
-		err := registry.Register(&mockAction{
+		err := registry.Register(&mockActionWithFlags{
 			id:    "dashboard.redirect",
 			flags: map[string]string{"dry-run": "false"},
 		})
@@ -123,6 +124,7 @@ func (m *mockActionWithoutFlags) ID() string                         { return m.
 func (m *mockActionWithoutFlags) Name() string                       { return "Mock " + m.id }
 func (m *mockActionWithoutFlags) Description() string                { return "Mock description" }
 func (m *mockActionWithoutFlags) Group() action.ActionGroup          { return action.GroupMigration }
+func (m *mockActionWithoutFlags) Phase() action.ActionPhase          { return action.PhasePreUpgrade }
 func (m *mockActionWithoutFlags) CanApply(target action.Target) bool { return true }
 func (m *mockActionWithoutFlags) Prepare() action.Task               { return nil }
 func (m *mockActionWithoutFlags) Run() action.Task                   { return nil }
