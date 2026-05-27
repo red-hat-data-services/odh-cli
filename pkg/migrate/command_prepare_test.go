@@ -3,6 +3,8 @@ package migrate_test
 import (
 	"testing"
 
+	"github.com/spf13/pflag"
+
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/opendatahub-io/odh-cli/pkg/migrate"
@@ -193,5 +195,19 @@ func TestPrepareCommand_Complete(t *testing.T) {
 		err := cmd.Complete()
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(cmd.Verbose).To(BeTrue())
+	})
+}
+
+func TestPrepareCommand_ActionFlags(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should register action-specific flags", func(t *testing.T) {
+		cmd := migrate.NewPrepareCommand(genericiooptions.IOStreams{})
+		cmd.ActionRegistry().MustRegister(&MockActionWithFlags{})
+		fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		cmd.AddFlags(fs)
+
+		g.Expect(fs.Lookup("mock-flag-1")).NotTo(BeNil())
+		g.Expect(fs.Lookup("mock-flag-2")).NotTo(BeNil())
 	})
 }

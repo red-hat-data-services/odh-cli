@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/blang/semver/v4"
+	"github.com/spf13/pflag"
 
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action/result"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
@@ -67,6 +68,13 @@ type Action interface {
 
 	// Run returns the Task for the migration execution phase.
 	Run() Task
+}
+
+// ActionConfigurer is an optional interface that Actions can implement to register
+// their own CLI flags. Commands call AddFlags during flag setup for any registered
+// action that implements this interface.
+type ActionConfigurer interface {
+	AddFlags(fs *pflag.FlagSet)
 }
 
 // Target holds all context needed for executing migration actions.

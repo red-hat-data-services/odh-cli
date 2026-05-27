@@ -64,6 +64,9 @@ func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
 	fs.IntVar(&c.Burst, "burst", c.Burst, "Kubernetes API burst capacity")
+
+	// Let actions register their own flags
+	action.RegisterActionFlags(c.registry, fs)
 }
 
 func (c *RunCommand) Complete() error {
