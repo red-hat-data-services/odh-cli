@@ -13,6 +13,12 @@ const (
 	flagDescBurst              = "Kubernetes API burst capacity"
 	flagDescISVCDeploymentMode = "filter InferenceService display by deployment mode (all|serverless|modelmesh)"
 	flagDescNoColor            = "disable colored output (also respects NO_COLOR env var)"
+	flagDescFromStdin          = "read configuration from stdin (JSON/YAML); stdin values override flag defaults"
+)
+
+// Warning messages for the lint command.
+const (
+	warnStdinIsTerminal = "Warning: --from-stdin specified but stdin is a terminal"
 )
 
 const flagDescChecks = `check selector patterns (glob patterns or categories):

@@ -15,6 +15,24 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// Test fixtures for stdin input parsing.
+const (
+	fixtureStdinJSON = `{"checks": ["components.*"], "severity": "warning", "targetVersion": "3.0.0", "verbose": true}`
+
+	fixtureStdinYAML = `
+checks:
+  - "platform.*"
+  - "workloads.*"
+severity: critical
+output: json
+`
+	fixtureStdinInvalid         = `{"checks": invalid}`
+	fixtureStdinUnknownFields   = `{"cheks": ["components.*"]}`
+	fixtureStdinMinimal         = `{"targetVersion": "3.0.0"}`
+	fixtureStdinInvalidSeverity = `{"severity": "invalid"}`
+	fixtureStdinInvalidOutput   = `{"output": "invalid"}`
+)
+
 // testConfigFlags creates ConfigFlags for testing.
 func testConfigFlags() *genericclioptions.ConfigFlags {
 	return genericclioptions.NewConfigFlags(true)
@@ -254,5 +272,219 @@ func TestCommand_FunctionalOptions(t *testing.T) {
 		g.Expect(command).ToNot(BeNil())
 		g.Expect(command.TargetVersion).To(Equal("3.0.0"))
 		g.Expect(command.IO).ToNot(BeNil())
+	})
+}
+
+func TestCommand_FromStdinFlag(t *testing.T) {
+	t.Run("AddFlags should register --from-stdin flag", func(t *testing.T) {
+		g := NewWithT(t)
+
+		var out, errOut bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			In:     &bytes.Buffer{},
+			Out:    &out,
+			ErrOut: &errOut,
+		}
+
+		command := lint.NewCommand(streams, testConfigFlags())
+		fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		command.AddFlags(fs)
+
+		// Verify --from-stdin flag is registered
+		flag := fs.Lookup("from-stdin")
+		g.Expect(flag).ToNot(BeNil())
+		g.Expect(flag.DefValue).To(Equal("false"))
+	})
+}
+
+func TestCommand_StdinInput(t *testing.T) {
+	t.Run("Complete should parse stdin JSON and apply to command", func(t *testing.T) {
+		g := NewWithT(t)
+
+		stdin := bytes.NewBufferString(fixtureStdinJSON)
+
+		var out, errOut bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			In:     stdin,
+			Out:    &out,
+			ErrOut: &errOut,
+		}
+
+		command := lint.NewCommand(streams, testConfigFlags())
+		command.FromStdin = true
+
+		err := command.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		// Verify stdin values were applied
+		g.Expect(command.CheckSelectors).To(Equal([]string{"components.*"}))
+		g.Expect(command.SeverityLevel).To(Equal(lint.SeverityLevel("warning")))
+		g.Expect(command.TargetVersion).To(Equal("3.0.0"))
+		g.Expect(command.Verbose).To(BeTrue())
+	})
+
+	t.Run("Complete should parse stdin YAML and apply to command", func(t *testing.T) {
+		g := NewWithT(t)
+
+		stdin := bytes.NewBufferString(fixtureStdinYAML)
+
+		var out, errOut bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			In:     stdin,
+			Out:    &out,
+			ErrOut: &errOut,
+		}
+
+		command := lint.NewCommand(streams, testConfigFlags())
+		command.FromStdin = true
+
+		err := command.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		g.Expect(command.CheckSelectors).To(Equal([]string{"platform.*", "workloads.*"}))
+		g.Expect(command.SeverityLevel).To(Equal(lint.SeverityLevel("critical")))
+		g.Expect(command.OutputFormat).To(Equal(lint.OutputFormat("json")))
+	})
+
+	t.Run("Complete should fail on invalid stdin JSON", func(t *testing.T) {
+		g := NewWithT(t)
+
+		stdin := bytes.NewBufferString(fixtureStdinInvalid)
+
+		var out, errOut bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			In:     stdin,
+			Out:    &out,
+			ErrOut: &errOut,
+		}
+
+		command := lint.NewCommand(streams, testConfigFlags())
+		command.FromStdin = true
+
+		err := command.Complete()
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("parsing stdin"))
+	})
+
+	t.Run("Complete should reject unknown fields in stdin", func(t *testing.T) {
+		g := NewWithT(t)
+
+		stdin := bytes.NewBufferString(fixtureStdinUnknownFields)
+
+		var out, errOut bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			In:     stdin,
+			Out:    &out,
+			ErrOut: &errOut,
+		}
+
+		command := lint.NewCommand(streams, testConfigFlags())
+		command.FromStdin = true
+
+		err := command.Complete()
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("parsing stdin"))
+	})
+
+	t.Run("Complete should keep defaults when stdin fields are omitted", func(t *testing.T) {
+		g := NewWithT(t)
+
+		stdin := bytes.NewBufferString(fixtureStdinMinimal)
+
+		var out, errOut bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			In:     stdin,
+			Out:    &out,
+			ErrOut: &errOut,
+		}
+
+		command := lint.NewCommand(streams, testConfigFlags())
+		command.FromStdin = true
+
+		err := command.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		// TargetVersion should be set from stdin
+		g.Expect(command.TargetVersion).To(Equal("3.0.0"))
+
+		// Defaults should be preserved
+		g.Expect(command.CheckSelectors).To(Equal([]string{"*"}))
+		g.Expect(command.SeverityLevel).To(Equal(lint.SeverityLevelInfo))
+		g.Expect(command.Verbose).To(BeFalse())
+	})
+
+	t.Run("Explicit CLI flags should take precedence over stdin values", func(t *testing.T) {
+		g := NewWithT(t)
+
+		// Stdin sets severity=warning, but CLI flag sets severity=critical
+		stdin := bytes.NewBufferString(fixtureStdinJSON) // has severity: "warning"
+
+		var out, errOut bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			In:     stdin,
+			Out:    &out,
+			ErrOut: &errOut,
+		}
+
+		command := lint.NewCommand(streams, testConfigFlags())
+
+		// Register flags and simulate --severity critical being explicitly set
+		fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
+		command.AddFlags(fs)
+		err := fs.Parse([]string{"--severity", "critical", "--from-stdin"})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		err = command.Complete()
+		g.Expect(err).ToNot(HaveOccurred())
+
+		// CLI flag should win over stdin
+		g.Expect(command.SeverityLevel).To(Equal(lint.SeverityLevel("critical")))
+
+		// Stdin values should apply for non-explicitly-set flags
+		g.Expect(command.CheckSelectors).To(Equal([]string{"components.*"}))
+		g.Expect(command.TargetVersion).To(Equal("3.0.0"))
+		g.Expect(command.Verbose).To(BeTrue())
+	})
+
+	t.Run("Complete should reject invalid severity in stdin", func(t *testing.T) {
+		g := NewWithT(t)
+
+		stdin := bytes.NewBufferString(fixtureStdinInvalidSeverity)
+
+		var out, errOut bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			In:     stdin,
+			Out:    &out,
+			ErrOut: &errOut,
+		}
+
+		command := lint.NewCommand(streams, testConfigFlags())
+		command.FromStdin = true
+
+		err := command.Complete()
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("stdin input"))
+		g.Expect(err.Error()).To(ContainSubstring("invalid"))
+	})
+
+	t.Run("Complete should reject invalid output format in stdin", func(t *testing.T) {
+		g := NewWithT(t)
+
+		stdin := bytes.NewBufferString(fixtureStdinInvalidOutput)
+
+		var out, errOut bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			In:     stdin,
+			Out:    &out,
+			ErrOut: &errOut,
+		}
+
+		command := lint.NewCommand(streams, testConfigFlags())
+		command.FromStdin = true
+
+		err := command.Complete()
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("stdin input"))
+		g.Expect(err.Error()).To(ContainSubstring("invalid"))
 	})
 }

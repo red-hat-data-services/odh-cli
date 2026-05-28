@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -43,6 +44,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
+	"github.com/opendatahub-io/odh-cli/pkg/util/stdin"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
 )
 
@@ -82,6 +84,9 @@ type Command struct {
 	// registry is the check registry for this command instance.
 	// Explicitly populated to avoid global state and enable test isolation.
 	registry *check.CheckRegistry
+
+	// flags stores the FlagSet for checking explicitly set flags
+	flags *pflag.FlagSet
 }
 
 // NewCommand creates a new Command with defaults.
@@ -161,6 +166,7 @@ func NewCommand(
 
 // AddFlags registers command-specific flags with the provided FlagSet.
 func (c *Command) AddFlags(fs *pflag.FlagSet) {
+	c.flags = fs // Store for checking explicitly set flags in applyStdinInput
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescTargetVersion)
 	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescOutput)
 	fs.StringVar((*string)(&c.SeverityLevel), "severity", string(SeverityLevelInfo), flagDescSeverity)
@@ -171,6 +177,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.NoColor, "no-color", false, flagDescNoColor)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescTimeout)
 	fs.StringVar(&c.ISVCDeploymentMode, "isvc-deployment-mode", "all", flagDescISVCDeploymentMode)
+	fs.BoolVar(&c.FromStdin, "from-stdin", false, flagDescFromStdin)
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, flagDescQPS)
@@ -180,11 +187,88 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	c.OutputOptions.AddFlags(fs)
 }
 
+// parseStdinConfig reads and applies configuration from stdin.
+func (c *Command) parseStdinConfig() error {
+	// Only check for TTY if input is an *os.File (skip for bytes.Buffer in tests)
+	if f, ok := c.IO.In().(*os.File); ok && !stdin.IsPiped(f) {
+		c.IO.Errorf(warnStdinIsTerminal)
+	}
+
+	var input StdinInput
+	if err := stdin.Parse(c.IO.In(), &input); err != nil {
+		return fmt.Errorf("parsing stdin: %w", err)
+	}
+
+	// Merge stdin values into command options (stdin overrides defaults)
+	if err := c.applyStdinInput(&input); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// applyStdinInput merges stdin configuration into command options.
+// Explicit CLI flags take precedence over stdin values.
+// Returns an error if stdin contains invalid values.
+func (c *Command) applyStdinInput(input *StdinInput) error {
+	if len(input.Checks) > 0 && !c.flagChanged("checks") {
+		c.CheckSelectors = input.Checks
+	}
+
+	if input.Severity != "" && !c.flagChanged("severity") {
+		level := SeverityLevel(input.Severity)
+		if err := level.Validate(); err != nil {
+			return fmt.Errorf("stdin input: %w", err)
+		}
+		c.SeverityLevel = level
+	}
+
+	if input.TargetVersion != "" && !c.flagChanged("target-version") {
+		c.TargetVersion = input.TargetVersion
+	}
+
+	if input.Verbose && !c.flagChanged("verbose") {
+		c.Verbose = true
+	}
+
+	if input.Quiet && !c.flagChanged("quiet") {
+		c.Quiet = true
+	}
+
+	if input.Output != "" && !c.flagChanged("output") {
+		format := OutputFormat(input.Output)
+		if err := format.Validate(); err != nil {
+			return fmt.Errorf("stdin input: %w", err)
+		}
+		c.OutputFormat = format
+	}
+
+	return nil
+}
+
+// flagChanged returns true if the flag was explicitly set on the command line.
+func (c *Command) flagChanged(name string) bool {
+	if c.flags == nil {
+		return false
+	}
+	f := c.flags.Lookup(name)
+
+	return f != nil && f.Changed
+}
+
 // Complete populates Options and performs pre-validation setup.
 func (c *Command) Complete() error {
 	// Skip client creation when only outputting schema
 	if c.OutputSchema {
 		return nil
+	}
+
+	// Parse stdin configuration if --from-stdin is specified
+	if c.FromStdin {
+		if err := c.parseStdinConfig(); err != nil {
+			//nolint:wrapcheck // NewExitCodeError is a same-module constructor
+			return clierrors.NewExitCodeError(clierrors.ExitValidation, err)
+		}
 	}
 
 	// Validate mutual exclusivity of verbose and quiet

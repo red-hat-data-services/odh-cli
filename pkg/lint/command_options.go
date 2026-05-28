@@ -19,6 +19,29 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 )
 
+// StdinInput defines the JSON/YAML schema for stdin input to the lint command.
+// Use with --from-stdin to pass configuration via stdin. Precedence: defaults < stdin values.
+// Fields set in stdin override command defaults; omitted fields keep their defaults.
+type StdinInput struct {
+	// Checks specifies check selector patterns (replaces --checks flag)
+	Checks []string `json:"checks,omitempty" yaml:"checks,omitempty"`
+
+	// Severity sets the minimum severity level (replaces --severity flag)
+	Severity string `json:"severity,omitempty" yaml:"severity,omitempty"`
+
+	// TargetVersion sets the target version for upgrade checks (replaces --target-version flag)
+	TargetVersion string `json:"targetVersion,omitempty" yaml:"targetVersion,omitempty"`
+
+	// Verbose enables verbose output (replaces --verbose flag)
+	Verbose bool `json:"verbose,omitempty" yaml:"verbose,omitempty"`
+
+	// Quiet suppresses non-essential output (replaces --quiet flag)
+	Quiet bool `json:"quiet,omitempty" yaml:"quiet,omitempty"`
+
+	// Output sets the output format (replaces --output flag)
+	Output string `json:"output,omitempty" yaml:"output,omitempty"`
+}
+
 // OutputFormat represents the output format for lint commands.
 type OutputFormat string
 
@@ -91,6 +114,9 @@ type SharedOptions struct {
 
 	// NoColor disables color output (default: false)
 	NoColor bool
+
+	// FromStdin reads configuration from stdin (JSON/YAML) instead of flags
+	FromStdin bool
 
 	// Timeout is the maximum duration for command execution
 	Timeout time.Duration
