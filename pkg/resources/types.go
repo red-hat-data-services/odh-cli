@@ -100,6 +100,14 @@ var (
 		Resource: "dscinitializations",
 	}
 
+	// DSCInitializationV1 is the v1 API version, served by RHOAI 2.x clusters.
+	DSCInitializationV1 = ResourceType{
+		Group:    "dscinitialization.opendatahub.io",
+		Version:  "v1",
+		Kind:     "DSCInitialization",
+		Resource: "dscinitializations",
+	}
+
 	// DataSciencePipelinesApplicationV1 is the DSP DataSciencePipelinesApplication resource (v1).
 	DataSciencePipelinesApplicationV1 = ResourceType{
 		Group:    "datasciencepipelinesapplications.opendatahub.io",
@@ -198,6 +206,27 @@ var (
 		Version:  "v1",
 		Kind:     "Secret",
 		Resource: "secrets",
+	}
+
+	ServiceAccount = ResourceType{
+		Group:    "",
+		Version:  "v1",
+		Kind:     "ServiceAccount",
+		Resource: "serviceaccounts",
+	}
+
+	Role = ResourceType{
+		Group:    "rbac.authorization.k8s.io",
+		Version:  "v1",
+		Kind:     "Role",
+		Resource: "roles",
+	}
+
+	RoleBinding = ResourceType{
+		Group:    "rbac.authorization.k8s.io",
+		Version:  "v1",
+		Kind:     "RoleBinding",
+		Resource: "rolebindings",
 	}
 
 	PersistentVolumeClaim = ResourceType{

@@ -13,6 +13,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/kueue/rhbok"
+	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/modelserving"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
 )
 
@@ -41,6 +42,11 @@ func NewRunCommand(streams genericiooptions.IOStreams) *RunCommand {
 
 	// Explicitly register all actions (no global state, full test isolation)
 	registry.MustRegister(&rhbok.RHBOKMigrationAction{})
+	registry.MustRegister(&modelserving.ServerlessToRawAction{})
+	registry.MustRegister(&modelserving.ModelMeshToRawAction{})
+	registry.MustRegister(&modelserving.HardwareProfilesIgnorelistAction{})
+	registry.MustRegister(&modelserving.AddOwnerReferencesAction{})
+	registry.MustRegister(&modelserving.ManagedISVCConfigAction{})
 
 	return &RunCommand{
 		SharedOptions: shared,

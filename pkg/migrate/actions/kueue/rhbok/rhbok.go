@@ -76,6 +76,10 @@ func (a *RHBOKMigrationAction) Phase() action.ActionPhase {
 }
 
 func (a *RHBOKMigrationAction) CanApply(target action.Target) bool {
+	if target.CurrentVersion == nil {
+		return false
+	}
+
 	return target.CurrentVersion.Major == 2 && target.CurrentVersion.Minor >= 25
 }
 
@@ -96,9 +100,7 @@ func (a *RHBOKMigrationAction) checkKueueManaged(
 		"Check if Kueue is managed by DataScienceCluster",
 	)
 
-	dsc, err := target.Client.Dynamic().Resource(resources.DataScienceClusterV1.GVR()).
-		Namespace("").
-		Get(ctx, "default-dsc", metav1.GetOptions{})
+	dsc, err := client.GetSingleton(ctx, target.Client, resources.DataScienceClusterV1)
 
 	if err != nil {
 		step.Complete(result.StepFailed, "Failed to get DataScienceCluster: %v", err)

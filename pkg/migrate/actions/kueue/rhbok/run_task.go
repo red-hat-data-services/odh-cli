@@ -16,6 +16,7 @@ func (t *runTask) Validate(
 	ctx context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
+	t.action.verifyRBAC(ctx, target, runPermissions())
 	t.action.checkCurrentKueueState(ctx, target)
 	t.action.checkNoRHBOKConflicts(ctx, target)
 	t.action.verifyKueueResources(ctx, target)

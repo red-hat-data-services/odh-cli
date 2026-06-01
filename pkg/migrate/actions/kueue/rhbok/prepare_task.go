@@ -3,7 +3,6 @@ package rhbok
 import (
 	"context"
 	"errors"
-	"path/filepath"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +22,7 @@ func (t *prepareTask) Validate(
 	ctx context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
+	t.action.verifyRBAC(ctx, target, preparePermissions())
 	t.action.checkCurrentKueueState(ctx, target)
 	t.action.verifyKueueResources(ctx, target)
 
@@ -144,14 +144,11 @@ func (t *prepareTask) backupConfigMap(
 		return
 	}
 
-	// Write namespaced resources to namespace directory
-	outputDir := filepath.Join(target.OutputDir, applicationsNamespace)
-
-	if err := backup.WriteResourcesToDir(outputDir, resources.ConfigMap.GVR(), []*unstructured.Unstructured{obj}); err != nil {
+	if err := backup.WriteResourcesToDir(target.OutputDir, resources.ConfigMap.GVR(), []*unstructured.Unstructured{obj}); err != nil {
 		step.Complete(result.StepFailed, "Failed to write ConfigMap: %v", err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted, "Backed up ConfigMap %s to %s", configMapName, outputDir)
+	step.Complete(result.StepCompleted, "Backed up ConfigMap %s to %s", configMapName, target.OutputDir)
 }

@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/dynamic"
+	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/metadata"
 
@@ -116,6 +117,9 @@ type Client interface {
 
 	// CoreV1 returns the typed CoreV1 client for pod operations like GetLogs.
 	CoreV1() corev1client.CoreV1Interface
+
+	// AuthorizationV1 returns the typed AuthorizationV1 client for RBAC permission checks.
+	AuthorizationV1() authorizationv1client.AuthorizationV1Interface
 }
 
 // OLMReader provides read-only access to OLM resources.

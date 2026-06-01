@@ -17,6 +17,7 @@ import (
 	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	authorizationv1client "k8s.io/client-go/kubernetes/typed/authorization/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/rest"
@@ -55,6 +56,14 @@ func (c *defaultClient) CoreV1() corev1client.CoreV1Interface {
 	}
 
 	return c.kubernetes.CoreV1()
+}
+
+func (c *defaultClient) AuthorizationV1() authorizationv1client.AuthorizationV1Interface {
+	if c.kubernetes == nil {
+		panic("AuthorizationV1 called on a client with no kubernetes client configured")
+	}
+
+	return c.kubernetes.AuthorizationV1()
 }
 
 // NewClientWithConfig creates a client from a pre-configured REST config.

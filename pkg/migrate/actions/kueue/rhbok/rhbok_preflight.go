@@ -2,6 +2,7 @@ package rhbok
 
 import (
 	"context"
+	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -11,7 +12,66 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	"github.com/opendatahub-io/odh-cli/pkg/util/jq"
+	"github.com/opendatahub-io/odh-cli/pkg/util/kube/rbac"
 )
+
+func preparePermissions() []rbac.PermissionCheck {
+	return []rbac.PermissionCheck{
+		{Verb: "get", Group: resources.DataScienceClusterV1.Group, Resource: resources.DataScienceClusterV1.Resource},
+		{Verb: "list", Group: resources.DataScienceClusterV1.Group, Resource: resources.DataScienceClusterV1.Resource},
+		{Verb: "list", Group: resources.ClusterQueue.Group, Resource: resources.ClusterQueue.Resource},
+		{Verb: "list", Group: resources.LocalQueue.Group, Resource: resources.LocalQueue.Resource},
+		{Verb: "get", Group: resources.ConfigMap.Group, Resource: resources.ConfigMap.Resource, Namespace: applicationsNamespace},
+	}
+}
+
+func runPermissions() []rbac.PermissionCheck {
+	return []rbac.PermissionCheck{
+		{Verb: "get", Group: resources.DataScienceClusterV1.Group, Resource: resources.DataScienceClusterV1.Resource},
+		{Verb: "list", Group: resources.DataScienceClusterV1.Group, Resource: resources.DataScienceClusterV1.Resource},
+		{Verb: "update", Group: resources.DataScienceClusterV1.Group, Resource: resources.DataScienceClusterV1.Resource},
+		{Verb: "get", Group: resources.Subscription.Group, Resource: resources.Subscription.Resource, Namespace: operatorNamespace},
+		{Verb: "create", Group: resources.Subscription.Group, Resource: resources.Subscription.Resource, Namespace: operatorNamespace},
+		{Verb: "list", Group: resources.ClusterServiceVersion.Group, Resource: resources.ClusterServiceVersion.Resource, Namespace: operatorNamespace},
+		{Verb: "list", Group: resources.ClusterQueue.Group, Resource: resources.ClusterQueue.Resource},
+		{Verb: "list", Group: resources.LocalQueue.Group, Resource: resources.LocalQueue.Resource},
+		{Verb: "get", Group: resources.ConfigMap.Group, Resource: resources.ConfigMap.Resource, Namespace: applicationsNamespace},
+		{Verb: "update", Group: resources.ConfigMap.Group, Resource: resources.ConfigMap.Resource, Namespace: applicationsNamespace},
+	}
+}
+
+func (a *RHBOKMigrationAction) verifyRBAC(
+	ctx context.Context,
+	target action.Target,
+	checks []rbac.PermissionCheck,
+) {
+	step := target.Recorder.Child(
+		"verify-rbac",
+		"Verify RBAC permissions",
+	)
+
+	denied, err := rbac.CheckPermissions(ctx, target.Client.AuthorizationV1(), checks)
+	if err != nil {
+		step.Complete(result.StepFailed, "Failed to verify RBAC permissions: %v", err)
+
+		return
+	}
+
+	if len(denied) > 0 {
+		for _, d := range denied {
+			step.Child(
+				fmt.Sprintf("denied-%s-%s", d.Verb, d.Resource),
+				fmt.Sprintf("Missing permission: %s", d),
+			).Complete(result.StepFailed, "Permission denied: %s", d)
+		}
+
+		step.Complete(result.StepFailed, "%d required permission(s) denied", len(denied))
+
+		return
+	}
+
+	step.Complete(result.StepCompleted, "All %d required permissions verified", len(checks))
+}
 
 func (a *RHBOKMigrationAction) checkCurrentKueueState(
 	ctx context.Context,
