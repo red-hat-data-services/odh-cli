@@ -60,6 +60,7 @@ type command interface {
 type mutateCommand interface {
 	command
 	SetComponentName(name string)
+	IsFromStdin() bool
 }
 
 // runCommand executes the Complete/Validate/Run lifecycle with error handling.
@@ -150,9 +151,18 @@ func addMutateCommand(parent *cobra.Command, command mutateCommand, use, short s
 		Short:         short,
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args:          cobra.ExactArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			// Allow 0 args when --from-stdin is set
+			if command.IsFromStdin() {
+				return cobra.MaximumNArgs(1)(cmd, args)
+			}
+
+			return cobra.ExactArgs(1)(cmd, args)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			command.SetComponentName(args[0])
+			if len(args) > 0 {
+				command.SetComponentName(args[0])
+			}
 
 			return runCommand(cmd, command, "")
 		},

@@ -48,10 +48,11 @@ func TestEnableCommand_Validate(t *testing.T) {
 
 		cmd, _ := newEnableCommand()
 		cmd.ComponentName = ""
+		cmd.ComponentNames = nil
 
 		err := cmd.Validate()
 		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("component name is required"))
+		g.Expect(err.Error()).To(ContainSubstring("at least one component name is required"))
 	})
 }
 
@@ -61,9 +62,10 @@ func TestDisableCommand_Validate(t *testing.T) {
 
 		cmd, _ := newDisableCommand()
 		cmd.ComponentName = ""
+		cmd.ComponentNames = nil
 
 		err := cmd.Validate()
 		g.Expect(err).To(HaveOccurred())
-		g.Expect(err.Error()).To(ContainSubstring("component name is required"))
+		g.Expect(err.Error()).To(ContainSubstring("at least one component name is required"))
 	})
 }
