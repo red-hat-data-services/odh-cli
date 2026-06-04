@@ -14,9 +14,6 @@ import (
 
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
-	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/kueue/rhbok"
-	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/modelserving"
-	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches/upgrade"
 	"github.com/opendatahub-io/odh-cli/pkg/printer/table"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
@@ -48,20 +45,10 @@ type ListCommand struct {
 
 func NewListCommand(streams genericiooptions.IOStreams) *ListCommand {
 	shared := NewSharedOptions(streams)
-	registry := action.NewActionRegistry()
-
-	// Explicitly register all actions (no global state, full test isolation)
-	registry.MustRegister(&rhbok.RHBOKMigrationAction{})
-	registry.MustRegister(&modelserving.ServerlessToRawAction{})
-	registry.MustRegister(&modelserving.ModelMeshToRawAction{})
-	registry.MustRegister(&modelserving.HardwareProfilesIgnorelistAction{})
-	registry.MustRegister(&modelserving.AddOwnerReferencesAction{})
-	registry.MustRegister(&modelserving.ManagedISVCConfigAction{})
-	registry.MustRegister(&upgrade.WorkbenchUpgradeAction{})
 
 	return &ListCommand{
 		SharedOptions: shared,
-		registry:      registry,
+		registry:      newDefaultRegistry(),
 	}
 }
 
