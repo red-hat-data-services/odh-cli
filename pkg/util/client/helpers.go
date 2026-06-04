@@ -387,6 +387,47 @@ func GetApplicationsNamespace(ctx context.Context, r Reader) (string, error) {
 	return namespace, nil
 }
 
+// DSCINamespaces contains namespaces extracted from DSCInitialization.
+type DSCINamespaces struct {
+	Applications string
+	Monitoring   string
+}
+
+// GetDSCINamespaces retrieves both applications and monitoring namespaces from DSCInitialization
+// in a single API call. Returns empty strings for namespaces that are not set.
+// Returns NotFound error if DSCI doesn't exist. Returns error for jq query failures
+// other than missing fields.
+func GetDSCINamespaces(ctx context.Context, r Reader) (DSCINamespaces, error) {
+	dsci, err := GetDSCInitialization(ctx, r)
+	if err != nil {
+		return DSCINamespaces{}, err
+	}
+
+	var result DSCINamespaces
+
+	// Get applications namespace
+	appNS, err := jq.Query[string](dsci, ".spec.applicationsNamespace")
+	if err != nil && !errors.Is(err, jq.ErrNotFound) {
+		return DSCINamespaces{}, fmt.Errorf("querying applicationsNamespace: %w", err)
+	}
+
+	result.Applications = appNS
+
+	// Get monitoring namespace, fall back to applications namespace
+	monNS, err := jq.Query[string](dsci, ".spec.monitoring.namespace")
+	if err != nil && !errors.Is(err, jq.ErrNotFound) {
+		return DSCINamespaces{}, fmt.Errorf("querying monitoring namespace: %w", err)
+	}
+
+	if monNS != "" {
+		result.Monitoring = monNS
+	} else {
+		result.Monitoring = result.Applications
+	}
+
+	return result, nil
+}
+
 // List lists resources of the given type, applies an optional filter, and returns matching items.
 // CRD-not-found errors are treated as an empty list. Pass nil filter to return all.
 // T must be *unstructured.Unstructured (dispatches to Reader.List) or *metav1.PartialObjectMetadata

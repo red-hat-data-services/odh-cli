@@ -512,6 +512,108 @@ func TestGetApplicationsNamespace_EmptyNamespace(t *testing.T) {
 	g.Expect(namespace).To(BeEmpty())
 }
 
+// createDSCInitializationWithMonitoring creates a DSCI with both applications and monitoring namespaces.
+func createDSCInitializationWithMonitoring(applicationsNS, monitoringNS string) runtime.Object {
+	dsci := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DSCInitialization.APIVersion(),
+			"kind":       resources.DSCInitialization.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsci",
+			},
+			"spec": map[string]any{},
+		},
+	}
+
+	spec := dsci.Object["spec"].(map[string]any)
+	if applicationsNS != "" {
+		spec["applicationsNamespace"] = applicationsNS
+	}
+	if monitoringNS != "" {
+		spec["monitoring"] = map[string]any{
+			"namespace": monitoringNS,
+		}
+	}
+
+	return dsci
+}
+
+func TestGetDSCINamespaces_BothNamespacesSet(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	dsci := createDSCInitializationWithMonitoring("redhat-ods-applications", "redhat-ods-monitoring")
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, dsci)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, dsci)
+
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
+	}
+
+	namespaces, err := GetDSCINamespaces(ctx, client)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(namespaces.Applications).To(Equal("redhat-ods-applications"))
+	g.Expect(namespaces.Monitoring).To(Equal("redhat-ods-monitoring"))
+}
+
+func TestGetDSCINamespaces_MonitoringFallsBackToApplications(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	// DSCI with only applications namespace set
+	dsci := createDSCInitializationWithMonitoring("redhat-ods-applications", "")
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClient(scheme, dsci)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme, dsci)
+
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
+	}
+
+	namespaces, err := GetDSCINamespaces(ctx, client)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(namespaces.Applications).To(Equal("redhat-ods-applications"))
+	g.Expect(namespaces.Monitoring).To(Equal("redhat-ods-applications"))
+}
+
+func TestGetDSCINamespaces_DSCINotFound(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	scheme := runtime.NewScheme()
+	_ = metav1.AddMetaToScheme(scheme)
+
+	gvrListMap := map[schema.GroupVersionResource]string{
+		resources.DSCInitialization.GVR(): "DSCInitializationList",
+	}
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, gvrListMap)
+	metadataClient := metadatafake.NewSimpleMetadataClient(scheme)
+
+	client := &defaultClient{
+		dynamic:   dynamicClient,
+		metadata:  metadataClient,
+		olmReader: newOLMReader(nil),
+	}
+
+	namespaces, err := GetDSCINamespaces(ctx, client)
+
+	g.Expect(err).To(Satisfy(apierrors.IsNotFound))
+	g.Expect(namespaces.Applications).To(BeEmpty())
+	g.Expect(namespaces.Monitoring).To(BeEmpty())
+}
+
 // --- List[T] tests ---
 
 func configMapResourceType() resources.ResourceType {

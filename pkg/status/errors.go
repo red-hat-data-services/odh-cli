@@ -80,14 +80,3 @@ func ErrNoDSCIFound() *clierrors.StructuredError {
 		Suggestion: suggestInstallODHRHOAI,
 	}
 }
-
-// ErrOperatorNamespaceNotFound creates a structured error when operator namespace cannot be discovered.
-func ErrOperatorNamespaceNotFound() *clierrors.StructuredError {
-	return &clierrors.StructuredError{
-		Code:       "OPERATOR_NAMESPACE_NOT_FOUND",
-		Message:    "could not discover operator namespace",
-		Category:   clierrors.CategoryNotFound,
-		Retriable:  false,
-		Suggestion: "Use --operator-namespace to specify the operator namespace",
-	}
-}
