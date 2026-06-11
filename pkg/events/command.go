@@ -47,6 +47,7 @@ type Command struct {
 	OutputFormat       string
 	OperatorNSOverride string
 	Component          string
+	Follow             bool
 
 	// Resolved fields (populated during Complete)
 	Namespace         string
@@ -57,6 +58,9 @@ type Command struct {
 
 	// Clusterhealth integration
 	crClient crclient.Client
+
+	// Stream output writer (initialized during watch mode)
+	streamOut *streamWriter
 }
 
 // NewCommand creates a new events Command with defaults.
@@ -80,6 +84,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
 	fs.StringVar(&c.OperatorNSOverride, "operator-namespace", "", "Override the operator namespace (auto-detected from OLM/CSV)")
 	fs.StringVar(&c.Component, "component", "", "Filter events by ODH component (dashboard, kserve, ray, etc.). Only filters core Kubernetes resources (Pods, Deployments, etc.); CRD-specific events are excluded")
+	fs.BoolVarP(&c.Follow, "follow", "f", false, "Stream new events in real-time")
 }
 
 // Complete resolves derived fields after flag parsing.
@@ -170,6 +175,14 @@ func (c *Command) Validate() error {
 		)
 	}
 
+	if c.Follow && c.OutputFormat != outputFormatTable {
+		return clierrors.NewValidationError(
+			"INVALID_FLAGS",
+			"--follow is only supported with table output",
+			"Remove -o json or -o yaml when using -f",
+		)
+	}
+
 	return nil
 }
 
@@ -200,6 +213,10 @@ func ValidComponents() []string {
 func (c *Command) Run(ctx context.Context) error {
 	if err := c.discoverNamespaces(ctx); err != nil {
 		return err
+	}
+
+	if c.Follow {
+		return c.watchEvents(ctx)
 	}
 
 	return c.listEvents(ctx)

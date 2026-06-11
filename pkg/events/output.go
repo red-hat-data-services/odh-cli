@@ -1,6 +1,7 @@
 package events
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -94,7 +95,9 @@ func (c *Command) renderOutput(events []clusterhealth.EventInfo) error {
 	case outputFormatYAML:
 		return outputYAML(c.IO.Out(), events)
 	default:
-		return outputTable(c.IO.Out(), events, c.AllNamespaces)
+		showNamespace := c.AllNamespaces || !c.NamespaceExplicit
+
+		return outputTable(c.IO.Out(), events, showNamespace)
 	}
 }
 
@@ -190,4 +193,109 @@ func toEventOutputList(events []clusterhealth.EventInfo) any {
 		"kind":       "EventList",
 		"items":      events,
 	}
+}
+
+// streamWriter writes events with fixed-width columns for streaming output.
+type streamWriter struct {
+	w             io.Writer
+	showNamespace bool
+}
+
+func newStreamWriter(w io.Writer, showNamespace bool) *streamWriter {
+	return &streamWriter{w: w, showNamespace: showNamespace}
+}
+
+const (
+	colWidthNamespace = 20
+	colWidthLastSeen  = 10
+	colWidthType      = 8
+	colWidthReason    = 20
+	colWidthObject    = 40
+	colWidthCount     = 6
+)
+
+func (sw *streamWriter) writeHeader() error {
+	var format string
+	if sw.showNamespace {
+		format = fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%s\n",
+			colWidthNamespace, colWidthLastSeen, colWidthType, colWidthReason, colWidthObject, colWidthCount)
+		if _, err := fmt.Fprintf(sw.w, format, "NAMESPACE", "LAST SEEN", "TYPE", "REASON", "OBJECT", "COUNT", "MESSAGE"); err != nil {
+			return fmt.Errorf("writing header: %w", err)
+		}
+
+		return nil
+	}
+
+	format = fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%s\n",
+		colWidthLastSeen, colWidthType, colWidthReason, colWidthObject, colWidthCount)
+	if _, err := fmt.Fprintf(sw.w, format, "LAST SEEN", "TYPE", "REASON", "OBJECT", "COUNT", "MESSAGE"); err != nil {
+		return fmt.Errorf("writing header: %w", err)
+	}
+
+	return nil
+}
+
+func (sw *streamWriter) writeEvent(e clusterhealth.EventInfo) error {
+	age := formatAge(e.LastTime)
+	eventType := sanitizeForTerminal(e.Type)
+	kind := sanitizeForTerminal(e.Kind)
+	name := sanitizeForTerminal(e.Name)
+	reason := sanitizeForTerminal(e.Reason)
+	message := truncateMessage(sanitizeForTerminal(e.Message))
+	object := truncateField(fmt.Sprintf("%s/%s", kind, name), colWidthObject)
+
+	var format string
+	if sw.showNamespace {
+		namespace := truncateField(sanitizeForTerminal(e.Namespace), colWidthNamespace)
+		format = fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%dd  %%s\n",
+			colWidthNamespace, colWidthLastSeen, colWidthType, colWidthReason, colWidthObject, colWidthCount)
+		if _, err := fmt.Fprintf(sw.w, format, namespace, age, eventType, reason, object, e.Count, message); err != nil {
+			return fmt.Errorf("writing event: %w", err)
+		}
+
+		return nil
+	}
+
+	format = fmt.Sprintf("%%-%ds  %%-%ds  %%-%ds  %%-%ds  %%-%dd  %%s\n",
+		colWidthLastSeen, colWidthType, colWidthReason, colWidthObject, colWidthCount)
+	if _, err := fmt.Fprintf(sw.w, format, age, eventType, reason, object, e.Count, message); err != nil {
+		return fmt.Errorf("writing event: %w", err)
+	}
+
+	return nil
+}
+
+func truncateField(s string, maxWidth int) string {
+	if maxWidth <= 3 {
+		return s
+	}
+
+	r := []rune(s)
+	if len(r) <= maxWidth {
+		return s
+	}
+
+	return string(r[:maxWidth-3]) + "..."
+}
+
+func (c *Command) printStreamHeader(showNamespace bool) error {
+	c.streamOut = newStreamWriter(c.IO.Out(), showNamespace)
+
+	if err := c.streamOut.writeHeader(); err != nil {
+		return clierrors.ErrRenderFailed("header", err)
+	}
+
+	return nil
+}
+
+func (c *Command) printSingleEvent(e clusterhealth.EventInfo) error {
+	if c.streamOut == nil {
+		return clierrors.ErrRenderFailed("stream", errors.New("stream writer not initialized"))
+	}
+
+	if err := c.streamOut.writeEvent(e); err != nil {
+		return clierrors.ErrRenderFailed("stream", err)
+	}
+
+	return nil
 }

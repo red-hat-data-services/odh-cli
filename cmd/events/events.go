@@ -51,6 +51,12 @@ const cmdExample = `
   # Filter by component
   kubectl odh events --component kserve
 
+  # Stream events in real-time
+  kubectl odh events -f
+
+  # Combine flags
+  kubectl odh events --component dashboard -f
+
   # All ODH namespaces, YAML output
   kubectl odh events -A -o yaml
 `

@@ -206,3 +206,35 @@ func TestValidComponents(t *testing.T) {
 	// Check that list is sorted
 	g.Expect(slices.IsSorted(components)).To(BeTrue(), "ValidComponents() should be sorted")
 }
+
+func TestCommandValidate_Follow(t *testing.T) {
+	tests := []struct {
+		name         string
+		follow       bool
+		outputFormat string
+		wantErr      bool
+	}{
+		{"follow with table", true, "table", false},
+		{"follow with json", true, "json", true},
+		{"follow with yaml", true, "yaml", true},
+		{"no follow with json", false, "json", false},
+		{"no follow with yaml", false, "yaml", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			cmd := &events.Command{
+				OutputFormat: tt.outputFormat,
+				Follow:       tt.follow,
+				ConfigFlags:  genericclioptions.NewConfigFlags(true),
+			}
+			err := cmd.Validate()
+			if tt.wantErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+			}
+		})
+	}
+}

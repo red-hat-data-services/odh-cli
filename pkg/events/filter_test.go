@@ -2,20 +2,25 @@
 package events
 
 import (
+	"bytes"
 	"context"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/opendatahub-io/opendatahub-operator/pkg/clusterhealth"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/watch"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
+	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
 
 	. "github.com/onsi/gomega"
 )
@@ -244,6 +249,35 @@ func TestKindToGVR(t *testing.T) {
 	}
 }
 
+// TestKindToGVRMapCompleteness ensures kindToGVRMap includes all expected core Kubernetes
+// resource types. When adding new core resource types to pkg/resources/types.go that should
+// be supported by --component filtering, add them to this list.
+func TestKindToGVRMapCompleteness(t *testing.T) {
+	// expectedCoreKinds lists core/apps Kubernetes kinds that should be in kindToGVRMap.
+	// This test catches drift when new resource types are added to pkg/resources/types.go
+	// but not to kindToGVRMap, which would silently exclude those events from --component filtering.
+	expectedCoreKinds := []string{
+		"Pod",
+		"Deployment",
+		"ReplicaSet",
+		"StatefulSet",
+		"DaemonSet",
+		"Service",
+		"ConfigMap",
+		"Secret",
+		"Job",
+	}
+
+	for _, kind := range expectedCoreKinds {
+		t.Run(kind, func(t *testing.T) {
+			gvr := kindToGVR(kind)
+			if gvr.Resource == "" {
+				t.Errorf("kindToGVRMap missing expected kind %q - add it to support --component filtering for %s events", kind, kind)
+			}
+		})
+	}
+}
+
 // createTestPod creates an unstructured Pod with the given labels.
 func createTestPod(name, namespace string, labels map[string]string) *unstructured.Unstructured {
 	pod := &unstructured.Unstructured{}
@@ -382,4 +416,260 @@ func TestFilterEventsByComponent(t *testing.T) {
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(filtered).To(HaveLen(1))
 	g.Expect(filtered[0].Name).To(Equal("kserve-pod"))
+}
+
+func TestLabelCache(t *testing.T) {
+	g := NewWithT(t)
+	cache := newLabelCache()
+
+	// Empty cache
+	val, found := cache.lookup("key1")
+	g.Expect(found).To(BeFalse())
+	g.Expect(val).To(BeFalse())
+
+	// Store and retrieve
+	cache.store("key1", true)
+	val, found = cache.lookup("key1")
+	g.Expect(found).To(BeTrue())
+	g.Expect(val).To(BeTrue())
+
+	cache.store("key2", false)
+	val, found = cache.lookup("key2")
+	g.Expect(found).To(BeTrue())
+	g.Expect(val).To(BeFalse())
+}
+
+func TestIsEventBeforeCutoff(t *testing.T) {
+	now := time.Now()
+	cutoff := now.Add(-1 * time.Hour)
+
+	tests := []struct {
+		name  string
+		event *corev1.Event
+		want  bool
+	}{
+		{
+			name:  "event after cutoff",
+			event: &corev1.Event{LastTimestamp: metav1.Time{Time: now.Add(-30 * time.Minute)}},
+			want:  false,
+		},
+		{
+			name:  "event before cutoff",
+			event: &corev1.Event{LastTimestamp: metav1.Time{Time: now.Add(-2 * time.Hour)}},
+			want:  true,
+		},
+		{
+			name:  "zero timestamp",
+			event: &corev1.Event{},
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			got := isEventBeforeCutoff(tt.event, cutoff)
+			g.Expect(got).To(Equal(tt.want))
+		})
+	}
+}
+
+func TestExtractValidEvent(t *testing.T) {
+	now := time.Now()
+	cmd := &Command{}
+	cache := newLabelCache()
+
+	tests := []struct {
+		name       string
+		watchEvent watch.Event
+		wantNil    bool
+	}{
+		{
+			name: "valid ADDED event",
+			watchEvent: watch.Event{
+				Type:   watch.Added,
+				Object: &corev1.Event{LastTimestamp: metav1.Time{Time: now}},
+			},
+			wantNil: false,
+		},
+		{
+			name: "valid MODIFIED event",
+			watchEvent: watch.Event{
+				Type:   watch.Modified,
+				Object: &corev1.Event{LastTimestamp: metav1.Time{Time: now}},
+			},
+			wantNil: false,
+		},
+		{
+			name: "DELETED event returns nil",
+			watchEvent: watch.Event{
+				Type:   watch.Deleted,
+				Object: &corev1.Event{},
+			},
+			wantNil: true,
+		},
+		{
+			name: "non-Event object returns nil",
+			watchEvent: watch.Event{
+				Type:   watch.Added,
+				Object: &corev1.Pod{},
+			},
+			wantNil: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			got := cmd.extractValidEvent(context.Background(), tt.watchEvent, cache, time.Time{})
+			if tt.wantNil {
+				g.Expect(got).To(BeNil())
+			} else {
+				g.Expect(got).ToNot(BeNil())
+			}
+		})
+	}
+}
+
+func TestEventToEventInfo(t *testing.T) {
+	g := NewWithT(t)
+	now := time.Now()
+
+	event := corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test-ns"},
+		InvolvedObject: corev1.ObjectReference{
+			Kind: "Pod",
+			Name: "test-pod",
+		},
+		Reason:        "Created",
+		Message:       "Pod created",
+		Count:         1,
+		Type:          "Normal",
+		LastTimestamp: metav1.Time{Time: now},
+	}
+
+	info := eventToEventInfo(event)
+
+	g.Expect(info.Namespace).To(Equal("test-ns"))
+	g.Expect(info.Name).To(Equal("test-pod"))
+	g.Expect(info.Kind).To(Equal("Pod"))
+	g.Expect(info.Reason).To(Equal("Created"))
+	g.Expect(info.Type).To(Equal("Normal"))
+}
+
+func TestProcessWatchEvents(t *testing.T) {
+	g := NewWithT(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	fakeWatcher := watch.NewFake()
+	eventCh := make(chan corev1.Event, 10)
+	cache := newLabelCache()
+	cmd := &Command{}
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		cmd.processWatchEvents(ctx, fakeWatcher, eventCh, cache, time.Time{})
+	})
+
+	event := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{Name: "event1", Namespace: "test"},
+		InvolvedObject: corev1.ObjectReference{
+			Kind: "Pod",
+			Name: "pod1",
+		},
+		LastTimestamp: metav1.Time{Time: time.Now()},
+	}
+
+	fakeWatcher.Add(event)
+
+	g.Eventually(func() int {
+		select {
+		case <-eventCh:
+			return 1
+		default:
+			return 0
+		}
+	}, time.Second, 10*time.Millisecond).Should(Equal(1))
+
+	fakeWatcher.Stop()
+	wg.Wait()
+}
+
+func TestStreamWatchedEvents(t *testing.T) {
+	g := NewWithT(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	var buf bytes.Buffer
+	io := iostreams.NewIOStreams(nil, &buf, &buf)
+
+	cmd := &Command{
+		IO:        io,
+		streamOut: newStreamWriter(&buf, false),
+	}
+
+	eventCh := make(chan corev1.Event, 5)
+	eventCh <- corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "test"},
+		InvolvedObject: corev1.ObjectReference{
+			Kind: "Pod",
+			Name: "test-pod",
+		},
+		Reason:        "Created",
+		Type:          "Normal",
+		LastTimestamp: metav1.Time{Time: time.Now()},
+	}
+	close(eventCh)
+
+	err := cmd.streamWatchedEvents(ctx, eventCh)
+	g.Expect(err).ToNot(HaveOccurred())
+
+	output := buf.String()
+	g.Expect(output).To(ContainSubstring("Pod/test-pod"))
+	g.Expect(output).To(ContainSubstring("Created"))
+}
+
+func TestComponentCacheKey(t *testing.T) {
+	g := NewWithT(t)
+
+	key := componentCacheKey("kserve", "odh-apps", "Pod", "my-pod")
+	g.Expect(key).To(Equal("kserve/odh-apps/Pod/my-pod"))
+
+	key2 := componentCacheKey("dashboard", "ns", "Deployment", "deploy")
+	g.Expect(key2).To(Equal("dashboard/ns/Deployment/deploy"))
+}
+
+func TestCheckEventMatchesComponentCached_ErrorNotCached(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	// Create client with no objects - will return not found (no error)
+	fakeClient := createFakeClient(t)
+	var errBuf bytes.Buffer
+
+	cmd := &Command{
+		Client:    fakeClient,
+		Component: "kserve",
+		IO:        iostreams.NewIOStreams(nil, nil, &errBuf),
+	}
+
+	cache := newLabelCache()
+	event := &corev1.Event{
+		InvolvedObject: corev1.ObjectReference{
+			Kind:      "Pod",
+			Name:      "missing-pod",
+			Namespace: "odh-apps",
+		},
+	}
+
+	// First call - object not found returns false, caches result
+	result := cmd.checkEventMatchesComponentCached(ctx, event, cache)
+	g.Expect(result).To(BeFalse())
+
+	// Verify it was cached (not found is not an error, so it's cached)
+	cacheKey := componentCacheKey("kserve", "odh-apps", "Pod", "missing-pod")
+	val, found := cache.lookup(cacheKey)
+	g.Expect(found).To(BeTrue())
+	g.Expect(val).To(BeFalse())
 }
