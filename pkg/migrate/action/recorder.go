@@ -9,16 +9,14 @@ type StepRecorder interface {
 	// The child automatically nests under this recorder's step.
 	Child(name string, description string) StepRecorder
 
-	// Complete marks this step as complete with status and message.
-	// Supports printf-style formatting with variadic arguments.
-	Complete(status result.StepStatus, messageFormat string, args ...any)
+	// Completef marks this step as complete with status and a printf-style formatted message.
+	Completef(status result.StepStatus, messageFormat string, args ...any)
 
 	// AddDetail adds structured data to this step (for JSON/YAML output).
 	AddDetail(key string, value any)
 
-	// Record adds a simple completed sub-step (convenience method for quick recordings).
-	// Supports printf-style formatting with variadic arguments.
-	Record(name string, messageFormat string, status result.StepStatus, args ...any)
+	// Recordf adds a simple completed sub-step with a printf-style formatted message.
+	Recordf(name string, messageFormat string, status result.StepStatus, args ...any)
 }
 
 // RootRecorder is the top-level recorder that can build the final ActionResult.

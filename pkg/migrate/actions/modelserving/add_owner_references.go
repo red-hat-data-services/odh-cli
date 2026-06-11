@@ -76,18 +76,18 @@ func (a *AddOwnerReferencesAction) addOwnerReferences(
 
 	isvcs, err := listISVCsByDeploymentMode(ctx, target, deploymentModeRawDeployment)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list InferenceServices: %v", err)
+		step.Completef(result.StepFailed, "Failed to list InferenceServices: %v", err)
 
 		return
 	}
 
 	if len(isvcs) == 0 {
-		step.Complete(result.StepSkipped, msgOwnerRefNoISVCs)
+		step.Completef(result.StepSkipped, msgOwnerRefNoISVCs)
 
 		return
 	}
 
-	step.Record("list-isvcs", msgOwnerRefFoundISVCs, result.StepCompleted, len(isvcs))
+	step.Recordf("list-isvcs", msgOwnerRefFoundISVCs, result.StepCompleted, len(isvcs))
 
 	patchedCount := 0
 
@@ -101,7 +101,7 @@ func (a *AddOwnerReferencesAction) addOwnerReferences(
 		patchedCount++
 	}
 
-	step.Complete(result.StepCompleted, msgOwnerRefComplete, patchedCount)
+	step.Completef(result.StepCompleted, msgOwnerRefComplete, patchedCount)
 }
 
 func (a *AddOwnerReferencesAction) patchAuthResourceOwnerRefs(
@@ -128,7 +128,7 @@ func (a *AddOwnerReferencesAction) patchAuthResourceOwnerRefs(
 		},
 	})
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to marshal owner reference patch: %v", err)
+		step.Completef(result.StepFailed, "Failed to marshal owner reference patch: %v", err)
 
 		return
 	}
@@ -160,7 +160,7 @@ func (a *AddOwnerReferencesAction) patchResourceOwnerRef(
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			step.Record(
+			step.Recordf(
 				"patch-"+resourceName,
 				msgOwnerRefNotFound,
 				result.StepSkipped,
@@ -170,7 +170,7 @@ func (a *AddOwnerReferencesAction) patchResourceOwnerRef(
 			return
 		}
 
-		step.Record(
+		step.Recordf(
 			"patch-"+resourceName,
 			msgOwnerRefPatchFailed,
 			result.StepFailed,
@@ -181,7 +181,7 @@ func (a *AddOwnerReferencesAction) patchResourceOwnerRef(
 	}
 
 	if target.DryRun {
-		step.Record(
+		step.Recordf(
 			"patch-"+resourceName,
 			msgOwnerRefPatchDryRun,
 			result.StepSkipped,
@@ -196,7 +196,7 @@ func (a *AddOwnerReferencesAction) patchResourceOwnerRef(
 		Patch(ctx, resourceName, types.StrategicMergePatchType, patchData, metav1.PatchOptions{})
 
 	if err != nil {
-		step.Record(
+		step.Recordf(
 			"patch-"+resourceName,
 			msgOwnerRefPatchFailed,
 			result.StepFailed,
@@ -206,7 +206,7 @@ func (a *AddOwnerReferencesAction) patchResourceOwnerRef(
 		return
 	}
 
-	step.Record(
+	step.Recordf(
 		"patch-"+resourceName,
 		msgOwnerRefPatched,
 		result.StepCompleted,

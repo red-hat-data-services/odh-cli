@@ -23,11 +23,11 @@ func (t *prepareTask) Validate(
 
 	notebooks, err := t.action.listNotebooks(ctx, target)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list Notebooks: %v", err)
+		step.Completef(result.StepFailed, "Failed to list Notebooks: %v", err)
 	} else if len(notebooks) == 0 {
-		step.Complete(result.StepCompleted, "No Notebook instances found")
+		step.Completef(result.StepCompleted, "No Notebook instances found")
 	} else {
-		step.Complete(result.StepCompleted, "Found %d Notebook(s) across the cluster", len(notebooks))
+		step.Completef(result.StepCompleted, "Found %d Notebook(s) across the cluster", len(notebooks))
 	}
 
 	return buildResult(target.Recorder)
@@ -44,13 +44,13 @@ func (t *prepareTask) Execute(
 
 	notebooks, err := t.action.listNotebooks(ctx, target)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list Notebooks: %v", err)
+		step.Completef(result.StepFailed, "Failed to list Notebooks: %v", err)
 
 		return buildResult(target.Recorder)
 	}
 
 	if len(notebooks) == 0 {
-		step.Complete(result.StepCompleted, "No Notebook instances found, nothing to back up")
+		step.Completef(result.StepCompleted, "No Notebook instances found, nothing to back up")
 
 		return buildResult(target.Recorder)
 	}
@@ -64,7 +64,7 @@ func (t *prepareTask) Execute(
 		return r, fmt.Errorf("prepare backup failed: %w", err)
 	}
 
-	step.Complete(result.StepCompleted, "Backup phase complete")
+	step.Completef(result.StepCompleted, "Backup phase complete")
 
 	return buildResult(target.Recorder)
 }

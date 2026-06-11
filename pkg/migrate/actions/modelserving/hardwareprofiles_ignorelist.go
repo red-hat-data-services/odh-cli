@@ -91,12 +91,12 @@ func (a *HardwareProfilesIgnorelistAction) updateConfigMap(
 	configMap, err := getInferenceServiceConfig(ctx, target, namespace)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			step.Complete(result.StepSkipped, msgHPConfigMapNotFound, namespace)
+			step.Completef(result.StepSkipped, msgHPConfigMapNotFound, namespace)
 
 			return
 		}
 
-		step.Complete(result.StepFailed, msgGetConfigMapFailed, namespace, inferenceServiceConfigName, err)
+		step.Completef(result.StepFailed, msgGetConfigMapFailed, namespace, inferenceServiceConfigName, err)
 
 		return
 	}
@@ -108,7 +108,7 @@ func (a *HardwareProfilesIgnorelistAction) updateConfigMap(
 	a.updateDisallowedList(target, configMap, step)
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, msgHPCompleteDryRun)
+		step.Completef(result.StepSkipped, msgHPCompleteDryRun)
 
 		return
 	}
@@ -119,12 +119,12 @@ func (a *HardwareProfilesIgnorelistAction) updateConfigMap(
 		Update(ctx, configMap, metav1.UpdateOptions{})
 
 	if err != nil {
-		step.Complete(result.StepFailed, msgHPUpdateFailed, namespace, inferenceServiceConfigName, err)
+		step.Completef(result.StepFailed, msgHPUpdateFailed, namespace, inferenceServiceConfigName, err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted, msgHPComplete)
+	step.Completef(result.StepCompleted, msgHPComplete)
 }
 
 func (a *HardwareProfilesIgnorelistAction) setManagedAnnotation(
@@ -135,7 +135,7 @@ func (a *HardwareProfilesIgnorelistAction) setManagedAnnotation(
 	step := parentStep.Child("set-managed-annotation", "Set managed annotation")
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, msgHPManagedAnnotationDryRun, annotationManaged, managedFalse, inferenceServiceConfigName)
+		step.Completef(result.StepSkipped, msgHPManagedAnnotationDryRun, annotationManaged, managedFalse, inferenceServiceConfigName)
 
 		return
 	}
@@ -148,7 +148,7 @@ func (a *HardwareProfilesIgnorelistAction) setManagedAnnotation(
 	annotations[annotationManaged] = managedFalse
 	configMap.SetAnnotations(annotations)
 
-	step.Complete(result.StepCompleted, msgHPManagedAnnotationSet, annotationManaged, managedFalse, inferenceServiceConfigName)
+	step.Completef(result.StepCompleted, msgHPManagedAnnotationSet, annotationManaged, managedFalse, inferenceServiceConfigName)
 }
 
 func (a *HardwareProfilesIgnorelistAction) updateDisallowedList(
@@ -160,14 +160,14 @@ func (a *HardwareProfilesIgnorelistAction) updateDisallowedList(
 
 	cfg, err := parseISVCConfigData(configMap)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to parse inferenceService config: %v", err)
+		step.Completef(result.StepFailed, "Failed to parse inferenceService config: %v", err)
 
 		return
 	}
 
 	currentList, err := cfg.disallowedList()
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to read disallowed list: %v", err)
+		step.Completef(result.StepFailed, "Failed to read disallowed list: %v", err)
 
 		return
 	}
@@ -181,38 +181,38 @@ func (a *HardwareProfilesIgnorelistAction) updateDisallowedList(
 	}
 
 	if len(missing) == 0 {
-		step.Complete(result.StepCompleted, msgHPDisallowedListCurrent)
+		step.Completef(result.StepCompleted, msgHPDisallowedListCurrent)
 
 		return
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, msgHPDisallowedListDryRun, len(missing), missing)
+		step.Completef(result.StepSkipped, msgHPDisallowedListDryRun, len(missing), missing)
 
 		return
 	}
 
 	// Add missing annotations and serialize back (preserves all other fields)
 	if err := cfg.setDisallowedList(append(currentList, missing...)); err != nil {
-		step.Complete(result.StepFailed, "Failed to update disallowed list: %v", err)
+		step.Completef(result.StepFailed, "Failed to update disallowed list: %v", err)
 
 		return
 	}
 
 	updatedJSON, err := json.Marshal(cfg)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to marshal updated config: %v", err)
+		step.Completef(result.StepFailed, "Failed to marshal updated config: %v", err)
 
 		return
 	}
 
 	if err := jq.Transform(configMap, ".data.%s = %q", inferenceServiceDataKey, string(updatedJSON)); err != nil {
-		step.Complete(result.StepFailed, "Failed to update ConfigMap data: %v", err)
+		step.Completef(result.StepFailed, "Failed to update ConfigMap data: %v", err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted, msgHPDisallowedListUpdated, len(missing), missing)
+	step.Completef(result.StepCompleted, msgHPDisallowedListUpdated, len(missing), missing)
 }
 
 // restartKServeController restarts the KServe controller deployment.
@@ -253,13 +253,13 @@ func (t *hpIgnorelistPrepareTask) Execute(
 
 	namespace, err := getApplicationsNamespace(ctx, target)
 	if err != nil {
-		step.Complete(result.StepFailed, msgGetAppNamespaceFailed, err)
+		step.Completef(result.StepFailed, msgGetAppNamespaceFailed, err)
 
 		return buildResult(target)
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, "Would backup ConfigMap %s from namespace %s", inferenceServiceConfigName, namespace)
+		step.Completef(result.StepSkipped, "Would backup ConfigMap %s from namespace %s", inferenceServiceConfigName, namespace)
 
 		return buildResult(target)
 	}
@@ -267,9 +267,9 @@ func (t *hpIgnorelistPrepareTask) Execute(
 	configMap, err := getInferenceServiceConfig(ctx, target, namespace)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			step.Complete(result.StepSkipped, msgHPConfigMapNotFound, namespace)
+			step.Completef(result.StepSkipped, msgHPConfigMapNotFound, namespace)
 		} else {
-			step.Complete(result.StepFailed, msgGetConfigMapFailed, namespace, inferenceServiceConfigName, err)
+			step.Completef(result.StepFailed, msgGetConfigMapFailed, namespace, inferenceServiceConfigName, err)
 		}
 
 		return buildResult(target)
@@ -278,9 +278,9 @@ func (t *hpIgnorelistPrepareTask) Execute(
 	outputDir := filepath.Join(target.OutputDir, namespace)
 
 	if err := backup.WriteResourcesToDir(outputDir, resources.ConfigMap.GVR(), []*unstructured.Unstructured{configMap}); err != nil {
-		step.Complete(result.StepFailed, "Failed to write ConfigMap backup: %v", err)
+		step.Completef(result.StepFailed, "Failed to write ConfigMap backup: %v", err)
 	} else {
-		step.Complete(result.StepCompleted, "Backed up ConfigMap %s to %s", inferenceServiceConfigName, outputDir)
+		step.Completef(result.StepCompleted, "Backed up ConfigMap %s to %s", inferenceServiceConfigName, outputDir)
 	}
 
 	return buildResult(target)
@@ -306,7 +306,7 @@ func (t *hpIgnorelistRunTask) Execute(
 	namespace, err := getApplicationsNamespace(ctx, target)
 	if err != nil {
 		step := target.Recorder.Child("get-namespace", "Get applications namespace")
-		step.Complete(result.StepFailed, msgGetAppNamespaceFailed, err)
+		step.Completef(result.StepFailed, msgGetAppNamespaceFailed, err)
 
 		return buildResult(target)
 	}

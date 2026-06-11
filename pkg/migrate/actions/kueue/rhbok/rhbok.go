@@ -103,26 +103,26 @@ func (a *RHBOKMigrationAction) checkKueueManaged(
 	dsc, err := client.GetSingleton(ctx, target.Client, resources.DataScienceClusterV1)
 
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to get DataScienceCluster: %v", err)
+		step.Completef(result.StepFailed, "Failed to get DataScienceCluster: %v", err)
 
 		return false
 	}
 
 	managementState, err := jq.Query[string](dsc, kueueComponentPath)
 	if err != nil {
-		step.Complete(result.StepCompleted,
+		step.Completef(result.StepCompleted,
 			"Kueue component not found in DataScienceCluster (not managed)")
 
 		return false
 	}
 
 	if managementState == managementStateManaged {
-		step.Complete(result.StepCompleted, "Kueue is managed (managementState=%s)", managementState)
+		step.Completef(result.StepCompleted, "Kueue is managed (managementState=%s)", managementState)
 
 		return true
 	}
 
-	step.Complete(result.StepCompleted, "Kueue is not managed (managementState=%s)", managementState)
+	step.Completef(result.StepCompleted, "Kueue is not managed (managementState=%s)", managementState)
 
 	return false
 }
@@ -147,13 +147,13 @@ func (a *RHBOKMigrationAction) preserveKueueConfig(
 		Get(ctx, configMapName, metav1.GetOptions{})
 
 	if err != nil {
-		checkStep.Complete(result.StepCompleted, "ConfigMap not found")
-		step.Complete(result.StepSkipped, "ConfigMap %s not found (skipped): %v", configMapName, err)
+		checkStep.Completef(result.StepCompleted, "ConfigMap not found")
+		step.Completef(result.StepSkipped, "ConfigMap %s not found (skipped): %v", configMapName, err)
 
 		return
 	}
 
-	checkStep.Complete(result.StepCompleted, "ConfigMap exists")
+	checkStep.Completef(result.StepCompleted, "ConfigMap exists")
 
 	// Apply annotation
 	annotateStep := step.Child(
@@ -162,8 +162,8 @@ func (a *RHBOKMigrationAction) preserveKueueConfig(
 	)
 
 	if target.DryRun {
-		annotateStep.Complete(result.StepSkipped, "Would annotate ConfigMap %s/%s", applicationsNamespace, configMapName)
-		step.Complete(result.StepSkipped, "Dry-run: ConfigMap annotation skipped")
+		annotateStep.Completef(result.StepSkipped, "Would annotate ConfigMap %s/%s", applicationsNamespace, configMapName)
+		step.Completef(result.StepSkipped, "Dry-run: ConfigMap annotation skipped")
 
 		return
 	}
@@ -177,15 +177,15 @@ func (a *RHBOKMigrationAction) preserveKueueConfig(
 
 	annotationsJSON, err := json.Marshal(annotations)
 	if err != nil {
-		annotateStep.Complete(result.StepFailed, "Failed to marshal annotations: %v", err)
-		step.Complete(result.StepFailed, "Failed to annotate ConfigMap")
+		annotateStep.Completef(result.StepFailed, "Failed to marshal annotations: %v", err)
+		step.Completef(result.StepFailed, "Failed to annotate ConfigMap")
 
 		return
 	}
 
 	if err := jq.Transform(configMap, ".metadata.annotations = %s", annotationsJSON); err != nil {
-		annotateStep.Complete(result.StepFailed, "Failed to set annotations: %v", err)
-		step.Complete(result.StepFailed, "Failed to annotate ConfigMap")
+		annotateStep.Completef(result.StepFailed, "Failed to set annotations: %v", err)
+		step.Completef(result.StepFailed, "Failed to annotate ConfigMap")
 
 		return
 	}
@@ -195,14 +195,14 @@ func (a *RHBOKMigrationAction) preserveKueueConfig(
 		Update(ctx, configMap, metav1.UpdateOptions{})
 
 	if err != nil {
-		annotateStep.Complete(result.StepFailed, "Failed to update ConfigMap: %v", err)
-		step.Complete(result.StepFailed, "Failed to annotate ConfigMap")
+		annotateStep.Completef(result.StepFailed, "Failed to update ConfigMap: %v", err)
+		step.Completef(result.StepFailed, "Failed to annotate ConfigMap")
 
 		return
 	}
 
-	annotateStep.Complete(result.StepCompleted, "Annotation applied successfully")
-	step.Complete(result.StepCompleted, "ConfigMap %s annotated for preservation", configMapName)
+	annotateStep.Completef(result.StepCompleted, "Annotation applied successfully")
+	step.Completef(result.StepCompleted, "ConfigMap %s annotated for preservation", configMapName)
 }
 
 func (a *RHBOKMigrationAction) installRHBOKOperator(
@@ -226,7 +226,7 @@ func (a *RHBOKMigrationAction) installRHBOKOperator(
 		target.IO.Fprintln()
 		target.IO.Errorf("About to install Red Hat Build of Kueue Operator")
 		if !confirmation.Prompt(target.IO, "Proceed with operator installation?") {
-			step.Complete(result.StepSkipped, "User cancelled installation")
+			step.Completef(result.StepSkipped, "User cancelled installation")
 
 			return
 		}
@@ -248,17 +248,17 @@ func (a *RHBOKMigrationAction) installRHBOKOperator(
 	})
 
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to install operator: %v", err)
+		step.Completef(result.StepFailed, "Failed to install operator: %v", err)
 
 		return
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, "Operator installation checks completed")
+		step.Completef(result.StepSkipped, "Operator installation checks completed")
 	} else if subscriptionExists {
-		step.Complete(result.StepCompleted, "Red Hat build of Kueue operator already installed and ready")
+		step.Completef(result.StepCompleted, "Red Hat build of Kueue operator already installed and ready")
 	} else {
-		step.Complete(result.StepCompleted, "Red Hat build of Kueue operator installed successfully")
+		step.Completef(result.StepCompleted, "Red Hat build of Kueue operator installed successfully")
 	}
 }
 
@@ -273,7 +273,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 
 	dsc, err := client.GetSingleton(ctx, target.Client, resources.DataScienceClusterV1)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to get DataScienceCluster: %v", err)
+		step.Completef(result.StepFailed, "Failed to get DataScienceCluster: %v", err)
 
 		return
 	}
@@ -281,13 +281,13 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 	// Check if already set to Unmanaged
 	currentState, err := jq.Query[string](dsc, ".spec.components.kueue.managementState")
 	if err == nil && currentState == managementStateUnmanaged {
-		step.Complete(result.StepSkipped, "DataScienceCluster Kueue already set to Unmanaged")
+		step.Completef(result.StepSkipped, "DataScienceCluster Kueue already set to Unmanaged")
 
 		return
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, "Would set %s=%s", kueueComponentPath, managementStateUnmanaged)
+		step.Completef(result.StepSkipped, "Would set %s=%s", kueueComponentPath, managementStateUnmanaged)
 
 		return
 	}
@@ -296,7 +296,7 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 		target.IO.Fprintln()
 		target.IO.Errorf("About to update DataScienceCluster Kueue managementState to %s", managementStateUnmanaged)
 		if !confirmation.Prompt(target.IO, "Proceed with configuration update?") {
-			step.Complete(result.StepSkipped, "User cancelled update")
+			step.Completef(result.StepSkipped, "User cancelled update")
 
 			return
 		}
@@ -337,12 +337,12 @@ func (a *RHBOKMigrationAction) updateDataScienceCluster(
 	})
 
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to update DataScienceCluster: %v", err)
+		step.Completef(result.StepFailed, "Failed to update DataScienceCluster: %v", err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted, "DataScienceCluster updated successfully")
+	step.Completef(result.StepCompleted, "DataScienceCluster updated successfully")
 }
 
 func (a *RHBOKMigrationAction) verifyResourcesPreserved(
@@ -355,7 +355,7 @@ func (a *RHBOKMigrationAction) verifyResourcesPreserved(
 	)
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, "Would verify ClusterQueue and LocalQueue resources are preserved")
+		step.Completef(result.StepSkipped, "Would verify ClusterQueue and LocalQueue resources are preserved")
 
 		return
 	}
@@ -364,12 +364,12 @@ func (a *RHBOKMigrationAction) verifyResourcesPreserved(
 	if err != nil {
 		// If the CRD doesn't exist, that's fine - it means there are no Kueue resources
 		if apierrors.IsNotFound(err) {
-			step.Complete(result.StepCompleted, "No ClusterQueue CRD found (no resources to preserve)")
+			step.Completef(result.StepCompleted, "No ClusterQueue CRD found (no resources to preserve)")
 
 			return
 		}
 
-		step.Complete(result.StepFailed, "Failed to list ClusterQueues: %v", err)
+		step.Completef(result.StepFailed, "Failed to list ClusterQueues: %v", err)
 
 		return
 	}
@@ -378,17 +378,17 @@ func (a *RHBOKMigrationAction) verifyResourcesPreserved(
 	if err != nil {
 		// If the CRD doesn't exist, that's fine - it means there are no Kueue resources
 		if apierrors.IsNotFound(err) {
-			step.Complete(result.StepCompleted, "No LocalQueue CRD found (%d ClusterQueues preserved)", len(clusterQueues))
+			step.Completef(result.StepCompleted, "No LocalQueue CRD found (%d ClusterQueues preserved)", len(clusterQueues))
 
 			return
 		}
 
-		step.Complete(result.StepFailed, "Failed to list LocalQueues: %v", err)
+		step.Completef(result.StepFailed, "Failed to list LocalQueues: %v", err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted,
+	step.Completef(result.StepCompleted,
 		"All %d ClusterQueues and %d LocalQueues preserved",
 		len(clusterQueues), len(localQueues))
 }

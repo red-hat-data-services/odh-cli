@@ -71,18 +71,18 @@ func (a *ServerlessToRawAction) convertISVCs(
 
 	isvcs, err := listISVCsByDeploymentMode(ctx, target, deploymentModeServerless)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list Serverless InferenceServices: %v", err)
+		step.Completef(result.StepFailed, "Failed to list Serverless InferenceServices: %v", err)
 
 		return
 	}
 
 	if len(isvcs) == 0 {
-		step.Complete(result.StepSkipped, msgServerlessNoISVCs)
+		step.Completef(result.StepSkipped, msgServerlessNoISVCs)
 
 		return
 	}
 
-	step.Record("list-isvcs", msgFoundISVCs, result.StepCompleted, len(isvcs), deploymentModeServerless)
+	step.Recordf("list-isvcs", msgFoundISVCs, result.StepCompleted, len(isvcs), deploymentModeServerless)
 
 	// Confirm with user
 	if !target.SkipConfirm && !target.DryRun {
@@ -90,7 +90,7 @@ func (a *ServerlessToRawAction) convertISVCs(
 		target.IO.Errorf(msgServerlessConfirm, len(isvcs))
 
 		if !confirmation.Prompt(target.IO, "Proceed with conversion?") {
-			step.Complete(result.StepSkipped, msgServerlessCancelled)
+			step.Completef(result.StepSkipped, msgServerlessCancelled)
 
 			return
 		}
@@ -113,9 +113,9 @@ func (a *ServerlessToRawAction) convertISVCs(
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, msgServerlessDryRun, convertedCount)
+		step.Completef(result.StepSkipped, msgServerlessDryRun, convertedCount)
 	} else {
-		step.Complete(result.StepCompleted, msgServerlessComplete, convertedCount)
+		step.Completef(result.StepCompleted, msgServerlessComplete, convertedCount)
 	}
 }
 
@@ -143,19 +143,19 @@ func (t *serverlessToRawPrepareTask) Execute(
 
 	isvcs, err := listISVCsByDeploymentMode(ctx, target, deploymentModeServerless)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list Serverless InferenceServices: %v", err)
+		step.Completef(result.StepFailed, "Failed to list Serverless InferenceServices: %v", err)
 
 		return buildResult(target)
 	}
 
 	if len(isvcs) == 0 {
-		step.Complete(result.StepSkipped, msgServerlessNoISVCs)
+		step.Completef(result.StepSkipped, msgServerlessNoISVCs)
 
 		return buildResult(target)
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, "Would backup %d Serverless InferenceServices", len(isvcs))
+		step.Completef(result.StepSkipped, "Would backup %d Serverless InferenceServices", len(isvcs))
 
 		return buildResult(target)
 	}
@@ -166,13 +166,13 @@ func (t *serverlessToRawPrepareTask) Execute(
 	for ns, nsISVCs := range byNamespace {
 		outputDir := filepath.Join(target.OutputDir, ns)
 		if err := backup.WriteResourcesToDir(outputDir, resources.InferenceService.GVR(), nsISVCs); err != nil {
-			step.Complete(result.StepFailed, "Failed to write InferenceServices backup for namespace %s: %v", ns, err)
+			step.Completef(result.StepFailed, "Failed to write InferenceServices backup for namespace %s: %v", ns, err)
 
 			return buildResult(target)
 		}
 	}
 
-	step.Complete(result.StepCompleted, msgServerlessBackupDone, len(isvcs), target.OutputDir)
+	step.Completef(result.StepCompleted, msgServerlessBackupDone, len(isvcs), target.OutputDir)
 
 	return buildResult(target)
 }
@@ -191,11 +191,11 @@ func (t *serverlessToRawRunTask) Validate(
 
 	isvcs, err := listISVCsByDeploymentMode(ctx, target, deploymentModeServerless)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list Serverless InferenceServices: %v", err)
+		step.Completef(result.StepFailed, "Failed to list Serverless InferenceServices: %v", err)
 	} else if len(isvcs) == 0 {
-		step.Complete(result.StepSkipped, msgServerlessNoISVCs)
+		step.Completef(result.StepSkipped, msgServerlessNoISVCs)
 	} else {
-		step.Complete(result.StepCompleted, msgFoundISVCs, len(isvcs), deploymentModeServerless)
+		step.Completef(result.StepCompleted, msgFoundISVCs, len(isvcs), deploymentModeServerless)
 	}
 
 	return buildResult(target)

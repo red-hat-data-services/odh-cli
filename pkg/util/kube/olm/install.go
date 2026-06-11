@@ -106,22 +106,22 @@ func dryRunOperatorInstall(
 
 	switch {
 	case err == nil:
-		checkStep.Complete(result.StepCompleted, "Subscription already exists, skipping creation")
+		checkStep.Completef(result.StepCompleted, "Subscription already exists, skipping creation")
 
 		// Verify CSV is ready (read-only operation, safe to run in dry-run)
 		verifyStep := config.Recorder.Child("verify-csv",
 			fmt.Sprintf("Verifying operator CSV '%s' is ready in namespace '%s'", config.CSVNamePrefix, config.Namespace))
 
 		if err := WaitForCSV(ctx, k8sClient, config.Namespace, config.CSVNamePrefix, config.PollInterval, config.Timeout); err != nil {
-			verifyStep.Complete(result.StepFailed, fmt.Sprintf("CSV verification failed: %v", err))
+			verifyStep.Completef(result.StepFailed, "CSV verification failed: %v", err)
 
 			return fmt.Errorf("failed waiting for operator CSV: %w", err)
 		}
 
-		verifyStep.Complete(result.StepCompleted, "Operator CSV is ready")
+		verifyStep.Completef(result.StepCompleted, "Operator CSV is ready")
 
 	case apierrors.IsNotFound(err):
-		checkStep.Complete(result.StepCompleted, "Subscription not found")
+		checkStep.Completef(result.StepCompleted, "Subscription not found")
 
 		createStep := config.Recorder.Child("create-subscription", "Would create Subscription")
 		createStep.AddDetail("name", config.Name)
@@ -133,15 +133,15 @@ func dryRunOperatorInstall(
 		if config.StartingCSV != "" {
 			createStep.AddDetail("startingCSV", config.StartingCSV)
 		}
-		createStep.Complete(result.StepSkipped,
-			fmt.Sprintf("Would create subscription %s/%s", config.Namespace, config.Name))
+		createStep.Completef(result.StepSkipped,
+			"Would create subscription %s/%s", config.Namespace, config.Name)
 
 		waitStep := config.Recorder.Child("wait-csv",
 			fmt.Sprintf("Would wait for CSV '%s' to reach 'Succeeded' phase", config.CSVNamePrefix))
-		waitStep.Complete(result.StepSkipped, fmt.Sprintf("Timeout: %v", config.Timeout))
+		waitStep.Completef(result.StepSkipped, "Timeout: %v", config.Timeout)
 
 	default:
-		checkStep.Complete(result.StepFailed, fmt.Sprintf("Failed to check subscription: %v", err))
+		checkStep.Completef(result.StepFailed, "Failed to check subscription: %v", err)
 
 		return fmt.Errorf("failed to check subscription: %w", err)
 	}

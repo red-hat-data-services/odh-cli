@@ -98,25 +98,25 @@ func migrateAllDSPAsToV1(
 
 	v1alpha1DSPAs, err := listDSPAs(ctx, c, resources.DataSciencePipelinesApplicationV1Alpha1)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list v1alpha1 DSPAs: %v", err)
+		step.Completef(result.StepFailed, "Failed to list v1alpha1 DSPAs: %v", err)
 
 		return err
 	}
 
 	if len(v1alpha1DSPAs) == 0 {
-		step.Complete(result.StepCompleted, "No v1alpha1 DSPAs found")
+		step.Completef(result.StepCompleted, "No v1alpha1 DSPAs found")
 
 		return nil
 	}
 
-	step.Record("detected", "Found %d v1alpha1 DSPA(s) to migrate", result.StepCompleted, len(v1alpha1DSPAs))
+	step.Recordf("detected", "Found %d v1alpha1 DSPA(s) to migrate", result.StepCompleted, len(v1alpha1DSPAs))
 
 	if opts.DryRun {
 		for _, dspa := range v1alpha1DSPAs {
-			step.Record(dspa.Name, "Would migrate %s/%s from v1alpha1 to v1", result.StepSkipped, dspa.Namespace, dspa.Name)
+			step.Recordf(dspa.Name, "Would migrate %s/%s from v1alpha1 to v1", result.StepSkipped, dspa.Namespace, dspa.Name)
 		}
 
-		step.Complete(result.StepSkipped, "Dry-run: %d DSPA(s) would be migrated", len(v1alpha1DSPAs))
+		step.Completef(result.StepSkipped, "Dry-run: %d DSPA(s) would be migrated", len(v1alpha1DSPAs))
 
 		return nil
 	}
@@ -143,9 +143,9 @@ func migrateAllDSPAsToV1(
 
 		for _, dspa := range remaining {
 			if migrateErr := migrateDSPAToV1(ctx, c, dspa, opts); migrateErr != nil {
-				step.Record(dspa.Name, "Migration attempt failed: %v (will retry)", result.StepFailed, migrateErr)
+				step.Recordf(dspa.Name, "Migration attempt failed: %v (will retry)", result.StepFailed, migrateErr)
 			} else {
-				step.Record(dspa.Name, "Migrated %s/%s to v1", result.StepCompleted, dspa.Namespace, dspa.Name)
+				step.Recordf(dspa.Name, "Migrated %s/%s to v1", result.StepCompleted, dspa.Namespace, dspa.Name)
 			}
 		}
 
@@ -158,12 +158,12 @@ func migrateAllDSPAsToV1(
 	})
 
 	if retryErr != nil {
-		step.Complete(result.StepFailed, "Failed to migrate all v1alpha1 DSPAs: %v", retryErr)
+		step.Completef(result.StepFailed, "Failed to migrate all v1alpha1 DSPAs: %v", retryErr)
 
 		return fmt.Errorf("migrating v1alpha1 DSPAs: %w", retryErr)
 	}
 
-	step.Complete(result.StepCompleted, "All v1alpha1 DSPAs migrated to v1")
+	step.Completef(result.StepCompleted, "All v1alpha1 DSPAs migrated to v1")
 
 	return nil
 }

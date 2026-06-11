@@ -25,13 +25,13 @@ func (t *runTask) Validate(
 
 	notebooks, err := t.action.listNotebooks(ctx, target)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list Notebooks: %v", err)
+		step.Completef(result.StepFailed, "Failed to list Notebooks: %v", err)
 
 		return buildResult(target.Recorder)
 	}
 
 	if len(notebooks) == 0 {
-		step.Complete(result.StepCompleted, "No Notebook instances found, nothing to migrate")
+		step.Completef(result.StepCompleted, "No Notebook instances found, nothing to migrate")
 
 		return buildResult(target.Recorder)
 	}
@@ -44,7 +44,7 @@ func (t *runTask) Validate(
 	for _, nb := range stopped {
 		hasMismatch, checkErr := hasContainerNameMismatch(nb)
 		if checkErr != nil {
-			step.Record("check-error",
+			step.Recordf("check-error",
 				fmt.Sprintf("Failed to inspect Notebook %s/%s: %v", nb.GetNamespace(), nb.GetName(), checkErr),
 				result.StepFailed)
 			checkErrCount++
@@ -58,13 +58,13 @@ func (t *runTask) Validate(
 	}
 
 	if checkErrCount > 0 {
-		step.Complete(result.StepFailed,
+		step.Completef(result.StepFailed,
 			"Failed to inspect %d Notebook(s); resolve validation errors first", checkErrCount)
 	} else if mismatchCount > 0 {
-		step.Complete(result.StepCompleted,
+		step.Completef(result.StepCompleted,
 			"Found %d Notebook(s) with container name mismatches requiring update", mismatchCount)
 	} else {
-		step.Complete(result.StepCompleted,
+		step.Completef(result.StepCompleted,
 			"All %d stopped Notebook(s) have correct container names", len(stopped))
 	}
 
@@ -82,23 +82,23 @@ func (t *runTask) Execute(
 
 	notebooks, err := t.action.listNotebooks(ctx, target)
 	if err != nil {
-		listStep.Complete(result.StepFailed, "Failed to list Notebooks: %v", err)
+		listStep.Completef(result.StepFailed, "Failed to list Notebooks: %v", err)
 
 		return buildResult(target.Recorder)
 	}
 
 	if len(notebooks) == 0 {
-		listStep.Complete(result.StepCompleted, "No Notebook instances found, nothing to migrate")
+		listStep.Completef(result.StepCompleted, "No Notebook instances found, nothing to migrate")
 
 		return buildResult(target.Recorder)
 	}
 
-	listStep.Complete(result.StepCompleted, "Found %d Notebook(s)", len(notebooks))
+	listStep.Completef(result.StepCompleted, "Found %d Notebook(s)", len(notebooks))
 
 	stopped := t.action.handleNonStoppedNotebooks(target, notebooks, target.Recorder)
 
 	if len(stopped) == 0 {
-		target.Recorder.Record("no-eligible-notebooks",
+		target.Recorder.Recordf("no-eligible-notebooks",
 			"No eligible Notebook(s) to migrate (all non-stopped)", result.StepSkipped)
 
 		return buildResult(target.Recorder)
@@ -126,7 +126,7 @@ func (t *runTask) fixContainerNames(
 	for _, nb := range notebooks {
 		hasMismatch, err := hasContainerNameMismatch(nb)
 		if err != nil {
-			step.Record("check-error",
+			step.Recordf("check-error",
 				fmt.Sprintf("Error checking %s/%s: %v", nb.GetNamespace(), nb.GetName(), err),
 				result.StepFailed)
 			checkErrCount++
@@ -140,14 +140,14 @@ func (t *runTask) fixContainerNames(
 	}
 
 	if len(toFix) == 0 && checkErrCount > 0 {
-		step.Complete(result.StepFailed,
+		step.Completef(result.StepFailed,
 			"Failed to inspect %d Notebook(s), no fixable mismatches found", checkErrCount)
 
 		return
 	}
 
 	if len(toFix) == 0 {
-		step.Complete(result.StepCompleted,
+		step.Completef(result.StepCompleted,
 			"All %d Notebook(s) have correct container names, no changes needed", len(notebooks))
 
 		return
@@ -157,7 +157,7 @@ func (t *runTask) fixContainerNames(
 		for _, nb := range toFix {
 			containers, _ := extractWorkloadContainers(nb)
 			if len(containers) > 0 {
-				step.Record("would-fix",
+				step.Recordf("would-fix",
 					fmt.Sprintf("Would rename container %q to %q in %s/%s",
 						containers[0].Name, nb.GetName(), nb.GetNamespace(), nb.GetName()),
 					result.StepSkipped)
@@ -165,11 +165,11 @@ func (t *runTask) fixContainerNames(
 		}
 
 		if checkErrCount > 0 {
-			step.Complete(result.StepFailed,
+			step.Completef(result.StepFailed,
 				"Would fix %d Notebook(s), but failed to inspect %d",
 				len(toFix), checkErrCount)
 		} else {
-			step.Complete(result.StepSkipped,
+			step.Completef(result.StepSkipped,
 				"Would fix container names in %d Notebook(s)", len(toFix))
 		}
 
@@ -177,7 +177,7 @@ func (t *runTask) fixContainerNames(
 	}
 
 	if !t.action.promptBeforeModification(target, len(toFix)) {
-		step.Complete(result.StepSkipped, "User cancelled modification")
+		step.Completef(result.StepSkipped, "User cancelled modification")
 
 		return
 	}
@@ -185,11 +185,11 @@ func (t *runTask) fixContainerNames(
 	successCount, failCount := t.applyContainerFixes(ctx, target, toFix, step)
 
 	if failCount > 0 || checkErrCount > 0 {
-		step.Complete(result.StepFailed,
+		step.Completef(result.StepFailed,
 			"Fixed %d/%d Notebook(s), %d update failure(s), %d inspection failure(s)",
 			successCount, len(toFix), failCount, checkErrCount)
 	} else {
-		step.Complete(result.StepCompleted,
+		step.Completef(result.StepCompleted,
 			"Fixed container names in %d/%d Notebook(s)", successCount, len(toFix))
 	}
 }
@@ -214,21 +214,21 @@ func (t *runTask) applyContainerFixes(
 
 		oldName, err := fixContainerName(patched)
 		if err != nil {
-			nbStep.Complete(result.StepFailed, "Failed to fix container name: %v", err)
+			nbStep.Completef(result.StepFailed, "Failed to fix container name: %v", err)
 			failCount++
 
 			continue
 		}
 
 		if err := t.action.updateNotebook(ctx, target, patched); err != nil {
-			nbStep.Complete(result.StepFailed,
+			nbStep.Completef(result.StepFailed,
 				"Failed to update Notebook %s/%s: %v", nb.GetNamespace(), nb.GetName(), err)
 			failCount++
 
 			continue
 		}
 
-		nbStep.Complete(result.StepCompleted,
+		nbStep.Completef(result.StepCompleted,
 			"Renamed container %q to %q", oldName, nb.GetName())
 		successCount++
 	}

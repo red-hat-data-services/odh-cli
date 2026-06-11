@@ -18,7 +18,7 @@ func TestRecorder_Child(t *testing.T) {
 	step1 := recorder.Child("step1", "First Step")
 	g.Expect(step1).ToNot(BeNil())
 
-	step1.Complete(result.StepCompleted, "Step 1 completed")
+	step1.Completef(result.StepCompleted, "Step 1 completed")
 
 	actionResult := recorder.Build()
 	g.Expect(actionResult).ToNot(BeNil())
@@ -38,9 +38,9 @@ func TestRecorder_NestedChildren(t *testing.T) {
 	child1 := parent.Child("child1", "Child 1")
 	child2 := parent.Child("child2", "Child 2")
 
-	child1.Complete(result.StepCompleted, "Child 1 done")
-	child2.Complete(result.StepFailed, "Child 2 failed")
-	parent.Complete(result.StepFailed, "Parent failed due to child")
+	child1.Completef(result.StepCompleted, "Child 1 done")
+	child2.Completef(result.StepFailed, "Child 2 failed")
+	parent.Completef(result.StepFailed, "Parent failed due to child")
 
 	actionResult := recorder.Build()
 	g.Expect(actionResult.Status.Steps).To(HaveLen(1))
@@ -62,7 +62,7 @@ func TestRecorder_AddDetail(t *testing.T) {
 
 	step.AddDetail("key1", "value1")
 	step.AddDetail("key2", 42)
-	step.Complete(result.StepCompleted, "Done")
+	step.Completef(result.StepCompleted, "Done")
 
 	actionResult := recorder.Build()
 	g.Expect(actionResult.Status.Steps).To(HaveLen(1))
@@ -76,7 +76,7 @@ func TestRecorder_Record(t *testing.T) {
 	g := NewWithT(t)
 
 	recorder := action.NewRootRecorder()
-	recorder.Record("quick-step", "Quick step message", result.StepCompleted)
+	recorder.Recordf("quick-step", "Quick step message", result.StepCompleted)
 
 	actionResult := recorder.Build()
 	g.Expect(actionResult.Status.Steps).To(HaveLen(1))

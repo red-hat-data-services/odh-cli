@@ -74,18 +74,18 @@ func (a *ManagedISVCConfigAction) setManagedTrue(
 	configMap, err := getInferenceServiceConfig(ctx, target, namespace)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			step.Complete(result.StepSkipped, msgConfigMapNotFound, inferenceServiceConfigName, namespace)
+			step.Completef(result.StepSkipped, msgConfigMapNotFound, inferenceServiceConfigName, namespace)
 
 			return false
 		}
 
-		step.Complete(result.StepFailed, msgGetConfigMapFailed, namespace, inferenceServiceConfigName, err)
+		step.Completef(result.StepFailed, msgGetConfigMapFailed, namespace, inferenceServiceConfigName, err)
 
 		return false
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, msgManagedAnnotationDryRun, annotationManaged, managedTrue, inferenceServiceConfigName)
+		step.Completef(result.StepSkipped, msgManagedAnnotationDryRun, annotationManaged, managedTrue, inferenceServiceConfigName)
 
 		return false
 	}
@@ -103,12 +103,12 @@ func (a *ManagedISVCConfigAction) setManagedTrue(
 		Update(ctx, configMap, metav1.UpdateOptions{})
 
 	if err != nil {
-		step.Complete(result.StepFailed, msgManagedUpdateFailed, namespace, inferenceServiceConfigName, err)
+		step.Completef(result.StepFailed, msgManagedUpdateFailed, namespace, inferenceServiceConfigName, err)
 
 		return false
 	}
 
-	step.Complete(result.StepCompleted, msgManagedAnnotationSet, annotationManaged, managedTrue, inferenceServiceConfigName)
+	step.Completef(result.StepCompleted, msgManagedAnnotationSet, annotationManaged, managedTrue, inferenceServiceConfigName)
 
 	return true
 }
@@ -133,7 +133,7 @@ func (t *managedISVCConfigRunTask) Execute(
 	namespace, err := getApplicationsNamespace(ctx, target)
 	if err != nil {
 		step := target.Recorder.Child("get-namespace", "Get applications namespace")
-		step.Complete(result.StepFailed, msgGetAppNamespaceFailed, err)
+		step.Completef(result.StepFailed, msgGetAppNamespaceFailed, err)
 
 		return buildResult(target)
 	}

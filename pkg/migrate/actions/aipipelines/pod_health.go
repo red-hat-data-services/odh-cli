@@ -82,7 +82,7 @@ func capturePodHealth(
 			Namespace(dspa.Namespace).
 			List(ctx, metav1.ListOptions{})
 		if err != nil {
-			step.Complete(result.StepFailed, "Failed to list pods: %v", err)
+			step.Completef(result.StepFailed, "Failed to list pods: %v", err)
 
 			return state, fmt.Errorf("listing pods in %s: %w", dspa.Namespace, err)
 		}
@@ -98,22 +98,22 @@ func capturePodHealth(
 			dspaState.PodGroups = append(dspaState.PodGroups, group)
 
 			if !group.PodsFound {
-				step.Record(prefix, "[WARN] No pods found", result.StepCompleted)
+				step.Recordf(prefix, "[WARN] No pods found", result.StepCompleted)
 			} else if group.AllHealthy {
-				step.Record(prefix, "[OK] All pods healthy", result.StepCompleted)
+				step.Recordf(prefix, "[OK] All pods healthy", result.StepCompleted)
 			} else {
 				for _, pod := range group.Pods {
 					if pod.Healthy {
-						step.Record(pod.Name, "[OK] Running, Ready", result.StepCompleted)
+						step.Recordf(pod.Name, "[OK] Running, Ready", result.StepCompleted)
 					} else {
-						step.Record(pod.Name, "[FAIL] Phase: %s, Ready: %s", result.StepFailed, pod.Phase, pod.Ready)
+						step.Recordf(pod.Name, "[FAIL] Phase: %s, Ready: %s", result.StepFailed, pod.Phase, pod.Ready)
 					}
 				}
 			}
 		}
 
 		state.DSPAs = append(state.DSPAs, dspaState)
-		step.Complete(result.StepCompleted, "Captured %d pod groups", len(dspaState.PodGroups))
+		step.Completef(result.StepCompleted, "Captured %d pod groups", len(dspaState.PodGroups))
 	}
 
 	return state, nil

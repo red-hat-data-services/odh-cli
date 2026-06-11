@@ -247,7 +247,7 @@ func (a *WorkbenchUpgradeAction) backupNotebooks(
 	)
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, "Would backup %d Notebook(s) to %s", len(notebooks), target.OutputDir)
+		step.Completef(result.StepSkipped, "Would backup %d Notebook(s) to %s", len(notebooks), target.OutputDir)
 
 		return nil
 	}
@@ -264,7 +264,7 @@ func (a *WorkbenchUpgradeAction) backupNotebooks(
 		outputDir := filepath.Join(target.OutputDir, ns)
 
 		if err := backup.WriteResourcesToDir(outputDir, resources.Notebook.GVR(), nbs); err != nil {
-			step.Complete(result.StepFailed, "Failed to write Notebooks in namespace %s: %v", ns, err)
+			step.Completef(result.StepFailed, "Failed to write Notebooks in namespace %s: %v", ns, err)
 
 			return fmt.Errorf("backup failed for namespace %s: %w", ns, err)
 		}
@@ -272,7 +272,7 @@ func (a *WorkbenchUpgradeAction) backupNotebooks(
 		totalBacked += len(nbs)
 	}
 
-	step.Complete(result.StepCompleted, "Backed up %d Notebook(s) across %d namespace(s) to %s", totalBacked, len(byNamespace), target.OutputDir)
+	step.Completef(result.StepCompleted, "Backed up %d Notebook(s) across %d namespace(s) to %s", totalBacked, len(byNamespace), target.OutputDir)
 
 	return nil
 }
@@ -300,7 +300,7 @@ func (a *WorkbenchUpgradeAction) handleNonStoppedNotebooks(
 	}
 
 	if len(nonStopped) == 0 {
-		step.Complete(result.StepCompleted, "All %d Notebook(s) are stopped", len(notebooks))
+		step.Completef(result.StepCompleted, "All %d Notebook(s) are stopped", len(notebooks))
 
 		return stopped
 	}
@@ -313,7 +313,7 @@ func (a *WorkbenchUpgradeAction) handleNonStoppedNotebooks(
 	step.AddDetail("non_stopped_notebooks", names)
 
 	if a.ForceNonStopped {
-		step.Complete(result.StepCompleted,
+		step.Completef(result.StepCompleted,
 			"Including %d non-stopped Notebook(s) (--force-non-stopped): %s",
 			len(nonStopped), strings.Join(names, ", "))
 
@@ -321,7 +321,7 @@ func (a *WorkbenchUpgradeAction) handleNonStoppedNotebooks(
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped,
+		step.Completef(result.StepSkipped,
 			"Found %d non-stopped Notebook(s) (would skip in dry-run): %s",
 			len(nonStopped), strings.Join(names, ", "))
 
@@ -340,7 +340,7 @@ func (a *WorkbenchUpgradeAction) handleNonStoppedNotebooks(
 		target.IO.Errorf("Use --force-non-stopped to include them (unsafe).")
 	}
 
-	step.Complete(result.StepCompleted,
+	step.Completef(result.StepCompleted,
 		"Skipping %d non-stopped Notebook(s), proceeding with %d stopped Notebook(s)",
 		len(nonStopped), len(stopped))
 

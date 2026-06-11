@@ -37,11 +37,11 @@ func (t *postUpgradeCheckRunTask) Validate(_ context.Context, target action.Targ
 	statePath := defaultStatePath()
 
 	if _, err := loadPodHealthState(statePath); err != nil {
-		step.Complete(result.StepFailed,
+		step.Completef(result.StepFailed,
 			"Pre-upgrade state not found at %s. Run 'migrate prepare -m %s' before upgrading",
 			statePath, preUpgradeCheckID)
 	} else {
-		step.Complete(result.StepCompleted, "Pre-upgrade state file found at %s", statePath)
+		step.Completef(result.StepCompleted, "Pre-upgrade state file found at %s", statePath)
 	}
 
 	return recorder.Build(), nil
@@ -57,17 +57,17 @@ func (t *postUpgradeCheckRunTask) Execute(ctx context.Context, target action.Tar
 
 	preState, err := loadPodHealthState(statePath)
 	if err != nil {
-		loadStep.Complete(result.StepFailed,
+		loadStep.Completef(result.StepFailed,
 			"Pre-upgrade state not found at %s. Run 'migrate prepare -m %s' before upgrading",
 			statePath, preUpgradeCheckID)
 
 		return recorder.Build(), fmt.Errorf("loading pre-upgrade state: %w", err)
 	}
 
-	loadStep.Complete(result.StepCompleted, "Loaded state captured at %s", preState.CapturedAt)
+	loadStep.Completef(result.StepCompleted, "Loaded state captured at %s", preState.CapturedAt)
 
 	if len(preState.DSPAs) == 0 {
-		recorder.Record("no-dspas", "No DSPAs were tracked pre-upgrade", result.StepCompleted)
+		recorder.Recordf("no-dspas", "No DSPAs were tracked pre-upgrade", result.StepCompleted)
 
 		return recorder.Build(), nil
 	}
@@ -75,7 +75,7 @@ func (t *postUpgradeCheckRunTask) Execute(ctx context.Context, target action.Tar
 	// Initial check — if no degradation, return immediately
 	comparisons, err := comparePodHealth(ctx, target.Client, preState)
 	if err != nil {
-		recorder.Record("compare-failed", "Failed to compare pod health: %v", result.StepFailed, err)
+		recorder.Recordf("compare-failed", "Failed to compare pod health: %v", result.StepFailed, err)
 
 		return recorder.Build(), fmt.Errorf("comparing pod health: %w", err)
 	}
@@ -92,7 +92,7 @@ func (t *postUpgradeCheckRunTask) Execute(ctx context.Context, target action.Tar
 
 	comparisons, err = t.pollForRecovery(ctx, target, preState)
 	if err != nil {
-		recorder.Record("poll-failed", "Failed during recovery polling: %v", result.StepFailed, err)
+		recorder.Recordf("poll-failed", "Failed during recovery polling: %v", result.StepFailed, err)
 
 		return recorder.Build(), fmt.Errorf("polling for recovery: %w", err)
 	}
@@ -182,13 +182,13 @@ func (t *postUpgradeCheckRunTask) recordComparisons(
 			recordFailedPodGroup(groupStep, comp.Current)
 		}
 
-		groupStep.Complete(status, msg)
+		groupStep.Completef(status, "%s", msg)
 	}
 
 	if hasAnyDegradation(comparisons) {
-		step.Complete(result.StepFailed, "One or more DSPA pods degraded compared to pre-upgrade state")
+		step.Completef(result.StepFailed, "One or more DSPA pods degraded compared to pre-upgrade state")
 	} else {
-		step.Complete(result.StepCompleted, "All DSPA pods are in an equal or better state than before upgrade")
+		step.Completef(result.StepCompleted, "All DSPA pods are in an equal or better state than before upgrade")
 	}
 }
 
@@ -201,16 +201,16 @@ func comparePodHealthFreshCtx(c client.Client, preState PodHealthState) ([]podGr
 
 func recordFailedPodGroup(groupStep action.StepRecorder, current PodGroup) {
 	if !current.PodsFound {
-		groupStep.Record("missing", "[MISSING] No pods found post-upgrade", result.StepFailed)
+		groupStep.Recordf("missing", "[MISSING] No pods found post-upgrade", result.StepFailed)
 
 		return
 	}
 
 	for _, pod := range current.Pods {
 		if pod.Healthy {
-			groupStep.Record(pod.Name, "[OK] %s (Running, Ready)", result.StepCompleted, pod.Name)
+			groupStep.Recordf(pod.Name, "[OK] %s (Running, Ready)", result.StepCompleted, pod.Name)
 		} else {
-			groupStep.Record(pod.Name, "[FAIL] %s (Phase: %s, Ready: %s)", result.StepFailed, pod.Name, pod.Phase, pod.Ready)
+			groupStep.Recordf(pod.Name, "[FAIL] %s (Phase: %s, Ready: %s)", result.StepFailed, pod.Name, pod.Phase, pod.Ready)
 		}
 	}
 }

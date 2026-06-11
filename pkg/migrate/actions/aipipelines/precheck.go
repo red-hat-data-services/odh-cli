@@ -56,7 +56,7 @@ func (t *preUpgradeCheckPrepareTask) discover(
 
 	v1DSPAs, err := listDSPAs(ctx, target.Client, resources.DataSciencePipelinesApplicationV1)
 	if err != nil {
-		healthStep.Complete(result.StepFailed, "Failed to list v1 DSPAs: %v", err)
+		healthStep.Completef(result.StepFailed, "Failed to list v1 DSPAs: %v", err)
 
 		return
 	}
@@ -64,7 +64,7 @@ func (t *preUpgradeCheckPrepareTask) discover(
 	var state PodHealthState
 
 	if len(v1DSPAs) == 0 {
-		healthStep.Complete(result.StepCompleted, "No v1 DSPAs found")
+		healthStep.Completef(result.StepCompleted, "No v1 DSPAs found")
 
 		state = PodHealthState{
 			CapturedAt: time.Now().UTC().Format(time.RFC3339),
@@ -75,12 +75,12 @@ func (t *preUpgradeCheckPrepareTask) discover(
 
 		state, captureErr = capturePodHealth(ctx, target.Client, healthStep, v1DSPAs)
 		if captureErr != nil {
-			healthStep.Complete(result.StepFailed, "Failed to capture pod health: %v", captureErr)
+			healthStep.Completef(result.StepFailed, "Failed to capture pod health: %v", captureErr)
 
 			return
 		}
 
-		healthStep.Complete(result.StepCompleted, "Captured pod health for %d DSPA(s)", len(v1DSPAs))
+		healthStep.Completef(result.StepCompleted, "Captured pod health for %d DSPA(s)", len(v1DSPAs))
 	}
 
 	if !target.DryRun {
@@ -92,19 +92,19 @@ func (t *preUpgradeCheckPrepareTask) discover(
 
 	v1alpha1DSPAs, err := listDSPAs(ctx, target.Client, resources.DataSciencePipelinesApplicationV1Alpha1)
 	if err != nil {
-		v1alpha1Step.Complete(result.StepFailed, "Failed to list v1alpha1 DSPAs: %v", err)
+		v1alpha1Step.Completef(result.StepFailed, "Failed to list v1alpha1 DSPAs: %v", err)
 
 		return
 	}
 
 	if len(v1alpha1DSPAs) == 0 {
-		v1alpha1Step.Complete(result.StepCompleted, "No deprecated v1alpha1 DSPAs found")
+		v1alpha1Step.Completef(result.StepCompleted, "No deprecated v1alpha1 DSPAs found")
 	} else {
 		for _, dspa := range v1alpha1DSPAs {
-			v1alpha1Step.Record(dspa.Name, "v1alpha1 DSPA %s/%s needs migration", result.StepCompleted, dspa.Namespace, dspa.Name)
+			v1alpha1Step.Recordf(dspa.Name, "v1alpha1 DSPA %s/%s needs migration", result.StepCompleted, dspa.Namespace, dspa.Name)
 		}
 
-		v1alpha1Step.Complete(result.StepCompleted, "Found %d v1alpha1 DSPA(s) requiring migration", len(v1alpha1DSPAs))
+		v1alpha1Step.Completef(result.StepCompleted, "Found %d v1alpha1 DSPA(s) requiring migration", len(v1alpha1DSPAs))
 	}
 
 	// Step 3: Detect custom roles needing RBAC update
@@ -119,7 +119,7 @@ func (t *preUpgradeCheckPrepareTask) saveState(
 	saveStep := recorder.Child("save-state", "Save pre-upgrade state")
 
 	if target.DryRun {
-		saveStep.Complete(result.StepSkipped, "Would save pre-upgrade pod health state")
+		saveStep.Completef(result.StepSkipped, "Would save pre-upgrade pod health state")
 
 		return
 	}
@@ -127,12 +127,12 @@ func (t *preUpgradeCheckPrepareTask) saveState(
 	statePath := defaultStatePath()
 
 	if err := savePodHealthState(state, statePath); err != nil {
-		saveStep.Complete(result.StepFailed, "Failed to save state: %v", err)
+		saveStep.Completef(result.StepFailed, "Failed to save state: %v", err)
 
 		return
 	}
 
-	saveStep.Complete(result.StepCompleted, "State saved to %s", statePath)
+	saveStep.Completef(result.StepCompleted, "State saved to %s", statePath)
 }
 
 // --- Run task: migrate v1alpha1 DSPAs to v1 ---
@@ -146,15 +146,15 @@ func (t *preUpgradeCheckRunTask) Validate(ctx context.Context, target action.Tar
 
 	v1alpha1DSPAs, err := listDSPAs(ctx, target.Client, resources.DataSciencePipelinesApplicationV1Alpha1)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list v1alpha1 DSPAs: %v", err)
+		step.Completef(result.StepFailed, "Failed to list v1alpha1 DSPAs: %v", err)
 
 		return recorder.Build(), nil
 	}
 
 	if len(v1alpha1DSPAs) == 0 {
-		step.Complete(result.StepCompleted, "No v1alpha1 DSPAs found — nothing to migrate")
+		step.Completef(result.StepCompleted, "No v1alpha1 DSPAs found — nothing to migrate")
 	} else {
-		step.Complete(result.StepCompleted, "Found %d v1alpha1 DSPA(s) to migrate", len(v1alpha1DSPAs))
+		step.Completef(result.StepCompleted, "Found %d v1alpha1 DSPA(s) to migrate", len(v1alpha1DSPAs))
 	}
 
 	return recorder.Build(), nil
@@ -173,11 +173,11 @@ func (t *preUpgradeCheckRunTask) Execute(ctx context.Context, target action.Targ
 
 		remaining, err := listDSPAs(ctx, target.Client, resources.DataSciencePipelinesApplicationV1Alpha1)
 		if err != nil {
-			verifyStep.Complete(result.StepFailed, "Failed to verify: %v", err)
+			verifyStep.Completef(result.StepFailed, "Failed to verify: %v", err)
 		} else if len(remaining) > 0 {
-			verifyStep.Complete(result.StepFailed, "%d v1alpha1 DSPA(s) still remain", len(remaining))
+			verifyStep.Completef(result.StepFailed, "%d v1alpha1 DSPA(s) still remain", len(remaining))
 		} else {
-			verifyStep.Complete(result.StepCompleted, "All DSPAs are now v1")
+			verifyStep.Completef(result.StepCompleted, "All DSPAs are now v1")
 		}
 	}
 

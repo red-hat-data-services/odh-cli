@@ -72,9 +72,8 @@ func (r *stepRecorderImpl) Child(name string, description string) StepRecorder {
 	return child
 }
 
-// Complete marks this step as complete with status and message.
-// Supports printf-style formatting with variadic arguments.
-func (r *stepRecorderImpl) Complete(status result.StepStatus, messageFormat string, args ...any) {
+// Completef marks this step as complete with status and a printf-style formatted message.
+func (r *stepRecorderImpl) Completef(status result.StepStatus, messageFormat string, args ...any) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -122,16 +121,15 @@ func (r *stepRecorderImpl) AddDetail(key string, value any) {
 	}
 }
 
-// Record adds a simple completed sub-step (convenience method).
-// Supports printf-style formatting with variadic arguments.
-func (r *stepRecorderImpl) Record(name string, messageFormat string, status result.StepStatus, args ...any) {
+// Recordf adds a simple completed sub-step with a printf-style formatted message.
+func (r *stepRecorderImpl) Recordf(name string, messageFormat string, status result.StepStatus, args ...any) {
 	message := messageFormat
 	if len(args) > 0 {
 		message = fmt.Sprintf(messageFormat, args...)
 	}
 
 	child := r.Child(name, message)
-	child.Complete(status, message)
+	child.Completef(status, "%s", message)
 }
 
 // Build constructs the final ActionResult with all recorded steps.

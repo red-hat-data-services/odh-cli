@@ -123,7 +123,7 @@ func patchISVCDeploymentMode(
 	oldMode := getDeploymentMode(isvc)
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, msgPatchDeploymentModeDryRun, ns, name, oldMode, newMode)
+		step.Completef(result.StepSkipped, msgPatchDeploymentModeDryRun, ns, name, oldMode, newMode)
 
 		return
 	}
@@ -135,12 +135,12 @@ func patchISVCDeploymentMode(
 		Patch(ctx, name, types.MergePatchType, []byte(patchData), metav1.PatchOptions{})
 
 	if err != nil {
-		step.Complete(result.StepFailed, msgPatchDeploymentModeFailed, ns, name, err)
+		step.Completef(result.StepFailed, msgPatchDeploymentModeFailed, ns, name, err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted, msgPatchDeploymentModeSuccess, ns, name, newMode)
+	step.Completef(result.StepCompleted, msgPatchDeploymentModeSuccess, ns, name, newMode)
 }
 
 // getDeploymentMode returns the deployment mode annotation value, or empty string if not set.
@@ -178,7 +178,7 @@ func restartDeployment(
 	step action.StepRecorder,
 ) {
 	if target.DryRun {
-		step.Complete(result.StepSkipped, msgRestartDeploymentDryRun, namespace, name)
+		step.Completef(result.StepSkipped, msgRestartDeploymentDryRun, namespace, name)
 
 		return
 	}
@@ -194,12 +194,12 @@ func restartDeployment(
 		Patch(ctx, name, types.MergePatchType, []byte(patchData), metav1.PatchOptions{})
 
 	if err != nil {
-		step.Complete(result.StepFailed, msgRestartDeploymentFailed, namespace, name, err)
+		step.Completef(result.StepFailed, msgRestartDeploymentFailed, namespace, name, err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted, msgRestartDeploymentSuccess, namespace, name)
+	step.Completef(result.StepCompleted, msgRestartDeploymentSuccess, namespace, name)
 }
 
 // getApplicationsNamespace retrieves the applications namespace from DSCI.
@@ -282,13 +282,13 @@ func ensureServiceAccount(
 	}
 
 	if !apierrors.IsNotFound(err) {
-		step.Record("create-sa", "Failed to check ServiceAccount %s/%s: %v", result.StepFailed, namespace, name, err)
+		step.Recordf("create-sa", "Failed to check ServiceAccount %s/%s: %v", result.StepFailed, namespace, name, err)
 
 		return
 	}
 
 	if target.DryRun {
-		step.Record("create-sa", "Would create ServiceAccount %s/%s", result.StepSkipped, namespace, name)
+		step.Recordf("create-sa", "Would create ServiceAccount %s/%s", result.StepSkipped, namespace, name)
 
 		return
 	}
@@ -309,12 +309,12 @@ func ensureServiceAccount(
 		Create(ctx, sa, metav1.CreateOptions{})
 
 	if err != nil && !apierrors.IsAlreadyExists(err) {
-		step.Record("create-sa", "Failed to create ServiceAccount %s/%s: %v", result.StepFailed, namespace, name, err)
+		step.Recordf("create-sa", "Failed to create ServiceAccount %s/%s: %v", result.StepFailed, namespace, name, err)
 
 		return
 	}
 
-	step.Record("create-sa", "Created ServiceAccount %s/%s", result.StepCompleted, namespace, name)
+	step.Recordf("create-sa", "Created ServiceAccount %s/%s", result.StepCompleted, namespace, name)
 }
 
 func ensureRole(
@@ -333,13 +333,13 @@ func ensureRole(
 	}
 
 	if !apierrors.IsNotFound(err) {
-		step.Record("create-role", "Failed to check Role %s/%s: %v", result.StepFailed, namespace, name, err)
+		step.Recordf("create-role", "Failed to check Role %s/%s: %v", result.StepFailed, namespace, name, err)
 
 		return
 	}
 
 	if target.DryRun {
-		step.Record("create-role", "Would create Role %s/%s", result.StepSkipped, namespace, name)
+		step.Recordf("create-role", "Would create Role %s/%s", result.StepSkipped, namespace, name)
 
 		return
 	}
@@ -367,12 +367,12 @@ func ensureRole(
 		Create(ctx, role, metav1.CreateOptions{})
 
 	if err != nil && !apierrors.IsAlreadyExists(err) {
-		step.Record("create-role", "Failed to create Role %s/%s: %v", result.StepFailed, namespace, name, err)
+		step.Recordf("create-role", "Failed to create Role %s/%s: %v", result.StepFailed, namespace, name, err)
 
 		return
 	}
 
-	step.Record("create-role", "Created Role %s/%s", result.StepCompleted, namespace, name)
+	step.Recordf("create-role", "Created Role %s/%s", result.StepCompleted, namespace, name)
 }
 
 func ensureRoleBinding(
@@ -393,13 +393,13 @@ func ensureRoleBinding(
 	}
 
 	if !apierrors.IsNotFound(err) {
-		step.Record("create-rolebinding", "Failed to check RoleBinding %s/%s: %v", result.StepFailed, namespace, name, err)
+		step.Recordf("create-rolebinding", "Failed to check RoleBinding %s/%s: %v", result.StepFailed, namespace, name, err)
 
 		return
 	}
 
 	if target.DryRun {
-		step.Record("create-rolebinding", "Would create RoleBinding %s/%s", result.StepSkipped, namespace, name)
+		step.Recordf("create-rolebinding", "Would create RoleBinding %s/%s", result.StepSkipped, namespace, name)
 
 		return
 	}
@@ -432,12 +432,12 @@ func ensureRoleBinding(
 		Create(ctx, rb, metav1.CreateOptions{})
 
 	if err != nil && !apierrors.IsAlreadyExists(err) {
-		step.Record("create-rolebinding", "Failed to create RoleBinding %s/%s: %v", result.StepFailed, namespace, name, err)
+		step.Recordf("create-rolebinding", "Failed to create RoleBinding %s/%s: %v", result.StepFailed, namespace, name, err)
 
 		return
 	}
 
-	step.Record("create-rolebinding", "Created RoleBinding %s/%s", result.StepCompleted, namespace, name)
+	step.Recordf("create-rolebinding", "Created RoleBinding %s/%s", result.StepCompleted, namespace, name)
 }
 
 // buildResult extracts the RootRecorder from target and builds the ActionResult.

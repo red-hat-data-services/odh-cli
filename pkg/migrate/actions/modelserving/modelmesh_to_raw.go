@@ -76,18 +76,18 @@ func (a *ModelMeshToRawAction) convertISVCs(
 
 	isvcs, err := listISVCsByDeploymentMode(ctx, target, deploymentModeModelMesh)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list ModelMesh InferenceServices: %v", err)
+		step.Completef(result.StepFailed, "Failed to list ModelMesh InferenceServices: %v", err)
 
 		return
 	}
 
 	if len(isvcs) == 0 {
-		step.Complete(result.StepSkipped, msgModelMeshNoISVCs)
+		step.Completef(result.StepSkipped, msgModelMeshNoISVCs)
 
 		return
 	}
 
-	step.Record("list-isvcs", msgFoundISVCs, result.StepCompleted, len(isvcs), deploymentModeModelMesh)
+	step.Recordf("list-isvcs", msgFoundISVCs, result.StepCompleted, len(isvcs), deploymentModeModelMesh)
 
 	// Confirm with user
 	if !target.SkipConfirm && !target.DryRun {
@@ -95,7 +95,7 @@ func (a *ModelMeshToRawAction) convertISVCs(
 		target.IO.Errorf(msgModelMeshConfirm, len(isvcs))
 
 		if !confirmation.Prompt(target.IO, "Proceed with conversion?") {
-			step.Complete(result.StepSkipped, msgModelMeshCancelled)
+			step.Completef(result.StepSkipped, msgModelMeshCancelled)
 
 			return
 		}
@@ -122,9 +122,9 @@ func (a *ModelMeshToRawAction) convertISVCs(
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, msgModelMeshDryRun, convertedCount)
+		step.Completef(result.StepSkipped, msgModelMeshDryRun, convertedCount)
 	} else {
-		step.Complete(result.StepCompleted, msgModelMeshComplete, convertedCount)
+		step.Completef(result.StepCompleted, msgModelMeshComplete, convertedCount)
 	}
 }
 
@@ -151,7 +151,7 @@ func (a *ModelMeshToRawAction) updateServingRuntime(
 		Get(ctx, runtimeName, metav1.GetOptions{})
 
 	if err != nil {
-		step.Complete(result.StepSkipped, "ServingRuntime %s/%s not found (skipped)", ns, runtimeName)
+		step.Completef(result.StepSkipped, "ServingRuntime %s/%s not found (skipped)", ns, runtimeName)
 
 		return
 	}
@@ -159,19 +159,19 @@ func (a *ModelMeshToRawAction) updateServingRuntime(
 	// Check if multi-model
 	multiModel, err := jq.Query[bool](runtime, ".spec.multiModel")
 	if err != nil || !multiModel {
-		step.Complete(result.StepSkipped, "ServingRuntime %s/%s is not multi-model (skipped)", ns, runtimeName)
+		step.Completef(result.StepSkipped, "ServingRuntime %s/%s is not multi-model (skipped)", ns, runtimeName)
 
 		return
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, "Would set multiModel=false on ServingRuntime %s/%s", ns, runtimeName)
+		step.Completef(result.StepSkipped, "Would set multiModel=false on ServingRuntime %s/%s", ns, runtimeName)
 
 		return
 	}
 
 	if err := jq.Transform(runtime, ".spec.multiModel = false"); err != nil {
-		step.Complete(result.StepFailed, "Failed to update ServingRuntime %s/%s: %v", ns, runtimeName, err)
+		step.Completef(result.StepFailed, "Failed to update ServingRuntime %s/%s: %v", ns, runtimeName, err)
 
 		return
 	}
@@ -181,12 +181,12 @@ func (a *ModelMeshToRawAction) updateServingRuntime(
 		Update(ctx, runtime, metav1.UpdateOptions{})
 
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to update ServingRuntime %s/%s: %v", ns, runtimeName, err)
+		step.Completef(result.StepFailed, "Failed to update ServingRuntime %s/%s: %v", ns, runtimeName, err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted, "Set multiModel=false on ServingRuntime %s/%s", ns, runtimeName)
+	step.Completef(result.StepCompleted, "Set multiModel=false on ServingRuntime %s/%s", ns, runtimeName)
 }
 
 // --- Prepare Task ---
@@ -214,19 +214,19 @@ func (t *modelMeshToRawPrepareTask) Execute(
 	// Backup ISVCs
 	isvcs, err := listISVCsByDeploymentMode(ctx, target, deploymentModeModelMesh)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list ModelMesh InferenceServices: %v", err)
+		step.Completef(result.StepFailed, "Failed to list ModelMesh InferenceServices: %v", err)
 
 		return buildResult(target)
 	}
 
 	if len(isvcs) == 0 {
-		step.Complete(result.StepSkipped, msgModelMeshNoISVCs)
+		step.Completef(result.StepSkipped, msgModelMeshNoISVCs)
 
 		return buildResult(target)
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, "Would backup %d ModelMesh InferenceServices and associated ServingRuntimes", len(isvcs))
+		step.Completef(result.StepSkipped, "Would backup %d ModelMesh InferenceServices and associated ServingRuntimes", len(isvcs))
 
 		return buildResult(target)
 	}
@@ -237,7 +237,7 @@ func (t *modelMeshToRawPrepareTask) Execute(
 	for ns, nsISVCs := range byNamespace {
 		outputDir := filepath.Join(target.OutputDir, ns)
 		if err := backup.WriteResourcesToDir(outputDir, resources.InferenceService.GVR(), nsISVCs); err != nil {
-			step.Complete(result.StepFailed, "Failed to backup InferenceServices in namespace %s: %v", ns, err)
+			step.Completef(result.StepFailed, "Failed to backup InferenceServices in namespace %s: %v", ns, err)
 
 			return buildResult(target)
 		}
@@ -250,7 +250,7 @@ func (t *modelMeshToRawPrepareTask) Execute(
 		ctx, target.Client, resources.ServingRuntime, multiModelFilter,
 	)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list ServingRuntimes: %v", err)
+		step.Completef(result.StepFailed, "Failed to list ServingRuntimes: %v", err)
 
 		return buildResult(target)
 	}
@@ -258,13 +258,13 @@ func (t *modelMeshToRawPrepareTask) Execute(
 	for ns, nsSRs := range groupByNamespace(servingRuntimes) {
 		outputDir := filepath.Join(target.OutputDir, ns)
 		if writeErr := backup.WriteResourcesToDir(outputDir, resources.ServingRuntime.GVR(), nsSRs); writeErr != nil {
-			step.Complete(result.StepFailed, "Failed to backup ServingRuntimes in namespace %s: %v", ns, writeErr)
+			step.Completef(result.StepFailed, "Failed to backup ServingRuntimes in namespace %s: %v", ns, writeErr)
 
 			return buildResult(target)
 		}
 	}
 
-	step.Complete(result.StepCompleted, msgModelMeshBackupDone, len(isvcs), target.OutputDir)
+	step.Completef(result.StepCompleted, msgModelMeshBackupDone, len(isvcs), target.OutputDir)
 
 	return buildResult(target)
 }
@@ -283,11 +283,11 @@ func (t *modelMeshToRawRunTask) Validate(
 
 	isvcs, err := listISVCsByDeploymentMode(ctx, target, deploymentModeModelMesh)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list ModelMesh InferenceServices: %v", err)
+		step.Completef(result.StepFailed, "Failed to list ModelMesh InferenceServices: %v", err)
 	} else if len(isvcs) == 0 {
-		step.Complete(result.StepSkipped, msgModelMeshNoISVCs)
+		step.Completef(result.StepSkipped, msgModelMeshNoISVCs)
 	} else {
-		step.Complete(result.StepCompleted, msgFoundISVCs, len(isvcs), deploymentModeModelMesh)
+		step.Completef(result.StepCompleted, msgFoundISVCs, len(isvcs), deploymentModeModelMesh)
 	}
 
 	return buildResult(target)

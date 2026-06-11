@@ -47,7 +47,7 @@ func (t *prepareTask) Execute(
 			"backup-skipped",
 			"Backup skipped (Kueue not managed)",
 		)
-		step.Complete(result.StepSkipped, "Kueue is not managed by DataScienceCluster")
+		step.Completef(result.StepSkipped, "Kueue is not managed by DataScienceCluster")
 	}
 
 	rootRecorder, ok := target.Recorder.(action.RootRecorder)
@@ -68,7 +68,7 @@ func (t *prepareTask) backupKueueResources(
 	)
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped, "Would backup ClusterQueues and ConfigMap to %s", target.OutputDir)
+		step.Completef(result.StepSkipped, "Would backup ClusterQueues and ConfigMap to %s", target.OutputDir)
 
 		return
 	}
@@ -76,7 +76,7 @@ func (t *prepareTask) backupKueueResources(
 	t.backupClusterQueues(ctx, target, step)
 	t.backupConfigMap(ctx, target, step)
 
-	step.Complete(result.StepCompleted, "Backup complete in %s", target.OutputDir)
+	step.Completef(result.StepCompleted, "Backup complete in %s", target.OutputDir)
 }
 
 func (t *prepareTask) backupClusterQueues(
@@ -92,30 +92,30 @@ func (t *prepareTask) backupClusterQueues(
 	clusterQueues, err := target.Client.ListResources(ctx, resources.ClusterQueue.GVR())
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			step.Complete(result.StepSkipped, "No ClusterQueue CRD found")
+			step.Completef(result.StepSkipped, "No ClusterQueue CRD found")
 
 			return
 		}
 
-		step.Complete(result.StepFailed, "Failed to list ClusterQueues: %v", err)
+		step.Completef(result.StepFailed, "Failed to list ClusterQueues: %v", err)
 
 		return
 	}
 
 	if len(clusterQueues) == 0 {
-		step.Complete(result.StepSkipped, "No ClusterQueues found")
+		step.Completef(result.StepSkipped, "No ClusterQueues found")
 
 		return
 	}
 
 	// Write cluster-scoped resources to root directory
 	if err := backup.WriteResourcesToDir(target.OutputDir, resources.ClusterQueue.GVR(), clusterQueues); err != nil {
-		step.Complete(result.StepFailed, "Failed to write ClusterQueues: %v", err)
+		step.Completef(result.StepFailed, "Failed to write ClusterQueues: %v", err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted, "Backed up %d ClusterQueues to %s", len(clusterQueues), target.OutputDir)
+	step.Completef(result.StepCompleted, "Backed up %d ClusterQueues to %s", len(clusterQueues), target.OutputDir)
 }
 
 func (t *prepareTask) backupConfigMap(
@@ -134,21 +134,21 @@ func (t *prepareTask) backupConfigMap(
 
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			step.Complete(result.StepSkipped, "ConfigMap not found")
+			step.Completef(result.StepSkipped, "ConfigMap not found")
 
 			return
 		}
 
-		step.Complete(result.StepFailed, "Failed to get ConfigMap: %v", err)
+		step.Completef(result.StepFailed, "Failed to get ConfigMap: %v", err)
 
 		return
 	}
 
 	if err := backup.WriteResourcesToDir(target.OutputDir, resources.ConfigMap.GVR(), []*unstructured.Unstructured{obj}); err != nil {
-		step.Complete(result.StepFailed, "Failed to write ConfigMap: %v", err)
+		step.Completef(result.StepFailed, "Failed to write ConfigMap: %v", err)
 
 		return
 	}
 
-	step.Complete(result.StepCompleted, "Backed up ConfigMap %s to %s", configMapName, target.OutputDir)
+	step.Completef(result.StepCompleted, "Backed up ConfigMap %s to %s", configMapName, target.OutputDir)
 }

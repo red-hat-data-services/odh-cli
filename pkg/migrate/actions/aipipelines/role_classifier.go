@@ -92,7 +92,7 @@ func findRolesNeedingFix(
 		Namespace("").
 		List(ctx, metav1.ListOptions{})
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list roles: %v", err)
+		step.Completef(result.StepFailed, "Failed to list roles: %v", err)
 
 		return nil, fmt.Errorf("listing roles: %w", err)
 	}
@@ -107,10 +107,10 @@ func findRolesNeedingFix(
 	}
 
 	if len(needsFix) == 0 {
-		step.Complete(result.StepCompleted, "No custom roles need updating")
+		step.Completef(result.StepCompleted, "No custom roles need updating")
 	} else {
 		for _, r := range needsFix {
-			step.Record(
+			step.Recordf(
 				r.RoleName,
 				"Role %s in namespace %s needs datasciencepipelinesapplications/api subresource",
 				result.StepCompleted,
@@ -119,7 +119,7 @@ func findRolesNeedingFix(
 			)
 		}
 
-		step.Complete(result.StepCompleted, "Found %d role(s) needing update", len(needsFix))
+		step.Completef(result.StepCompleted, "Found %d role(s) needing update", len(needsFix))
 	}
 
 	return needsFix, nil

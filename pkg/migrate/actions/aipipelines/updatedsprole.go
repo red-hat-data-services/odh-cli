@@ -77,7 +77,7 @@ func (t *updateDSPRoleRunTask) Execute(ctx context.Context, target action.Target
 		t.patchRole(ctx, target, patchStep, role)
 	}
 
-	patchStep.Complete(result.StepCompleted, "Processed %d role(s)", len(roles))
+	patchStep.Completef(result.StepCompleted, "Processed %d role(s)", len(roles))
 
 	return recorder.Build(), nil
 }
@@ -95,13 +95,13 @@ func (t *updateDSPRoleRunTask) patchRole(
 
 	namespaceDSPAs, err := listDSPAsInNamespace(ctx, target.Client, resources.DataSciencePipelinesApplicationV1, role.Namespace)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to list DSPAs in %s: %v", role.Namespace, err)
+		step.Completef(result.StepFailed, "Failed to list DSPAs in %s: %v", role.Namespace, err)
 
 		return
 	}
 
 	if len(namespaceDSPAs) == 0 {
-		step.Complete(result.StepCompleted, "No DSPAs found in namespace %s — skipping", role.Namespace)
+		step.Completef(result.StepCompleted, "No DSPAs found in namespace %s — skipping", role.Namespace)
 
 		return
 	}
@@ -110,7 +110,7 @@ func (t *updateDSPRoleRunTask) patchRole(
 		t.patchRoleForDSPA(ctx, target, step, role, dspa)
 	}
 
-	step.Complete(result.StepCompleted, "Role %s/%s processed", role.Namespace, role.RoleName)
+	step.Completef(result.StepCompleted, "Role %s/%s processed", role.Namespace, role.RoleName)
 }
 
 func (t *updateDSPRoleRunTask) patchRoleForDSPA(
@@ -146,7 +146,7 @@ func (t *updateDSPRoleRunTask) patchRoleForDSPA(
 
 	patchData, err := json.Marshal(patchOps)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to marshal patch: %v", err)
+		step.Completef(result.StepFailed, "Failed to marshal patch: %v", err)
 
 		return
 	}
@@ -156,7 +156,7 @@ func (t *updateDSPRoleRunTask) patchRoleForDSPA(
 			role.Namespace, role.RoleName, dspa.Name, verbs)
 
 		if !confirmation.Prompt(target.IO, "Proceed with role patch?") {
-			step.Complete(result.StepSkipped, "User cancelled patch")
+			step.Completef(result.StepSkipped, "User cancelled patch")
 
 			return
 		}
@@ -171,13 +171,13 @@ func (t *updateDSPRoleRunTask) patchRoleForDSPA(
 		Namespace(role.Namespace).
 		Patch(ctx, role.RoleName, types.JSONPatchType, patchData, patchOpts)
 	if err != nil {
-		step.Complete(result.StepFailed, "Failed to patch role: %v", err)
+		step.Completef(result.StepFailed, "Failed to patch role: %v", err)
 
 		return
 	}
 
 	if target.DryRun {
-		step.Complete(result.StepSkipped,
+		step.Completef(result.StepSkipped,
 			"Would add datasciencepipelinesapplications/api rule for DSPA %s (verbs: %v)", dspa.Name, verbs)
 
 		return
@@ -188,19 +188,19 @@ func (t *updateDSPRoleRunTask) patchRoleForDSPA(
 		Namespace(role.Namespace).
 		Get(ctx, role.RoleName, metav1.GetOptions{})
 	if err != nil {
-		step.Complete(result.StepFailed, "Patch succeeded but validation failed — could not re-read role: %v", err)
+		step.Completef(result.StepFailed, "Patch succeeded but validation failed — could not re-read role: %v", err)
 
 		return
 	}
 
 	validated := classifyRole(updatedRole)
 	if validated.NeedsFix {
-		step.Complete(result.StepFailed,
+		step.Completef(result.StepFailed,
 			"Patch succeeded but validation failed — datasciencepipelinesapplications/api rule not found in re-read")
 
 		return
 	}
 
-	step.Complete(result.StepCompleted,
+	step.Completef(result.StepCompleted,
 		"Added datasciencepipelinesapplications/api rule for DSPA %s (verbs: %v)", dspa.Name, verbs)
 }
