@@ -2,10 +2,22 @@
 package events
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/opendatahub-io/opendatahub-operator/pkg/clusterhealth"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	dynamicfake "k8s.io/client-go/dynamic/fake"
+
+	"github.com/opendatahub-io/odh-cli/pkg/resources"
+	"github.com/opendatahub-io/odh-cli/pkg/util/client"
+
+	. "github.com/onsi/gomega"
 )
 
 func TestGetTargetNamespaces(t *testing.T) {
@@ -186,4 +198,188 @@ func TestSortEventsByTime(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetComponentLabelValue(t *testing.T) {
+	g := NewWithT(t)
+
+	tests := []struct {
+		component string
+		want      string
+	}{
+		{"kserve", "kserve"},
+		{"dashboard", "dashboard"},
+		{"aipipelines", "data-science-pipelines-operator"},
+		{"modelregistry", "model-registry-operator"},
+		{"unknown", "unknown"},
+	}
+
+	for _, tt := range tests {
+		got := resources.GetComponentLabelValue(tt.component)
+		g.Expect(got).To(Equal(tt.want))
+	}
+}
+
+func TestKindToGVR(t *testing.T) {
+	g := NewWithT(t)
+
+	tests := []struct {
+		kind     string
+		wantRes  string
+		wantNull bool
+	}{
+		{"Pod", "pods", false},
+		{"Deployment", "deployments", false},
+		{"ReplicaSet", "replicasets", false},
+		{"Unknown", "", true},
+	}
+
+	for _, tt := range tests {
+		got := kindToGVR(tt.kind)
+		if tt.wantNull {
+			g.Expect(got.Resource).To(BeEmpty())
+		} else {
+			g.Expect(got.Resource).To(Equal(tt.wantRes))
+		}
+	}
+}
+
+// createTestPod creates an unstructured Pod with the given labels.
+func createTestPod(name, namespace string, labels map[string]string) *unstructured.Unstructured {
+	pod := &unstructured.Unstructured{}
+	pod.SetAPIVersion("v1")
+	pod.SetKind("Pod")
+	pod.SetName(name)
+	pod.SetNamespace(namespace)
+	pod.SetLabels(labels)
+
+	return pod
+}
+
+// createFakeClient creates a fake dynamic client with the given objects.
+func createFakeClient(t *testing.T, objs ...runtime.Object) client.Client {
+	t.Helper()
+
+	scheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(scheme)
+
+	listKinds := map[schema.GroupVersionResource]string{
+		resources.Pod.GVR():        "PodList",
+		resources.Deployment.GVR(): "DeploymentList",
+	}
+
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, objs...)
+
+	return client.NewForTesting(client.TestClientConfig{
+		Dynamic: dynamicClient,
+	})
+}
+
+func TestCheckObjectHasComponentLabel(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	tests := []struct {
+		name       string
+		objects    []runtime.Object
+		namespace  string
+		kind       string
+		objName    string
+		labelValue string
+		want       bool
+		wantErr    bool
+	}{
+		{
+			name: "pod with matching label",
+			objects: []runtime.Object{
+				createTestPod("kserve-pod", "odh-apps", map[string]string{
+					resources.ComponentLabelKey: "kserve",
+				}),
+			},
+			namespace:  "odh-apps",
+			kind:       "Pod",
+			objName:    "kserve-pod",
+			labelValue: "kserve",
+			want:       true,
+		},
+		{
+			name: "pod with non-matching label",
+			objects: []runtime.Object{
+				createTestPod("dashboard-pod", "odh-apps", map[string]string{
+					resources.ComponentLabelKey: "dashboard",
+				}),
+			},
+			namespace:  "odh-apps",
+			kind:       "Pod",
+			objName:    "dashboard-pod",
+			labelValue: "kserve",
+			want:       false,
+		},
+		{
+			name:       "object not found returns false without error",
+			objects:    []runtime.Object{},
+			namespace:  "odh-apps",
+			kind:       "Pod",
+			objName:    "missing-pod",
+			labelValue: "kserve",
+			want:       false,
+			wantErr:    false,
+		},
+		{
+			name:       "unsupported kind returns false without error",
+			objects:    []runtime.Object{},
+			namespace:  "odh-apps",
+			kind:       "Lease",
+			objName:    "test-lease",
+			labelValue: "kserve",
+			want:       false,
+			wantErr:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fakeClient := createFakeClient(t, tt.objects...)
+			cmd := &Command{Client: fakeClient}
+
+			got, err := cmd.checkObjectHasComponentLabel(ctx, tt.namespace, tt.kind, tt.objName, tt.labelValue)
+			if tt.wantErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+			}
+			g.Expect(got).To(Equal(tt.want))
+		})
+	}
+}
+
+func TestFilterEventsByComponent(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	kservePod := createTestPod("kserve-pod", "odh-apps", map[string]string{
+		resources.ComponentLabelKey: "kserve",
+	})
+	dashboardPod := createTestPod("dashboard-pod", "odh-apps", map[string]string{
+		resources.ComponentLabelKey: "dashboard",
+	})
+
+	fakeClient := createFakeClient(t, kservePod, dashboardPod)
+
+	events := []clusterhealth.EventInfo{
+		{Namespace: "odh-apps", Kind: "Pod", Name: "kserve-pod", Reason: "Created"},
+		{Namespace: "odh-apps", Kind: "Pod", Name: "dashboard-pod", Reason: "Created"},
+		{Namespace: "odh-apps", Kind: "Pod", Name: "missing-pod", Reason: "Created"},
+	}
+
+	cmd := &Command{
+		Client:    fakeClient,
+		Component: "kserve",
+	}
+
+	filtered, err := cmd.filterEventsByComponent(ctx, events)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(filtered).To(HaveLen(1))
+	g.Expect(filtered[0].Name).To(Equal("kserve-pod"))
 }

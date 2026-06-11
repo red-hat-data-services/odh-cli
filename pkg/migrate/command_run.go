@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/blang/semver/v4"
 	"github.com/spf13/pflag"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
+	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
+	"github.com/opendatahub-io/odh-cli/pkg/util/stdin"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
 )
 
@@ -25,6 +28,7 @@ type RunCommand struct {
 	MigrationIDs  []string
 	TargetVersion string
 	Phase         string
+	FromStdin     bool
 
 	parsedTargetVersion *semver.Version
 	parsedPhase         action.ActionPhase
@@ -32,6 +36,9 @@ type RunCommand struct {
 	// registry is the action registry for this command instance.
 	// Explicitly populated to avoid global state and enable test isolation.
 	registry *action.ActionRegistry
+
+	// flags stores the FlagSet for checking explicit flag usage.
+	flags *pflag.FlagSet
 }
 
 func NewRunCommand(streams genericiooptions.IOStreams) *RunCommand {
@@ -48,6 +55,7 @@ func (c *RunCommand) ActionIDs() []string {
 }
 
 func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
+	c.flags = fs
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescRunVerbose)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescRunTimeout)
 	fs.BoolVar(&c.DryRun, "dry-run", false, flagDescRunDryRun)
@@ -55,6 +63,7 @@ func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescRunMigration)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescRunTargetVersion)
 	fs.StringVar(&c.Phase, "phase", "", flagDescRunPhase)
+	fs.BoolVar(&c.FromStdin, "from-stdin", false, flagDescFromStdin)
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
@@ -64,7 +73,70 @@ func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	action.RegisterActionFlags(c.registry, fs)
 }
 
+// flagChanged returns true if the flag was explicitly set on the command line.
+func (c *RunCommand) flagChanged(name string) bool {
+	if c.flags == nil {
+		return false
+	}
+
+	f := c.flags.Lookup(name)
+
+	return f != nil && f.Changed
+}
+
+// parseStdinConfig reads and applies configuration from stdin.
+func (c *RunCommand) parseStdinConfig() error {
+	if f, ok := c.IO.In().(*os.File); ok && !stdin.IsPiped(f) {
+		c.IO.Errorf("%s", warnStdinIsTerminal)
+	}
+
+	var input StdinInput
+	if err := stdin.Parse(c.IO.In(), &input); err != nil {
+		return fmt.Errorf("parsing stdin: %w", err)
+	}
+
+	return c.applyStdinInput(&input)
+}
+
+// applyStdinInput merges stdin configuration into command options.
+// Explicit CLI flags take precedence over stdin values.
+func (c *RunCommand) applyStdinInput(input *StdinInput) error {
+	// Apply migrations if not set via CLI
+	if len(input.Migrations) > 0 && !c.flagChanged("migration") {
+		c.MigrationIDs = input.Migrations
+	}
+
+	// Apply target version if not set via CLI
+	if input.TargetVersion != "" && !c.flagChanged("target-version") {
+		c.TargetVersion = input.TargetVersion
+	}
+
+	// Apply phase if not set via CLI
+	if input.Phase != "" && !c.flagChanged("phase") {
+		c.Phase = input.Phase
+	}
+
+	// Apply boolean flags if not set via CLI
+	if input.DryRun && !c.flagChanged("dry-run") {
+		c.DryRun = true
+	}
+
+	if input.SkipConfirm && !c.flagChanged("yes") {
+		c.Yes = true
+	}
+
+	return nil
+}
+
 func (c *RunCommand) Complete() error {
+	// Parse stdin configuration if --from-stdin is specified
+	if c.FromStdin {
+		if err := c.parseStdinConfig(); err != nil {
+			//nolint:wrapcheck // NewExitCodeError is a same-module constructor
+			return clierrors.NewExitCodeError(clierrors.ExitValidation, err)
+		}
+	}
+
 	if err := c.SharedOptions.Complete(); err != nil {
 		return fmt.Errorf("completing shared options: %w", err)
 	}

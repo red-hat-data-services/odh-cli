@@ -48,6 +48,9 @@ const cmdExample = `
   # Show only warnings
   kubectl odh events --type Warning
 
+  # Filter by component
+  kubectl odh events --component kserve
+
   # All ODH namespaces, YAML output
   kubectl odh events -A -o yaml
 `
@@ -90,6 +93,11 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 	}
 
 	command.AddFlags(cmd.Flags())
+
+	// Shell completion for --component flag
+	_ = cmd.RegisterFlagCompletionFunc("component", func(_ *cobra.Command, _ []string, _ string) ([]string, cobra.ShellCompDirective) {
+		return eventspkg.ValidComponents(), cobra.ShellCompDirectiveNoFileComp
+	})
 
 	root.AddCommand(cmd)
 }

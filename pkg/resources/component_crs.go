@@ -1,6 +1,11 @@
 package resources
 
-const componentCRGroup = "components.platform.opendatahub.io"
+const (
+	componentCRGroup = "components.platform.opendatahub.io"
+
+	// ComponentLabelKey is the label key used to identify ODH components.
+	ComponentLabelKey = "app.kubernetes.io/part-of"
+)
 
 // ComponentCRResourceTypes maps DSC component names to their corresponding
 // component CR resource types from the components.platform.opendatahub.io API group.
@@ -42,4 +47,27 @@ func GetComponentCR(name string) *ResourceType {
 	}
 
 	return &rt
+}
+
+// componentLabelOverrides maps component names to their actual label values
+// when they differ from the component name.
+//
+// NOTE: When adding new components to ComponentCRResourceTypes, verify the actual
+// app.kubernetes.io/part-of label value used by that component's resources.
+// If it differs from the CLI name, add an override here to avoid empty --component results.
+//
+//nolint:gochecknoglobals // Static label mapping configuration
+var componentLabelOverrides = map[string]string{
+	"aipipelines":   "data-science-pipelines-operator",
+	"modelregistry": "model-registry-operator",
+}
+
+// GetComponentLabelValue returns the label value used for a component.
+// Some components use different label values than their CLI names.
+func GetComponentLabelValue(component string) string {
+	if override, ok := componentLabelOverrides[component]; ok {
+		return override
+	}
+
+	return component
 }

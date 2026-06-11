@@ -13,7 +13,7 @@ import (
 // Detect performs priority-based version detection from multiple sources
 // Priority order: DataScienceCluster > DSCInitialization > OLM
 // Returns parsed semver.TargetVersion or error if version cannot be determined from any source.
-func Detect(ctx context.Context, c client.Reader) (*semver.Version, error) {
+func Detect(ctx context.Context, c client.Client) (*semver.Version, error) {
 	// Priority 1: DataScienceCluster
 	if versionStr, found, err := DetectFromDataScienceCluster(ctx, c); err != nil {
 		return nil, fmt.Errorf("detecting from DataScienceCluster: %w", err)

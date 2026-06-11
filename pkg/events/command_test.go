@@ -1,12 +1,15 @@
 package events_test
 
 import (
+	"slices"
 	"testing"
 	"time"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/opendatahub-io/odh-cli/pkg/events"
+
+	. "github.com/onsi/gomega"
 )
 
 func TestCommandValidate_OutputFormat(t *testing.T) {
@@ -153,4 +156,53 @@ func TestNewCommand(t *testing.T) {
 	if cmd.ConfigFlags != flags {
 		t.Error("NewCommand() ConfigFlags not set correctly")
 	}
+}
+
+func TestCommandValidate_Component(t *testing.T) {
+	tests := []struct {
+		name      string
+		component string
+		wantErr   bool
+	}{
+		{"empty component", "", false},
+		{"valid component kserve", "kserve", false},
+		{"valid component dashboard", "dashboard", false},
+		{"valid component ray", "ray", false},
+		{"invalid component", "invalid-component", true},
+		{"typo in component", "kserver", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			g := NewWithT(t)
+			cmd := &events.Command{
+				OutputFormat: "table",
+				Component:    tt.component,
+				ConfigFlags:  genericclioptions.NewConfigFlags(true),
+			}
+			err := cmd.Validate()
+			if tt.wantErr {
+				g.Expect(err).To(HaveOccurred())
+			} else {
+				g.Expect(err).ToNot(HaveOccurred())
+			}
+		})
+	}
+}
+
+func TestValidComponents(t *testing.T) {
+	g := NewWithT(t)
+	components := events.ValidComponents()
+
+	g.Expect(components).ToNot(BeEmpty())
+
+	// Check that known components are present
+	expectedComponents := []string{"kserve", "dashboard", "ray", "workbenches"}
+	for _, expected := range expectedComponents {
+		g.Expect(slices.Contains(components, expected)).To(BeTrue(),
+			"ValidComponents() missing expected component %q", expected)
+	}
+
+	// Check that list is sorted
+	g.Expect(slices.IsSorted(components)).To(BeTrue(), "ValidComponents() should be sorted")
 }

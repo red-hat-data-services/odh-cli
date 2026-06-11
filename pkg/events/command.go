@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/spf13/pflag"
@@ -14,6 +16,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
+	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
@@ -43,6 +46,7 @@ type Command struct {
 	AllNamespaces      bool
 	OutputFormat       string
 	OperatorNSOverride string
+	Component          string
 
 	// Resolved fields (populated during Complete)
 	Namespace         string
@@ -75,6 +79,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&c.AllNamespaces, "all-namespaces", "A", false, "List events across all ODH namespaces")
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
 	fs.StringVar(&c.OperatorNSOverride, "operator-namespace", "", "Override the operator namespace (auto-detected from OLM/CSV)")
+	fs.StringVar(&c.Component, "component", "", "Filter events by ODH component (dashboard, kserve, ray, etc.). Only filters core Kubernetes resources (Pods, Deployments, etc.); CRD-specific events are excluded")
 }
 
 // Complete resolves derived fields after flag parsing.
@@ -157,7 +162,38 @@ func (c *Command) Validate() error {
 		)
 	}
 
+	if c.Component != "" && resources.GetComponentCR(c.Component) == nil {
+		return clierrors.NewValidationError(
+			"INVALID_COMPONENT",
+			"invalid component "+c.Component,
+			"Use one of: "+strings.Join(ValidComponents(), ", "),
+		)
+	}
+
 	return nil
+}
+
+// validComponents contains sorted list of valid component names.
+//
+//nolint:gochecknoglobals // Static configuration built once at init
+var validComponents []string
+
+//nolint:gochecknoinits // One-time initialization of static component list
+func init() {
+	validComponents = make([]string, 0, len(resources.ComponentCRResourceTypes))
+	for name := range resources.ComponentCRResourceTypes {
+		validComponents = append(validComponents, name)
+	}
+
+	sort.Strings(validComponents)
+}
+
+// ValidComponents returns a copy of the sorted list of valid component names.
+func ValidComponents() []string {
+	result := make([]string, len(validComponents))
+	copy(result, validComponents)
+
+	return result
 }
 
 // Run executes the events command.
@@ -215,6 +251,13 @@ func (c *Command) listEvents(ctx context.Context) error {
 	events, err := c.fetchEvents(ctx)
 	if err != nil {
 		return err
+	}
+
+	if c.Component != "" {
+		events, err = c.filterEventsByComponent(ctx, events)
+		if err != nil {
+			return err
+		}
 	}
 
 	sortEventsByTime(events)

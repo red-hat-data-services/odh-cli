@@ -12,7 +12,9 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	discoveryfake "k8s.io/client-go/discovery/fake"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
+	coretesting "k8s.io/client-go/testing"
 
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
@@ -21,10 +23,32 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+// newFakeDiscoveryWithResources creates a fake discovery client that reports the given group/versions.
+func newFakeDiscoveryWithResources(groupVersions ...string) *discoveryfake.FakeDiscovery {
+	fakeDiscovery := &discoveryfake.FakeDiscovery{Fake: &coretesting.Fake{}}
+
+	apiResourceLists := make([]*metav1.APIResourceList, 0, len(groupVersions))
+	for _, gv := range groupVersions {
+		apiResourceLists = append(apiResourceLists, &metav1.APIResourceList{
+			GroupVersion: gv,
+			APIResources: []metav1.APIResource{
+				{Name: "datascienceclusters", Kind: "DataScienceCluster"},
+				{Name: "dscinitializations", Kind: "DSCInitialization"},
+			},
+		})
+	}
+
+	fakeDiscovery.Resources = apiResourceLists
+
+	return fakeDiscovery
+}
+
 //nolint:gochecknoglobals // Test fixture - shared across test functions
 var listKinds = map[schema.GroupVersionResource]string{
 	resources.DataScienceCluster.GVR():    resources.DataScienceCluster.ListKind(),
+	resources.DataScienceClusterV1.GVR():  resources.DataScienceClusterV1.ListKind(),
 	resources.DSCInitialization.GVR():     resources.DSCInitialization.ListKind(),
+	resources.DSCInitializationV1.GVR():   resources.DSCInitializationV1.ListKind(),
 	resources.ClusterServiceVersion.GVR(): resources.ClusterServiceVersion.ListKind(),
 }
 
@@ -32,11 +56,11 @@ func TestDetect_FromDataScienceCluster(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create fake DataScienceCluster with version
+	// Create fake DataScienceCluster with version (using v1 API - fallback when Discovery is nil)
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": resources.DataScienceCluster.APIVersion(),
-			"kind":       resources.DataScienceCluster.Kind,
+			"apiVersion": resources.DataScienceClusterV1.APIVersion(),
+			"kind":       resources.DataScienceClusterV1.Kind,
 			"metadata": map[string]any{
 				"name": "default-dsc",
 			},
@@ -64,15 +88,100 @@ func TestDetect_FromDataScienceCluster(t *testing.T) {
 	g.Expect(clusterVersion.Patch).To(Equal(uint64(0)))
 }
 
+func TestDetect_FromDataScienceCluster_V2(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	// Create fake DataScienceCluster with version (using v2 API - when Discovery finds v2)
+	dsc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"status": map[string]any{
+				"release": map[string]any{
+					"version": "3.5.0",
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
+
+	// Create a fake discovery client that returns v2 resources
+	fakeDiscovery := newFakeDiscoveryWithResources(
+		resources.DataScienceCluster.Group + "/v2",
+	)
+
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic:   dynamicClient,
+		Discovery: fakeDiscovery,
+	})
+
+	clusterVersion, err := version.Detect(ctx, c)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(clusterVersion).ToNot(BeNil())
+	g.Expect(clusterVersion.String()).To(Equal("3.5.0"))
+	g.Expect(clusterVersion.Major).To(Equal(uint64(3)))
+	g.Expect(clusterVersion.Minor).To(Equal(uint64(5)))
+}
+
+func TestDetect_MidUpgrade_V2CRDExistsButOnlyV1Instance(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	// Mid-upgrade scenario: v2 CRD is registered but only v1 instance exists
+	// This tests the fallback from v2 NotFound to v1
+	dsc := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceClusterV1.APIVersion(),
+			"kind":       resources.DataScienceClusterV1.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsc",
+			},
+			"status": map[string]any{
+				"release": map[string]any{
+					"version": "2.35.0",
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	// Only register the v1 instance - no v2 instance exists
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
+
+	// Discovery reports v2 API exists (CRD installed during upgrade)
+	fakeDiscovery := newFakeDiscoveryWithResources(
+		resources.DataScienceCluster.Group + "/v2",
+	)
+
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic:   dynamicClient,
+		Discovery: fakeDiscovery,
+	})
+
+	// Should fall back to v1 and find the instance
+	clusterVersion, err := version.Detect(ctx, c)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(clusterVersion).ToNot(BeNil())
+	g.Expect(clusterVersion.String()).To(Equal("2.35.0"))
+	g.Expect(clusterVersion.Major).To(Equal(uint64(2)))
+	g.Expect(clusterVersion.Minor).To(Equal(uint64(35)))
+}
+
 func TestDetect_FromDSCInitialization(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create fake DSCInitialization with version (no DataScienceCluster)
+	// Create fake DSCInitialization with version (using v1 API - fallback when Discovery is nil)
 	dsci := &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": resources.DSCInitialization.APIVersion(),
-			"kind":       resources.DSCInitialization.Kind,
+			"apiVersion": resources.DSCInitializationV1.APIVersion(),
+			"kind":       resources.DSCInitializationV1.Kind,
 			"metadata": map[string]any{
 				"name": "default-dsci",
 			},
@@ -98,6 +207,47 @@ func TestDetect_FromDSCInitialization(t *testing.T) {
 	g.Expect(clusterVersion.Major).To(Equal(uint64(2)))
 	g.Expect(clusterVersion.Minor).To(Equal(uint64(16)))
 	g.Expect(clusterVersion.Patch).To(Equal(uint64(0)))
+}
+
+func TestDetect_FromDSCInitialization_V2(t *testing.T) {
+	g := NewWithT(t)
+	ctx := context.Background()
+
+	// Create fake DSCInitialization with version (using v2 API - when Discovery finds v2)
+	dsci := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DSCInitialization.APIVersion(),
+			"kind":       resources.DSCInitialization.Kind,
+			"metadata": map[string]any{
+				"name": "default-dsci",
+			},
+			"status": map[string]any{
+				"release": map[string]any{
+					"version": "3.6.0",
+				},
+			},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsci)
+
+	// Create a fake discovery client that returns v2 resources
+	fakeDiscovery := newFakeDiscoveryWithResources(
+		resources.DSCInitialization.Group + "/v2",
+	)
+
+	c := client.NewForTesting(client.TestClientConfig{
+		Dynamic:   dynamicClient,
+		Discovery: fakeDiscovery,
+	})
+
+	clusterVersion, err := version.Detect(ctx, c)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(clusterVersion).ToNot(BeNil())
+	g.Expect(clusterVersion.String()).To(Equal("3.6.0"))
+	g.Expect(clusterVersion.Major).To(Equal(uint64(3)))
+	g.Expect(clusterVersion.Minor).To(Equal(uint64(6)))
 }
 
 func TestDetect_FromOLM(t *testing.T) {
@@ -140,11 +290,11 @@ func TestDetect_PriorityOrder(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create all three sources - should prefer DataScienceCluster
+	// Create all three sources - should prefer DataScienceCluster (using v1 API)
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": resources.DataScienceCluster.APIVersion(),
-			"kind":       resources.DataScienceCluster.Kind,
+			"apiVersion": resources.DataScienceClusterV1.APIVersion(),
+			"kind":       resources.DataScienceClusterV1.Kind,
 			"metadata": map[string]any{
 				"name": "default-dsc",
 			},
@@ -158,8 +308,8 @@ func TestDetect_PriorityOrder(t *testing.T) {
 
 	dsci := &unstructured.Unstructured{
 		Object: map[string]any{
-			"apiVersion": resources.DSCInitialization.APIVersion(),
-			"kind":       resources.DSCInitialization.Kind,
+			"apiVersion": resources.DSCInitializationV1.APIVersion(),
+			"kind":       resources.DSCInitializationV1.Kind,
 			"metadata": map[string]any{
 				"name": "default-dsci",
 			},

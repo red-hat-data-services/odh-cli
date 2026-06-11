@@ -49,6 +49,75 @@ func TestComponentCRResourceTypes(t *testing.T) {
 	}
 }
 
+func TestGetComponentLabelValue(t *testing.T) {
+	tests := []struct {
+		component string
+		want      string
+	}{
+		{"kserve", "kserve"},
+		{"dashboard", "dashboard"},
+		{"aipipelines", "data-science-pipelines-operator"},
+		{"modelregistry", "model-registry-operator"},
+		{"unknown", "unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.component, func(t *testing.T) {
+			got := resources.GetComponentLabelValue(tt.component)
+			if got != tt.want {
+				t.Errorf("GetComponentLabelValue(%q) = %q, want %q", tt.component, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestAllComponentsHaveVerifiedLabels ensures every component in ComponentCRResourceTypes
+// has an explicitly verified label value. Adding a new component requires adding its
+// expected label here, forcing the developer to verify the actual app.kubernetes.io/part-of
+// label used by that component's resources.
+func TestAllComponentsHaveVerifiedLabels(t *testing.T) {
+	// expectedLabels maps component names to their verified app.kubernetes.io/part-of label values.
+	// When adding a new component, verify its actual label by checking deployed resources:
+	//   oc get pods -n opendatahub -l app.kubernetes.io/part-of=<component> --show-labels
+	expectedLabels := map[string]string{
+		"aipipelines":        "data-science-pipelines-operator",
+		"dashboard":          "dashboard",
+		"feastoperator":      "feastoperator",
+		"kserve":             "kserve",
+		"llamastackoperator": "llamastackoperator",
+		"mlflowoperator":     "mlflowoperator",
+		"modelregistry":      "model-registry-operator",
+		"ray":                "ray",
+		"sparkoperator":      "sparkoperator",
+		"trainer":            "trainer",
+		"trainingoperator":   "trainingoperator",
+		"trustyai":           "trustyai",
+		"workbenches":        "workbenches",
+	}
+
+	// Check that every component in ComponentCRResourceTypes has a verified label
+	for name := range resources.ComponentCRResourceTypes {
+		t.Run(name, func(t *testing.T) {
+			expected, ok := expectedLabels[name]
+			if !ok {
+				t.Fatalf("component %q missing from expectedLabels - verify its app.kubernetes.io/part-of label and add it", name)
+			}
+
+			got := resources.GetComponentLabelValue(name)
+			if got != expected {
+				t.Errorf("GetComponentLabelValue(%q) = %q, want %q", name, got, expected)
+			}
+		})
+	}
+
+	// Check that expectedLabels doesn't have stale entries
+	for name := range expectedLabels {
+		if _, ok := resources.ComponentCRResourceTypes[name]; !ok {
+			t.Errorf("expectedLabels has %q but it's not in ComponentCRResourceTypes - remove stale entry", name)
+		}
+	}
+}
+
 func TestGetComponentCR(t *testing.T) {
 	tests := []struct {
 		name      string
