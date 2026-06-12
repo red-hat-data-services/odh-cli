@@ -435,4 +435,20 @@ var (
 		Kind:     "PackageManifest",
 		Resource: "packagemanifests",
 	}
+
+	// Route is the OpenShift Route resource for external service access.
+	Route = ResourceType{
+		Group:    "route.openshift.io",
+		Version:  "v1",
+		Kind:     "Route",
+		Resource: "routes",
+	}
+
+	// TrustyAIService is the TrustyAI operator's TrustyAIService resource.
+	TrustyAIService = ResourceType{
+		Group:    "trustyai.opendatahub.io",
+		Version:  "v1alpha1",
+		Kind:     "TrustyAIService",
+		Resource: "trustyaiservices",
+	}
 )

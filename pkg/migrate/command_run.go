@@ -245,6 +245,7 @@ func (c *RunCommand) runMigrationMode(
 
 		target := action.Target{
 			Client:         c.Client,
+			RESTConfig:     c.RESTConfig,
 			CurrentVersion: currentVersion,
 			TargetVersion:  targetVersion,
 			DryRun:         c.DryRun,

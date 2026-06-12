@@ -239,7 +239,7 @@ func (t *hpIgnorelistPrepareTask) Validate(
 	_ context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 func (t *hpIgnorelistPrepareTask) Execute(
@@ -255,13 +255,13 @@ func (t *hpIgnorelistPrepareTask) Execute(
 	if err != nil {
 		step.Completef(result.StepFailed, msgGetAppNamespaceFailed, err)
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	if target.DryRun {
 		step.Completef(result.StepSkipped, "Would backup ConfigMap %s from namespace %s", inferenceServiceConfigName, namespace)
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	configMap, err := getInferenceServiceConfig(ctx, target, namespace)
@@ -272,7 +272,7 @@ func (t *hpIgnorelistPrepareTask) Execute(
 			step.Completef(result.StepFailed, msgGetConfigMapFailed, namespace, inferenceServiceConfigName, err)
 		}
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	outputDir := filepath.Join(target.OutputDir, namespace)
@@ -283,7 +283,7 @@ func (t *hpIgnorelistPrepareTask) Execute(
 		step.Completef(result.StepCompleted, "Backed up ConfigMap %s to %s", inferenceServiceConfigName, outputDir)
 	}
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 // --- Run Task ---
@@ -296,7 +296,7 @@ func (t *hpIgnorelistRunTask) Validate(
 	_ context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 func (t *hpIgnorelistRunTask) Execute(
@@ -308,11 +308,11 @@ func (t *hpIgnorelistRunTask) Execute(
 		step := target.Recorder.Child("get-namespace", "Get applications namespace")
 		step.Completef(result.StepFailed, msgGetAppNamespaceFailed, err)
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	t.action.updateConfigMap(ctx, target, namespace)
 	t.action.restartKServeController(ctx, target, namespace)
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }

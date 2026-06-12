@@ -224,7 +224,7 @@ func (t *addOwnerRefsRunTask) Validate(
 	_ context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 func (t *addOwnerRefsRunTask) Execute(
@@ -233,5 +233,5 @@ func (t *addOwnerRefsRunTask) Execute(
 ) (*result.ActionResult, error) {
 	t.action.addOwnerReferences(ctx, target)
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }

@@ -123,7 +123,7 @@ func (t *managedISVCConfigRunTask) Validate(
 	_ context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 func (t *managedISVCConfigRunTask) Execute(
@@ -135,7 +135,7 @@ func (t *managedISVCConfigRunTask) Execute(
 		step := target.Recorder.Child("get-namespace", "Get applications namespace")
 		step.Completef(result.StepFailed, msgGetAppNamespaceFailed, err)
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	changed := t.action.setManagedTrue(ctx, target, namespace)
@@ -145,5 +145,5 @@ func (t *managedISVCConfigRunTask) Execute(
 		restartDeployment(ctx, target, namespace, kserveControllerDeployment, restartStep)
 	}
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }

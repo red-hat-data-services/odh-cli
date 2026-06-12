@@ -41,6 +41,7 @@ linters:
     wrapcheck:
       ignore-package-globs:
         - github.com/opendatahub-io/odh-cli/pkg/lint/check/validate
+        - github.com/opendatahub-io/odh-cli/pkg/migrate/action
     cyclop:
       max-complexity: 15  # Increased from default 10
     gocognit:

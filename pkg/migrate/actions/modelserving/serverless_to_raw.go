@@ -129,7 +129,7 @@ func (t *serverlessToRawPrepareTask) Validate(
 	_ context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 func (t *serverlessToRawPrepareTask) Execute(
@@ -145,19 +145,19 @@ func (t *serverlessToRawPrepareTask) Execute(
 	if err != nil {
 		step.Completef(result.StepFailed, "Failed to list Serverless InferenceServices: %v", err)
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	if len(isvcs) == 0 {
 		step.Completef(result.StepSkipped, msgServerlessNoISVCs)
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	if target.DryRun {
 		step.Completef(result.StepSkipped, "Would backup %d Serverless InferenceServices", len(isvcs))
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	// Group ISVCs by namespace for backup
@@ -168,13 +168,13 @@ func (t *serverlessToRawPrepareTask) Execute(
 		if err := backup.WriteResourcesToDir(outputDir, resources.InferenceService.GVR(), nsISVCs); err != nil {
 			step.Completef(result.StepFailed, "Failed to write InferenceServices backup for namespace %s: %v", ns, err)
 
-			return buildResult(target)
+			return action.BuildResult(target)
 		}
 	}
 
 	step.Completef(result.StepCompleted, msgServerlessBackupDone, len(isvcs), target.OutputDir)
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 // --- Run Task ---
@@ -198,7 +198,7 @@ func (t *serverlessToRawRunTask) Validate(
 		step.Completef(result.StepCompleted, msgFoundISVCs, len(isvcs), deploymentModeServerless)
 	}
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 func (t *serverlessToRawRunTask) Execute(
@@ -207,5 +207,5 @@ func (t *serverlessToRawRunTask) Execute(
 ) (*result.ActionResult, error) {
 	t.action.convertISVCs(ctx, target)
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }

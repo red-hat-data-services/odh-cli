@@ -440,16 +440,6 @@ func ensureRoleBinding(
 	step.Recordf("create-rolebinding", "Created RoleBinding %s/%s", result.StepCompleted, namespace, name)
 }
 
-// buildResult extracts the RootRecorder from target and builds the ActionResult.
-func buildResult(target action.Target) (*result.ActionResult, error) {
-	rootRecorder, ok := target.Recorder.(action.RootRecorder)
-	if !ok {
-		return nil, errors.New("recorder is not a RootRecorder")
-	}
-
-	return rootRecorder.Build(), nil
-}
-
 // groupByNamespace groups unstructured objects by their namespace.
 func groupByNamespace(objs []*unstructured.Unstructured) map[string][]*unstructured.Unstructured {
 	grouped := make(map[string][]*unstructured.Unstructured)

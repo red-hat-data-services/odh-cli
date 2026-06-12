@@ -199,7 +199,7 @@ func (t *modelMeshToRawPrepareTask) Validate(
 	_ context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 func (t *modelMeshToRawPrepareTask) Execute(
@@ -216,19 +216,19 @@ func (t *modelMeshToRawPrepareTask) Execute(
 	if err != nil {
 		step.Completef(result.StepFailed, "Failed to list ModelMesh InferenceServices: %v", err)
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	if len(isvcs) == 0 {
 		step.Completef(result.StepSkipped, msgModelMeshNoISVCs)
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	if target.DryRun {
 		step.Completef(result.StepSkipped, "Would backup %d ModelMesh InferenceServices and associated ServingRuntimes", len(isvcs))
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	// Backup ISVCs grouped by namespace
@@ -239,7 +239,7 @@ func (t *modelMeshToRawPrepareTask) Execute(
 		if err := backup.WriteResourcesToDir(outputDir, resources.InferenceService.GVR(), nsISVCs); err != nil {
 			step.Completef(result.StepFailed, "Failed to backup InferenceServices in namespace %s: %v", ns, err)
 
-			return buildResult(target)
+			return action.BuildResult(target)
 		}
 	}
 
@@ -252,7 +252,7 @@ func (t *modelMeshToRawPrepareTask) Execute(
 	if err != nil {
 		step.Completef(result.StepFailed, "Failed to list ServingRuntimes: %v", err)
 
-		return buildResult(target)
+		return action.BuildResult(target)
 	}
 
 	for ns, nsSRs := range groupByNamespace(servingRuntimes) {
@@ -260,13 +260,13 @@ func (t *modelMeshToRawPrepareTask) Execute(
 		if writeErr := backup.WriteResourcesToDir(outputDir, resources.ServingRuntime.GVR(), nsSRs); writeErr != nil {
 			step.Completef(result.StepFailed, "Failed to backup ServingRuntimes in namespace %s: %v", ns, writeErr)
 
-			return buildResult(target)
+			return action.BuildResult(target)
 		}
 	}
 
 	step.Completef(result.StepCompleted, msgModelMeshBackupDone, len(isvcs), target.OutputDir)
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 // --- Run Task ---
@@ -290,7 +290,7 @@ func (t *modelMeshToRawRunTask) Validate(
 		step.Completef(result.StepCompleted, msgFoundISVCs, len(isvcs), deploymentModeModelMesh)
 	}
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }
 
 func (t *modelMeshToRawRunTask) Execute(
@@ -299,5 +299,5 @@ func (t *modelMeshToRawRunTask) Execute(
 ) (*result.ActionResult, error) {
 	t.action.convertISVCs(ctx, target)
 
-	return buildResult(target)
+	return action.BuildResult(target)
 }

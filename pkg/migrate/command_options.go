@@ -7,6 +7,7 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
+	"k8s.io/client-go/rest"
 
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
@@ -38,6 +39,7 @@ type SharedOptions struct {
 	Verbose      bool
 	Timeout      time.Duration
 	Client       client.Client
+	RESTConfig   *rest.Config
 
 	// Throttling settings for Kubernetes API client
 	QPS   float32
@@ -61,6 +63,8 @@ func (o *SharedOptions) Complete() error {
 	if err != nil {
 		return fmt.Errorf("failed to create REST config: %w", err)
 	}
+
+	o.RESTConfig = restConfig
 
 	// Create client with configured throttling
 	c, err := client.NewClientWithConfig(restConfig)

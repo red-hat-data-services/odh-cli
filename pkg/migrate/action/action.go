@@ -2,10 +2,13 @@ package action
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/blang/semver/v4"
 	"github.com/spf13/pflag"
+
+	"k8s.io/client-go/rest"
 
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action/result"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
@@ -77,9 +80,20 @@ type ActionConfigurer interface {
 	AddFlags(fs *pflag.FlagSet)
 }
 
+// BuildResult extracts the final ActionResult from the target's recorder.
+func BuildResult(target Target) (*result.ActionResult, error) {
+	rootRecorder, ok := target.Recorder.(RootRecorder)
+	if !ok {
+		return nil, errors.New("recorder is not a RootRecorder")
+	}
+
+	return rootRecorder.Build(), nil
+}
+
 // Target holds all context needed for executing migration actions.
 type Target struct {
 	Client         client.Client
+	RESTConfig     *rest.Config    // Low-level K8s config for actions needing auth tokens or pod exec
 	CurrentVersion *semver.Version // Version being migrated FROM
 	TargetVersion  *semver.Version // Version being migrated TO
 	DryRun         bool

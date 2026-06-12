@@ -190,6 +190,7 @@ func (c *PrepareCommand) runPrepareMode(
 
 		target := action.Target{
 			Client:         c.Client,
+			RESTConfig:     c.RESTConfig,
 			CurrentVersion: currentVersion,
 			TargetVersion:  targetVersion,
 			DryRun:         c.DryRun,
