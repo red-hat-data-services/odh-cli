@@ -54,7 +54,7 @@ type ManifestResult struct {
 
 // GetManifest returns the parsed manifest and version, using embedded data by default.
 // If refresh is true, fetches the latest manifest from GitHub.
-func GetManifest(ctx context.Context, refresh bool) (*ManifestResult, error) { //nolint:revive // flag-parameter: refresh is intentional API design
+func GetManifest(ctx context.Context, refresh bool) (*ManifestResult, error) {
 	if refresh {
 		return fetchAndParseManifest(ctx, gitopsBaseURL)
 	}

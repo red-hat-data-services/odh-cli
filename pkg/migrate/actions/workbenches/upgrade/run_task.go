@@ -194,7 +194,6 @@ func (t *runTask) fixContainerNames(
 	}
 }
 
-//nolint:revive // confusing-results: unnamed (int, int) conflicts with nonamedreturns linter.
 func (t *runTask) applyContainerFixes(
 	ctx context.Context,
 	target action.Target,

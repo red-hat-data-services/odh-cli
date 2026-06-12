@@ -330,6 +330,38 @@ var (
 		Resource: "pytorchjobs",
 	}
 
+	// TFJob is the Kubeflow Training TFJob resource.
+	TFJob = ResourceType{
+		Group:    "kubeflow.org",
+		Version:  "v1",
+		Kind:     "TFJob",
+		Resource: "tfjobs",
+	}
+
+	// MPIJob is the Kubeflow Training MPIJob resource.
+	MPIJob = ResourceType{
+		Group:    "kubeflow.org",
+		Version:  "v1",
+		Kind:     "MPIJob",
+		Resource: "mpijobs",
+	}
+
+	// XGBoostJob is the Kubeflow Training XGBoostJob resource.
+	XGBoostJob = ResourceType{
+		Group:    "kubeflow.org",
+		Version:  "v1",
+		Kind:     "XGBoostJob",
+		Resource: "xgboostjobs",
+	}
+
+	// TrainJob is the Kubeflow Trainer v2 TrainJob resource.
+	TrainJob = ResourceType{
+		Group:    "kubeflow.org",
+		Version:  "v2alpha1",
+		Kind:     "TrainJob",
+		Resource: "trainjobs",
+	}
+
 	// GuardrailsOrchestrator is the TrustyAI GuardrailsOrchestrator resource.
 	GuardrailsOrchestrator = ResourceType{
 		Group:    "trustyai.opendatahub.io",

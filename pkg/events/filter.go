@@ -270,7 +270,6 @@ func newLabelCache() *labelCache {
 	return &labelCache{cache: make(map[string]bool)}
 }
 
-//nolint:revive // map lookup pattern returns (value, found)
 func (lc *labelCache) lookup(key string) (bool, bool) {
 	lc.mu.RLock()
 	defer lc.mu.RUnlock()

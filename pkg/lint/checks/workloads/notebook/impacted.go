@@ -1406,7 +1406,7 @@ func isCompliantBuildRef(buildRef string) bool {
 // mustParseVersionParts parses a "X.Y" version string into its major and minor
 // integer components. Panics if the format is invalid.
 //
-//nolint:revive // confusing-results: unnamed (int, int) conflicts with nonamedreturns linter.
+
 func mustParseVersionParts(v string) (int, int) {
 	majorStr, minorStr, ok := strings.Cut(v, ".")
 	if !ok {

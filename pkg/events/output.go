@@ -103,8 +103,6 @@ func (c *Command) renderOutput(events []clusterhealth.EventInfo) error {
 
 // outputTable renders events as a formatted table.
 // When showNamespace is true, adds a NAMESPACE column (like kubectl -A).
-//
-//nolint:revive // flag-parameter: showNamespace mirrors kubectl -A behavior
 func outputTable(w io.Writer, events []clusterhealth.EventInfo, showNamespace bool) error {
 	if len(events) == 0 {
 		if _, err := fmt.Fprintln(w, msgNoEventsFound); err != nil {

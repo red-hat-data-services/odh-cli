@@ -97,8 +97,12 @@ linters:
           disabled: true  # Standard wg.Add/Done pattern is fine
         - name: empty-block
           disabled: true  # Empty blocks with comments are intentional
+        - name: confusing-results
+          disabled: true  # Conflicts with nonamedreturns linter
         - name: enforce-switch-style
           disabled: true # default would make it more verbose
+        - name: flag-parameter
+          disabled: true  # Bool parameters for CLI flags (e.g. showNamespace) are idiomatic
 
 formatters:
   enable:

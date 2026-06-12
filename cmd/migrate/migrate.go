@@ -57,6 +57,9 @@ const cmdExample = `
 
   # Run multiple migrations sequentially
   kubectl odh migrate run --migration kueue.rhbok.migrate --migration other.migration --target-version 3.0.0 --yes
+
+  # Check for running training workloads before upgrade
+  kubectl odh migrate run -m training.verify-workloads --target-version 3.0.0
 `
 
 // AddCommand adds the migrate command to the root command.

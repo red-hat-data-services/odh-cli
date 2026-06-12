@@ -23,19 +23,39 @@ func WriteResourceToFile(
 	if namespace == "" {
 		namespace = "cluster-scoped"
 	}
-	name := obj.GetName()
 
 	nsDir := filepath.Join(outputDir, namespace)
 	if err := os.MkdirAll(nsDir, dirPermissions); err != nil {
 		return fmt.Errorf("creating namespace directory: %w", err)
 	}
 
+	return writeResourceToDir(nsDir, gvr, obj)
+}
+
+// WriteResourceFlat writes a resource to $dir/$GVR-$name.yaml without creating
+// a namespace subdirectory. Use this when the directory structure already encodes
+// the namespace (e.g. $outputDir/$namespace/$name/).
+func WriteResourceFlat(
+	dir string,
+	gvr schema.GroupVersionResource,
+	obj *unstructured.Unstructured,
+) error {
+	return writeResourceToDir(dir, gvr, obj)
+}
+
+// writeResourceToDir writes a resource YAML directly to the given directory.
+func writeResourceToDir(
+	dir string,
+	gvr schema.GroupVersionResource,
+	obj *unstructured.Unstructured,
+) error {
 	gvrStr := gvr.Resource
 	if gvr.Group != "" {
 		gvrStr = gvr.Resource + "." + gvr.Group
 	}
-	filename := fmt.Sprintf("%s-%s.yaml", gvrStr, name)
-	filePath := filepath.Join(nsDir, filename)
+
+	filename := fmt.Sprintf("%s-%s.yaml", gvrStr, obj.GetName())
+	filePath := filepath.Join(dir, filename)
 
 	data, err := yaml.Marshal(obj.Object)
 	if err != nil {
