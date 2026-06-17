@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"strings"
 
@@ -177,7 +176,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.NoColor, "no-color", false, flagDescNoColor)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescTimeout)
 	fs.StringVar(&c.ISVCDeploymentMode, "isvc-deployment-mode", "all", flagDescISVCDeploymentMode)
-	fs.BoolVar(&c.FromStdin, "from-stdin", false, flagDescFromStdin)
+	fs.BoolVar(&c.FromStdin, "from-stdin", false, stdin.FlagDesc)
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, flagDescQPS)
@@ -189,9 +188,8 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 
 // parseStdinConfig reads and applies configuration from stdin.
 func (c *Command) parseStdinConfig() error {
-	// Only check for TTY if input is an *os.File (skip for bytes.Buffer in tests)
-	if f, ok := c.IO.In().(*os.File); ok && !stdin.IsPiped(f) {
-		c.IO.Errorf(warnStdinIsTerminal)
+	if err := stdin.CheckPiped(c.IO.In()); err != nil {
+		return err //nolint:wrapcheck // CheckPiped returns a self-descriptive user-facing error
 	}
 
 	var input StdinInput
@@ -211,11 +209,11 @@ func (c *Command) parseStdinConfig() error {
 // Explicit CLI flags take precedence over stdin values.
 // Returns an error if stdin contains invalid values.
 func (c *Command) applyStdinInput(input *StdinInput) error {
-	if len(input.Checks) > 0 && !c.flagChanged("checks") {
+	if len(input.Checks) > 0 && !stdin.FlagChanged(c.flags, "checks") {
 		c.CheckSelectors = input.Checks
 	}
 
-	if input.Severity != "" && !c.flagChanged("severity") {
+	if input.Severity != "" && !stdin.FlagChanged(c.flags, "severity") {
 		level := SeverityLevel(input.Severity)
 		if err := level.Validate(); err != nil {
 			return fmt.Errorf("stdin input: %w", err)
@@ -223,19 +221,19 @@ func (c *Command) applyStdinInput(input *StdinInput) error {
 		c.SeverityLevel = level
 	}
 
-	if input.TargetVersion != "" && !c.flagChanged("target-version") {
+	if input.TargetVersion != "" && !stdin.FlagChanged(c.flags, "target-version") {
 		c.TargetVersion = input.TargetVersion
 	}
 
-	if input.Verbose && !c.flagChanged("verbose") {
+	if input.Verbose && !stdin.FlagChanged(c.flags, "verbose") {
 		c.Verbose = true
 	}
 
-	if input.Quiet && !c.flagChanged("quiet") {
+	if input.Quiet && !stdin.FlagChanged(c.flags, "quiet") {
 		c.Quiet = true
 	}
 
-	if input.Output != "" && !c.flagChanged("output") {
+	if input.Output != "" && !stdin.FlagChanged(c.flags, "output") {
 		format := OutputFormat(input.Output)
 		if err := format.Validate(); err != nil {
 			return fmt.Errorf("stdin input: %w", err)
@@ -244,16 +242,6 @@ func (c *Command) applyStdinInput(input *StdinInput) error {
 	}
 
 	return nil
-}
-
-// flagChanged returns true if the flag was explicitly set on the command line.
-func (c *Command) flagChanged(name string) bool {
-	if c.flags == nil {
-		return false
-	}
-	f := c.flags.Lookup(name)
-
-	return f != nil && f.Changed
 }
 
 // Complete populates Options and performs pre-validation setup.

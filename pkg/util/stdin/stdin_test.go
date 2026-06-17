@@ -177,6 +177,27 @@ func TestParse_InputTooLarge(t *testing.T) {
 	g.Expect(err.Error()).To(ContainSubstring("input too large"))
 }
 
+func TestCheckPiped_PipeCheckerInterface(t *testing.T) {
+	t.Run("PipeChecker returning true is treated as piped", func(t *testing.T) {
+		g := NewWithT(t)
+		err := stdin.CheckPiped(fakePipeChecker(true))
+		g.Expect(err).ToNot(HaveOccurred())
+	})
+
+	t.Run("PipeChecker returning false returns terminal error", func(t *testing.T) {
+		g := NewWithT(t)
+		err := stdin.CheckPiped(fakePipeChecker(false))
+		g.Expect(err).To(HaveOccurred())
+		g.Expect(err.Error()).To(ContainSubstring("stdin is a terminal"))
+	})
+}
+
+// fakePipeChecker implements both io.Reader and stdin.PipeChecker for testing.
+type fakePipeChecker bool
+
+func (f fakePipeChecker) Read(_ []byte) (int, error) { return 0, nil }
+func (f fakePipeChecker) IsPiped() bool              { return bool(f) }
+
 func TestIsPiped(t *testing.T) {
 	t.Run("pipe returns true", func(t *testing.T) {
 		g := NewWithT(t)

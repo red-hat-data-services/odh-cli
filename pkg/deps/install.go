@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -25,8 +26,9 @@ import (
 
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
-	utilserrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
+	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
+	"github.com/opendatahub-io/odh-cli/pkg/util/stdin"
 )
 
 // Verify InstallCommand implements cmd.Command interface at compile time.
@@ -114,12 +116,15 @@ type InstallCommand struct {
 	IncludeOptional bool
 	Timeout         time.Duration
 	TargetDep       string
+	TargetDeps      []string
 	Version         string
 	Refresh         bool
+	FromStdin       bool
 
 	client          client.Client
 	manifestVersion string
 	useColor        bool
+	flags           *pflag.FlagSet
 }
 
 // NewInstallCommand creates a new InstallCommand with defaults.
@@ -133,15 +138,31 @@ func NewInstallCommand(streams genericiooptions.IOStreams, configFlags *genericc
 
 // AddFlags registers command-specific flags with the provided FlagSet.
 func (c *InstallCommand) AddFlags(fs *pflag.FlagSet) {
+	c.flags = fs
 	fs.BoolVar(&c.DryRun, "dry-run", false, "Show what would be installed without executing")
 	fs.BoolVar(&c.IncludeOptional, "include-optional", false, "Install optional dependencies in addition to required")
 	fs.DurationVar(&c.Timeout, "timeout", defaultTimeout, "Timeout for waiting on each operator CSV")
 	fs.StringVar(&c.Version, "version", "", "ODH/RHOAI version to install dependencies for")
 	fs.BoolVar(&c.Refresh, "refresh", false, "Fetch latest manifest from odh-gitops")
+	fs.BoolVar(&c.FromStdin, "from-stdin", false, stdin.FlagDesc)
 }
 
 // Complete prepares the command for execution.
 func (c *InstallCommand) Complete() error {
+	if c.FromStdin {
+		if err := c.parseStdinConfig(); err != nil {
+			return clierrors.NewExitCodeError(clierrors.ExitValidation, err) //nolint:wrapcheck // NewExitCodeError is a same-module constructor
+		}
+	}
+
+	// Normalize single positional arg into TargetDeps slice.
+	// Must run AFTER parseStdinConfig: applyStdinInput checks c.TargetDep != ""
+	// to detect conflicts, which only works while TargetDep is still populated.
+	if len(c.TargetDeps) == 0 && c.TargetDep != "" {
+		c.TargetDeps = []string{c.TargetDep}
+		c.TargetDep = "" // zero out to prevent stale reads after Complete()
+	}
+
 	c.useColor = shouldUseColor(c.IO.Out())
 
 	if c.DryRun {
@@ -154,6 +175,56 @@ func (c *InstallCommand) Complete() error {
 	}
 
 	c.client = cl
+
+	return nil
+}
+
+func (c *InstallCommand) parseStdinConfig() error {
+	if err := stdin.CheckPiped(c.IO.In()); err != nil {
+		return err //nolint:wrapcheck // CheckPiped returns a self-descriptive user-facing error
+	}
+
+	var input StdinInput
+	if err := stdin.Parse(c.IO.In(), &input); err != nil {
+		return fmt.Errorf("parsing stdin: %w", err)
+	}
+
+	return c.applyStdinInput(&input)
+}
+
+func (c *InstallCommand) applyStdinInput(input *StdinInput) error {
+	for i, name := range input.Deps {
+		trimmed := strings.TrimSpace(name)
+		if trimmed == "" {
+			return fmt.Errorf("empty dep name at index %d", i)
+		}
+
+		input.Deps[i] = trimmed
+	}
+
+	if input.Deps != nil && (c.TargetDep != "" || len(c.TargetDeps) > 0) {
+		return errors.New("cannot specify both a positional dependency argument and deps in stdin")
+	}
+
+	if input.Deps != nil {
+		c.TargetDeps = input.Deps
+	}
+
+	if input.Version != "" && !stdin.FlagChanged(c.flags, "version") {
+		c.Version = input.Version
+	}
+
+	if input.DryRun && !stdin.FlagChanged(c.flags, "dry-run") {
+		c.DryRun = true
+	}
+
+	if input.IncludeOptional && !stdin.FlagChanged(c.flags, "include-optional") {
+		c.IncludeOptional = true
+	}
+
+	if input.Refresh && !stdin.FlagChanged(c.flags, "refresh") {
+		c.Refresh = true
+	}
 
 	return nil
 }
@@ -182,7 +253,7 @@ func (c *InstallCommand) Validate() error {
 	c.manifestVersion = manifestVer
 
 	if c.Version != "" && !majorMinorMatch(c.Version, c.manifestVersion) {
-		return utilserrors.NewValidationError(
+		return clierrors.NewValidationError(
 			"VERSION_UNAVAILABLE",
 			fmt.Sprintf("dependencies for version %q are not available; only version %s is supported", c.Version, c.manifestVersion),
 			"Use --refresh to fetch the latest manifest, or omit --version to use the embedded version",
@@ -211,7 +282,7 @@ func (c *InstallCommand) Run(ctx context.Context) error {
 			suggestion = "Omit --version to use the fetched manifest version"
 		}
 
-		return utilserrors.NewValidationError(
+		return clierrors.NewValidationError(
 			"VERSION_UNAVAILABLE",
 			fmt.Sprintf("dependencies for version %q are not available; only version %s is supported", c.Version, c.manifestVersion),
 			suggestion,
@@ -223,9 +294,9 @@ func (c *InstallCommand) Run(ctx context.Context) error {
 
 	deps := result.Manifest.GetDependencies()
 
-	if c.TargetDep != "" {
-		if !c.isValidDependency(deps, c.TargetDep) {
-			return fmt.Errorf(msgUnknownDependency, c.TargetDep)
+	for _, depName := range c.TargetDeps {
+		if !c.isValidDependency(deps, depName) {
+			return fmt.Errorf(msgUnknownDependency, depName)
 		}
 	}
 
@@ -254,7 +325,14 @@ func (c *InstallCommand) runDryRun(_ context.Context, deps []DependencyInfo) err
 
 	toInstall := c.filterDepsForDryRun(deps)
 	if len(toInstall) == 0 {
-		_, _ = fmt.Fprintln(w, msgNoDepsToInstall)
+		switch {
+		case len(c.TargetDeps) == 0 && c.TargetDeps != nil:
+			_, _ = fmt.Fprintln(w, msgNoDepsToInstall)
+		case len(c.TargetDeps) > 0:
+			_, _ = fmt.Fprintf(w, "%s is already installed.\n", strings.Join(c.TargetDeps, ", "))
+		default:
+			_, _ = fmt.Fprintln(w, msgAllInstalled)
+		}
 
 		return nil
 	}
@@ -332,7 +410,14 @@ func (c *InstallCommand) runInstall(ctx context.Context, deps []DependencyInfo) 
 	}
 
 	if len(toInstall) == 0 {
-		_, _ = fmt.Fprintln(w, msgAllInstalled)
+		switch {
+		case len(c.TargetDeps) == 0 && c.TargetDeps != nil:
+			_, _ = fmt.Fprintln(w, msgNoDepsToInstall)
+		case len(c.TargetDeps) > 0:
+			_, _ = fmt.Fprintf(w, "%s is already installed.\n", strings.Join(c.TargetDeps, ", "))
+		default:
+			_, _ = fmt.Fprintln(w, msgAllInstalled)
+		}
 
 		return nil
 	}
@@ -418,10 +503,6 @@ func (c *InstallCommand) filterDepsForDryRun(deps []DependencyInfo) []Dependency
 	var toInstall []DependencyInfo
 
 	for _, dep := range deps {
-		if c.TargetDep != "" && dep.Name != c.TargetDep {
-			continue
-		}
-
 		if !c.shouldInstallDep(dep) {
 			continue
 		}
@@ -436,10 +517,6 @@ func (c *InstallCommand) filterDepsToInstall(ctx context.Context, deps []Depende
 	indices := make([]int, 0, len(deps))
 
 	for i, dep := range deps {
-		if c.TargetDep != "" && dep.Name != c.TargetDep {
-			continue
-		}
-
 		if !c.shouldInstallDep(dep) {
 			continue
 		}
@@ -488,12 +565,13 @@ func (c *InstallCommand) filterDepsToInstall(ctx context.Context, deps []Depende
 }
 
 func (c *InstallCommand) shouldInstallDep(dep DependencyInfo) bool {
-	// If user explicitly named this dependency, always allow it
-	if c.TargetDep != "" && c.TargetDep == dep.Name {
-		return true
+	// If user provided an explicit list (single or batch), only allow those deps.
+	// An explicit empty list means "install nothing".
+	if c.TargetDeps != nil {
+		return slices.Contains(c.TargetDeps, dep.Name)
 	}
 
-	// Required deps (enabled=true) are always installed
+	// Bulk mode: apply enabled/optional filtering
 	if dep.Enabled == enabledTrue {
 		return true
 	}

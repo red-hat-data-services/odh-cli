@@ -19,13 +19,3 @@ type StdinInput struct {
 	// Named "skipConfirm" instead of "yes" because "yes" is a reserved YAML 1.1 boolean.
 	SkipConfirm bool `json:"skipConfirm,omitempty" yaml:"skipConfirm,omitempty"`
 }
-
-// Flag descriptions for stdin support.
-const (
-	flagDescFromStdin = "read configuration from stdin (JSON/YAML); CLI flags override stdin values"
-)
-
-// Warning messages.
-const (
-	warnStdinIsTerminal = "Warning: --from-stdin specified but stdin is a terminal"
-)

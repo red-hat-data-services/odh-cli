@@ -24,60 +24,78 @@ import (
 func TestShouldInstallDep(t *testing.T) {
 	tests := []struct {
 		name            string
-		targetDep       string
+		targetDeps      []string
 		includeOptional bool
 		dep             DependencyInfo
 		want            bool
 	}{
 		{
-			name:      "target dep matches - always install",
-			targetDep: "cert-manager",
-			dep:       DependencyInfo{Name: "cert-manager", Enabled: "false"},
-			want:      true,
+			name:       "target dep matches - always install",
+			targetDeps: []string{"cert-manager"},
+			dep:        DependencyInfo{Name: "cert-manager", Enabled: "false"},
+			want:       true,
 		},
 		{
-			name:      "target dep matches optional - always install",
-			targetDep: "kueue",
-			dep:       DependencyInfo{Name: "kueue", Enabled: "auto"},
-			want:      true,
+			name:       "target dep matches optional - always install",
+			targetDeps: []string{"kueue"},
+			dep:        DependencyInfo{Name: "kueue", Enabled: "auto"},
+			want:       true,
 		},
 		{
-			name:      "required dep - install",
-			targetDep: "",
-			dep:       DependencyInfo{Name: "cert-manager", Enabled: "true"},
-			want:      true,
+			name:       "required dep - install",
+			targetDeps: nil,
+			dep:        DependencyInfo{Name: "cert-manager", Enabled: "true"},
+			want:       true,
 		},
 		{
-			name:      "optional dep without flag - skip",
-			targetDep: "",
-			dep:       DependencyInfo{Name: "kueue", Enabled: "auto"},
-			want:      false,
+			name:       "optional dep without flag - skip",
+			targetDeps: nil,
+			dep:        DependencyInfo{Name: "kueue", Enabled: "auto"},
+			want:       false,
 		},
 		{
-			name:      "disabled dep without flag - skip",
-			targetDep: "",
-			dep:       DependencyInfo{Name: "servicemesh", Enabled: "false"},
-			want:      false,
+			name:       "disabled dep without flag - skip",
+			targetDeps: nil,
+			dep:        DependencyInfo{Name: "servicemesh", Enabled: "false"},
+			want:       false,
 		},
 		{
 			name:            "optional dep with flag - install",
-			targetDep:       "",
+			targetDeps:      nil,
 			includeOptional: true,
 			dep:             DependencyInfo{Name: "kueue", Enabled: "auto"},
 			want:            true,
 		},
 		{
 			name:            "disabled dep with flag - still skip",
-			targetDep:       "",
+			targetDeps:      nil,
 			includeOptional: true,
 			dep:             DependencyInfo{Name: "servicemesh", Enabled: "false"},
 			want:            false,
 		},
 		{
-			name:      "different target dep - use normal rules",
-			targetDep: "other-dep",
-			dep:       DependencyInfo{Name: "kueue", Enabled: "auto"},
-			want:      false,
+			name:       "different target dep - use normal rules",
+			targetDeps: []string{"other-dep"},
+			dep:        DependencyInfo{Name: "kueue", Enabled: "auto"},
+			want:       false,
+		},
+		{
+			name:       "batch target deps - install matching dep",
+			targetDeps: []string{"cert-manager", "kueue"},
+			dep:        DependencyInfo{Name: "kueue", Enabled: "auto"},
+			want:       true,
+		},
+		{
+			name:       "batch target deps - skip non-matching dep",
+			targetDeps: []string{"cert-manager", "kueue"},
+			dep:        DependencyInfo{Name: "servicemesh", Enabled: "true"},
+			want:       false,
+		},
+		{
+			name:       "explicit empty list - install nothing",
+			targetDeps: []string{},
+			dep:        DependencyInfo{Name: "cert-manager", Enabled: "true"},
+			want:       false,
 		},
 	}
 
@@ -92,7 +110,7 @@ func TestShouldInstallDep(t *testing.T) {
 
 			cmd := &InstallCommand{
 				IO:              iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
-				TargetDep:       tt.targetDep,
+				TargetDeps:      tt.targetDeps,
 				IncludeOptional: tt.includeOptional,
 			}
 
@@ -213,7 +231,7 @@ func TestRunDryRun(t *testing.T) {
 		g.Expect(output).To(ContainSubstring("app.kubernetes.io/managed-by: odh-cli"))
 	})
 
-	t.Run("no deps to install", func(t *testing.T) {
+	t.Run("bulk mode with no eligible deps shows all-installed", func(t *testing.T) {
 		g := NewWithT(t)
 
 		var buf bytes.Buffer
@@ -222,11 +240,11 @@ func TestRunDryRun(t *testing.T) {
 			ErrOut: &bytes.Buffer{},
 		}
 
+		// TargetDeps == nil: bulk mode; optional dep without --include-optional is skipped
 		cmd := &InstallCommand{
 			IO: iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
 		}
 
-		// Optional dep without --include-optional flag
 		deps := []DependencyInfo{
 			{
 				Name:    "kueue",
@@ -240,7 +258,40 @@ func TestRunDryRun(t *testing.T) {
 
 		output := buf.String()
 		g.Expect(output).To(ContainSubstring("[DRY RUN]"))
-		g.Expect(output).To(ContainSubstring("No dependencies to install"))
+		g.Expect(output).To(ContainSubstring(msgAllInstalled))
+		g.Expect(output).ToNot(ContainSubstring(msgNoDepsToInstall))
+	})
+
+	t.Run("explicit empty TargetDeps shows no-deps-to-install", func(t *testing.T) {
+		g := NewWithT(t)
+
+		var buf bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			Out:    &buf,
+			ErrOut: &bytes.Buffer{},
+		}
+
+		// TargetDeps == []string{}: user explicitly requested nothing
+		cmd := &InstallCommand{
+			IO:         iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
+			TargetDeps: []string{},
+		}
+
+		deps := []DependencyInfo{
+			{
+				Name:    "cert-manager",
+				Enabled: "true",
+			},
+		}
+
+		err := cmd.runDryRun(context.Background(), deps)
+
+		g.Expect(err).ToNot(HaveOccurred())
+
+		output := buf.String()
+		g.Expect(output).To(ContainSubstring("[DRY RUN]"))
+		g.Expect(output).To(ContainSubstring(msgNoDepsToInstall))
+		g.Expect(output).ToNot(ContainSubstring(msgAllInstalled))
 	})
 
 	t.Run("with target dep", func(t *testing.T) {
@@ -253,8 +304,8 @@ func TestRunDryRun(t *testing.T) {
 		}
 
 		cmd := &InstallCommand{
-			IO:        iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
-			TargetDep: "kueue",
+			IO:         iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
+			TargetDeps: []string{"kueue"},
 		}
 
 		deps := []DependencyInfo{
@@ -282,6 +333,62 @@ func TestRunDryRun(t *testing.T) {
 		// Should only show kueue, not cert-manager
 		g.Expect(output).To(ContainSubstring("Kueue"))
 		g.Expect(output).ToNot(ContainSubstring("Cert Manager"))
+	})
+}
+
+func TestRunInstall_EmptyToInstall(t *testing.T) {
+	// filterDepsToInstall short-circuits before any API call when shouldInstallDep
+	// returns false for all deps, so these tests need no cluster client.
+
+	t.Run("bulk mode with no eligible deps shows all-installed", func(t *testing.T) {
+		g := NewWithT(t)
+
+		var buf bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			Out:    &buf,
+			ErrOut: &bytes.Buffer{},
+		}
+
+		// TargetDeps == nil: bulk mode; all deps disabled, none reach isAlreadyInstalled
+		cmd := &InstallCommand{
+			IO: iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
+		}
+
+		deps := []DependencyInfo{
+			{Name: "servicemesh", Enabled: "false"},
+		}
+
+		err := cmd.runInstall(context.Background(), deps)
+
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(buf.String()).To(ContainSubstring(msgAllInstalled))
+		g.Expect(buf.String()).ToNot(ContainSubstring(msgNoDepsToInstall))
+	})
+
+	t.Run("explicit empty TargetDeps shows no-deps-to-install", func(t *testing.T) {
+		g := NewWithT(t)
+
+		var buf bytes.Buffer
+		streams := genericiooptions.IOStreams{
+			Out:    &buf,
+			ErrOut: &bytes.Buffer{},
+		}
+
+		// TargetDeps == []string{}: user explicitly requested nothing
+		cmd := &InstallCommand{
+			IO:         iostreams.NewIOStreams(streams.In, streams.Out, streams.ErrOut),
+			TargetDeps: []string{},
+		}
+
+		deps := []DependencyInfo{
+			{Name: "cert-manager", Enabled: "true"},
+		}
+
+		err := cmd.runInstall(context.Background(), deps)
+
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(buf.String()).To(ContainSubstring(msgNoDepsToInstall))
+		g.Expect(buf.String()).ToNot(ContainSubstring(msgAllInstalled))
 	})
 }
 

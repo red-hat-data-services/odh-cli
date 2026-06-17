@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/blang/semver/v4"
 	"github.com/spf13/pflag"
@@ -63,7 +62,7 @@ func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescRunMigration)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescRunTargetVersion)
 	fs.StringVar(&c.Phase, "phase", "", flagDescRunPhase)
-	fs.BoolVar(&c.FromStdin, "from-stdin", false, flagDescFromStdin)
+	fs.BoolVar(&c.FromStdin, "from-stdin", false, stdin.FlagDesc)
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
@@ -73,21 +72,10 @@ func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	action.RegisterActionFlags(c.registry, fs)
 }
 
-// flagChanged returns true if the flag was explicitly set on the command line.
-func (c *RunCommand) flagChanged(name string) bool {
-	if c.flags == nil {
-		return false
-	}
-
-	f := c.flags.Lookup(name)
-
-	return f != nil && f.Changed
-}
-
 // parseStdinConfig reads and applies configuration from stdin.
 func (c *RunCommand) parseStdinConfig() error {
-	if f, ok := c.IO.In().(*os.File); ok && !stdin.IsPiped(f) {
-		c.IO.Errorf("%s", warnStdinIsTerminal)
+	if err := stdin.CheckPiped(c.IO.In()); err != nil {
+		return err //nolint:wrapcheck // CheckPiped returns a self-descriptive user-facing error
 	}
 
 	var input StdinInput
@@ -102,26 +90,26 @@ func (c *RunCommand) parseStdinConfig() error {
 // Explicit CLI flags take precedence over stdin values.
 func (c *RunCommand) applyStdinInput(input *StdinInput) error {
 	// Apply migrations if not set via CLI
-	if len(input.Migrations) > 0 && !c.flagChanged("migration") {
+	if len(input.Migrations) > 0 && !stdin.FlagChanged(c.flags, "migration") {
 		c.MigrationIDs = input.Migrations
 	}
 
 	// Apply target version if not set via CLI
-	if input.TargetVersion != "" && !c.flagChanged("target-version") {
+	if input.TargetVersion != "" && !stdin.FlagChanged(c.flags, "target-version") {
 		c.TargetVersion = input.TargetVersion
 	}
 
 	// Apply phase if not set via CLI
-	if input.Phase != "" && !c.flagChanged("phase") {
+	if input.Phase != "" && !stdin.FlagChanged(c.flags, "phase") {
 		c.Phase = input.Phase
 	}
 
 	// Apply boolean flags if not set via CLI
-	if input.DryRun && !c.flagChanged("dry-run") {
+	if input.DryRun && !stdin.FlagChanged(c.flags, "dry-run") {
 		c.DryRun = true
 	}
 
-	if input.SkipConfirm && !c.flagChanged("yes") {
+	if input.SkipConfirm && !stdin.FlagChanged(c.flags, "yes") {
 		c.Yes = true
 	}
 

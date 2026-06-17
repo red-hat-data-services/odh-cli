@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/pflag"
@@ -70,7 +69,7 @@ func (c *EnableCommand) AddFlags(fs *pflag.FlagSet) {
 	c.flags = fs
 	fs.BoolVar(&c.DryRun, "dry-run", false, "Show what would change without applying")
 	fs.BoolVarP(&c.Yes, "yes", "y", false, "Skip confirmation prompt")
-	fs.BoolVar(&c.FromStdin, "from-stdin", false, flagDescFromStdin)
+	fs.BoolVar(&c.FromStdin, "from-stdin", false, stdin.FlagDesc)
 }
 
 // Complete resolves derived fields after flag parsing.
@@ -100,8 +99,8 @@ func (c *EnableCommand) Complete() error {
 
 // parseStdinConfig reads and applies configuration from stdin.
 func (c *EnableCommand) parseStdinConfig() error {
-	if f, ok := c.IO.In().(*os.File); ok && !stdin.IsPiped(f) {
-		c.IO.Errorf("%s", warnStdinIsTerminal)
+	if err := stdin.CheckPiped(c.IO.In()); err != nil {
+		return err //nolint:wrapcheck // CheckPiped returns a self-descriptive user-facing error
 	}
 
 	var input StdinInput
@@ -132,25 +131,15 @@ func (c *EnableCommand) applyStdinInput(input *StdinInput) error {
 		c.ComponentNames = input.Components
 	}
 
-	if input.DryRun && !c.flagChanged("dry-run") {
+	if input.DryRun && !stdin.FlagChanged(c.flags, "dry-run") {
 		c.DryRun = true
 	}
 
-	if input.SkipConfirm && !c.flagChanged("yes") {
+	if input.SkipConfirm && !stdin.FlagChanged(c.flags, "yes") {
 		c.Yes = true
 	}
 
 	return nil
-}
-
-// flagChanged returns true if the flag was explicitly set on the command line.
-func (c *EnableCommand) flagChanged(name string) bool {
-	if c.flags == nil {
-		return false
-	}
-	f := c.flags.Lookup(name)
-
-	return f != nil && f.Changed
 }
 
 // Validate checks that all options are valid before execution.
@@ -233,7 +222,7 @@ func (c *DisableCommand) AddFlags(fs *pflag.FlagSet) {
 	c.flags = fs
 	fs.BoolVar(&c.DryRun, "dry-run", false, "Show what would change without applying")
 	fs.BoolVarP(&c.Yes, "yes", "y", false, "Skip confirmation prompt")
-	fs.BoolVar(&c.FromStdin, "from-stdin", false, flagDescFromStdin)
+	fs.BoolVar(&c.FromStdin, "from-stdin", false, stdin.FlagDesc)
 }
 
 // Complete resolves derived fields after flag parsing.
@@ -263,8 +252,8 @@ func (c *DisableCommand) Complete() error {
 
 // parseStdinConfig reads and applies configuration from stdin.
 func (c *DisableCommand) parseStdinConfig() error {
-	if f, ok := c.IO.In().(*os.File); ok && !stdin.IsPiped(f) {
-		c.IO.Errorf("%s", warnStdinIsTerminal)
+	if err := stdin.CheckPiped(c.IO.In()); err != nil {
+		return err //nolint:wrapcheck // CheckPiped returns a self-descriptive user-facing error
 	}
 
 	var input StdinInput
@@ -295,25 +284,15 @@ func (c *DisableCommand) applyStdinInput(input *StdinInput) error {
 		c.ComponentNames = input.Components
 	}
 
-	if input.DryRun && !c.flagChanged("dry-run") {
+	if input.DryRun && !stdin.FlagChanged(c.flags, "dry-run") {
 		c.DryRun = true
 	}
 
-	if input.SkipConfirm && !c.flagChanged("yes") {
+	if input.SkipConfirm && !stdin.FlagChanged(c.flags, "yes") {
 		c.Yes = true
 	}
 
 	return nil
-}
-
-// flagChanged returns true if the flag was explicitly set on the command line.
-func (c *DisableCommand) flagChanged(name string) bool {
-	if c.flags == nil {
-		return false
-	}
-	f := c.flags.Lookup(name)
-
-	return f != nil && f.Changed
 }
 
 // Validate checks that all options are valid before execution.
