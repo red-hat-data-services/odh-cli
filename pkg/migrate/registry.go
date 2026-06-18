@@ -6,6 +6,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/kueue/rhbok"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/llamastack/backup"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/modelserving"
+	rayactions "github.com/opendatahub-io/odh-cli/pkg/migrate/actions/raycluster"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/training"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/trustyai/data"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/trustyai/deadlock"
@@ -35,6 +36,9 @@ func newDefaultRegistry() *action.ActionRegistry {
 	registry.MustRegister(&data.DataAction{})
 	registry.MustRegister(&training.VerifyWorkloadsAction{})
 	registry.MustRegister(&backup.LlamaStackBackupAction{})
+	rayBackup, rayMigrate := rayactions.NewActions()
+	registry.MustRegister(rayBackup)
+	registry.MustRegister(rayMigrate)
 
 	return registry
 }

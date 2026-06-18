@@ -235,6 +235,35 @@ func TestHardwareProfileMigration_Validate_SkipWhenWorkbenchesRemoved(t *testing
 	g.Expect(result).To(BeNil())
 }
 
+func TestHardwareProfileMigration_CanApply_Managed(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds: hardwareProfileListKinds,
+		Objects:   []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Managed"})},
+	})
+
+	chk := notebook.NewHardwareProfileMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestHardwareProfileMigration_CanApply_Removed(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds: hardwareProfileListKinds,
+		Objects:   []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"workbenches": "Removed"})},
+	})
+
+	chk := notebook.NewHardwareProfileMigrationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	// CanApply always returns true; component filtering is done in Validate via ForComponent.
+	g.Expect(canApply).To(BeTrue())
+}
+
 func TestHardwareProfileMigration_Metadata(t *testing.T) {
 	g := NewWithT(t)
 

@@ -468,6 +468,22 @@ var (
 		Resource: "packagemanifests",
 	}
 
+	// HTTPRoute is the Gateway API HTTPRoute resource (used for Ray dashboard routes).
+	HTTPRoute = ResourceType{
+		Group:    "gateway.networking.k8s.io",
+		Version:  "v1",
+		Kind:     "HTTPRoute",
+		Resource: "httproutes",
+	}
+
+	// Gateway is the Gateway API Gateway resource.
+	Gateway = ResourceType{
+		Group:    "gateway.networking.k8s.io",
+		Version:  "v1",
+		Kind:     "Gateway",
+		Resource: "gateways",
+	}
+
 	// Route is the OpenShift Route resource for external service access.
 	Route = ResourceType{
 		Group:    "route.openshift.io",

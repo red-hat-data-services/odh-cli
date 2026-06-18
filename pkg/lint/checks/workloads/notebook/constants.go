@@ -14,6 +14,12 @@ const (
 	ConditionTypeHardwareProfileIntegrity     = "HardwareProfileIntegrity"
 	ConditionTypeNotebooksCompatible          = "NotebooksCompatible"
 	ConditionTypeNonStoppedWorkloads          = "NonStoppedWorkloads"
+	ConditionTypeRunningWorkloads             = "RunningWorkloads"
+)
+
+// Messages for RunningWorkloads check.
+const (
+	MsgRunningNotebooksFound = "Found %d running Notebook(s) that should be stopped before upgrade"
 )
 
 // Annotation keys used to detect notebook state and referenced resources.

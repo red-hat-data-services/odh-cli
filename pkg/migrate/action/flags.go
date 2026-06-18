@@ -26,7 +26,13 @@ func RegisterActionFlags(registry *ActionRegistry, fs *pflag.FlagSet) {
 		// Merge them into the main FlagSet, checking for collisions
 		actionFS.VisitAll(func(f *pflag.Flag) {
 			if existing := fs.Lookup(f.Name); existing != nil {
-				// Determine a suggested prefix (e.g., "dashboard" from "dashboard.generate-redirect")
+				// Paired actions (e.g., backup + migrate) may share scope flags
+				// bound to the same sharedOptions struct. Allow this when the
+				// flag definition matches exactly; panic on real conflicts.
+				if existing.Value == f.Value {
+					return
+				}
+
 				parts := strings.SplitN(a.ID(), ".", maxParts)
 				shortPrefix := parts[0]
 
@@ -37,11 +43,6 @@ func RegisterActionFlags(registry *ActionRegistry, fs *pflag.FlagSet) {
 				))
 			}
 
-			// Shallow copy the flag allows us to add it safely to the main set
-			// Since AddFlag takes a pointer, we must not pass the loop variable directly
-			// if we were mutating it, but since we aren't, pflag handles it correctly.
-			// However, pflag's AddFlag specifically says "Adds a flag to the FlagSet".
-			// We can just add it directly.
 			fs.AddFlag(f)
 		})
 	}

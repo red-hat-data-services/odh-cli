@@ -31,6 +31,9 @@ Available subcommands:
   list     List available migrations for a target version
   prepare  Execute preparation steps (backups) for migrations
   run      Execute one or more migrations
+
+Available migrations include RayCluster backup/migrate (raycluster.backup,
+raycluster.migrate), Kueue RHBOK, and model serving actions.
 `
 
 const cmdExample = `
@@ -49,14 +52,20 @@ const cmdExample = `
   # Run a migration with confirmation prompts
   kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0
 
-  # Run all pre-upgrade migrations
+  # Run all pre-upgrade migrations (includes RayCluster backup)
   kubectl odh migrate run --phase pre-upgrade --target-version 3.0.0
+
+  # Backup RayClusters before RHOAI upgrade
+  kubectl odh migrate run -m raycluster.backup --target-version 3.0.0
+
+  # Migrate RayClusters after RHOAI upgrade
+  kubectl odh migrate run -m raycluster.migrate --target-version 3.0.0
+
+  # Migrate RayClusters from backup
+  kubectl odh migrate run -m raycluster.migrate --target-version 3.0.0 --raycluster-from-backup ./raycluster-backups/rhoai-3.x
 
   # Run migration in dry-run mode (preview changes only)
   kubectl odh migrate run --migration kueue.rhbok.migrate --target-version 3.0.0 --dry-run
-
-  # Run multiple migrations sequentially
-  kubectl odh migrate run --migration kueue.rhbok.migrate --migration other.migration --target-version 3.0.0 --yes
 
   # Check for running training workloads before upgrade
   kubectl odh migrate run -m training.verify-workloads --target-version 3.0.0
