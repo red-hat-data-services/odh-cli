@@ -39,14 +39,6 @@ RUN make build \
     COMMIT=${COMMIT} \
     DATE=${DATE}
 
-# Clone upgrade helpers repository (configurable via build args)
-ARG UPGRADE_HELPERS_REPO=https://github.com/red-hat-data-services/rhoai-upgrade-helpers.git
-ARG UPGRADE_HELPERS_BRANCH=main
-
-RUN git clone --depth 1 --branch ${UPGRADE_HELPERS_BRANCH} \
-    ${UPGRADE_HELPERS_REPO} /opt/rhai-upgrade-helpers \
-    && rm -rf /opt/rhai-upgrade-helpers/.git
-
 # Runtime stage
 FROM registry.access.redhat.com/ubi9/ubi:latest
 
@@ -56,19 +48,6 @@ ARG TARGETARCH
 # Set default KUBECONFIG path for container usage
 # Users can override this with -e KUBECONFIG=<path> when running the container
 ENV KUBECONFIG=/kubeconfig
-
-# Install base utilities (jq, wget, python3, python3-pip)
-RUN yum install -y \
-    jq \
-    wget \
-    python3 \
-    python3-pip \
-    && yum clean all
-
-# Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
-RUN python3 -m pip install --no-cache-dir \
-    'kubernetes>=28.1.0' \
-    'PyYAML>=6.0'
 
 # Install kubectl with multi-arch support (latest stable version)
 RUN set -e; \
@@ -101,29 +80,11 @@ RUN set -e; \
     mv oc /usr/local/bin/oc; \
     rm -f openshift-client.tar.gz kubectl README.md
 
-# Install yq with multi-arch support (stable version)
-RUN set -e; \
-    ARCH=${TARGETARCH:-amd64}; \
-    case "$ARCH" in \
-        amd64) YQ_ARCH="amd64" ;; \
-        arm64) YQ_ARCH="arm64" ;; \
-        ppc64le) YQ_ARCH="ppc64le" ;; \
-        *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
-    esac; \
-    echo "Installing yq for architecture: $YQ_ARCH"; \
-    YQ_VERSION="v4.44.6"; \
-    curl -fsSL -o /usr/local/bin/yq \
-        "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${YQ_ARCH}"; \
-    chmod +x /usr/local/bin/yq
-
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
 
 # Add rhai-cli to PATH
 ENV PATH="/opt/rhai-cli/bin:${PATH}"
-
-# Copy upgrade helpers from builder
-COPY --from=builder /opt/rhai-upgrade-helpers /opt/rhai-upgrade-helpers
 
 # Create backup directory for upgrade artifacts (world-writable with sticky bit
 # so arbitrary UIDs can create subdirectories without permission errors)

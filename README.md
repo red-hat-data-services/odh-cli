@@ -68,8 +68,6 @@ Available tools:
 - `rhai-cli`
 - `kubectl` (latest stable)
 - `oc` (latest stable)
-- `jq`
-- `wget`
 - `curl`
 - `tar`
 - `gzip`
@@ -86,7 +84,6 @@ rhai-cli lint --target-version 3.3.0
 ```
 
 The `rhai-cli` binary is located at `/opt/rhai-cli/bin/rhai-cli` (already on `PATH`).
-Upgrade helper scripts are located at `/opt/rhai-upgrade-helpers`.
 
 **Token Authentication:**
 
