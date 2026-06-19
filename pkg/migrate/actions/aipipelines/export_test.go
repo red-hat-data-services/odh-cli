@@ -4,15 +4,17 @@ import "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 //nolint:gochecknoglobals // Test exports only compiled in test builds
 var (
-	GetPodGroup        = getPodGroup
-	ClassifyRole       = classifyRole
-	IsSystemNamespace  = isSystemNamespace
-	DefaultStatePath   = defaultStatePath
-	SavePodHealthState = savePodHealthState
-	LoadPodHealthState = loadPodHealthState
-	HasAnyDegradation  = hasAnyDegradation
-	ExtractStringSlice = extractStringSlice
-	ListDSPAs          = listDSPAs
+	GetPodGroup                 = getPodGroup
+	ClassifyRole                = classifyRole
+	IsSystemNamespace           = isSystemNamespace
+	DefaultStatePath            = defaultStatePath
+	SavePodHealthState          = savePodHealthState
+	LoadPodHealthState          = loadPodHealthState
+	HasAnyDegradation           = hasAnyDegradation
+	ExtractStringSlice          = extractStringSlice
+	ListDSPAs                   = listDSPAs
+	HasV1Alpha1StoredVersion    = hasV1Alpha1StoredVersion
+	RemoveV1Alpha1StoredVersion = removeV1Alpha1StoredVersion
 )
 
 func MakePodUnstructured(name, namespace, phase, readyStatus string) unstructured.Unstructured {

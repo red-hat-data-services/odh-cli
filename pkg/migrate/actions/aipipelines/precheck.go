@@ -87,24 +87,20 @@ func (t *preUpgradeCheckPrepareTask) discover(
 		t.saveState(target, recorder, state)
 	}
 
-	// Step 2: Detect v1alpha1 DSPAs
+	// Step 2: Detect v1alpha1 DSPAs by checking CRD storedVersions
 	v1alpha1Step := recorder.Child("detect-v1alpha1", "Detect deprecated v1alpha1 DSPAs")
 
-	v1alpha1DSPAs, err := listDSPAs(ctx, target.Client, resources.DataSciencePipelinesApplicationV1Alpha1)
+	needsMigration, err := hasV1Alpha1StoredVersion(ctx, target.Client)
 	if err != nil {
-		v1alpha1Step.Completef(result.StepFailed, "Failed to list v1alpha1 DSPAs: %v", err)
+		v1alpha1Step.Completef(result.StepFailed, "Failed to check CRD stored versions: %v", err)
 
 		return
 	}
 
-	if len(v1alpha1DSPAs) == 0 {
+	if !needsMigration {
 		v1alpha1Step.Completef(result.StepCompleted, "No deprecated v1alpha1 DSPAs found")
 	} else {
-		for _, dspa := range v1alpha1DSPAs {
-			v1alpha1Step.Recordf(dspa.Name, "v1alpha1 DSPA %s/%s needs migration", result.StepCompleted, dspa.Namespace, dspa.Name)
-		}
-
-		v1alpha1Step.Completef(result.StepCompleted, "Found %d v1alpha1 DSPA(s) requiring migration", len(v1alpha1DSPAs))
+		v1alpha1Step.Completef(result.StepCompleted, "v1alpha1 is in CRD storedVersions — migration required")
 	}
 
 	// Step 3: Detect custom roles needing RBAC update
@@ -144,17 +140,17 @@ func (t *preUpgradeCheckRunTask) Validate(ctx context.Context, target action.Tar
 
 	step := recorder.Child("check-v1alpha1", "Check for v1alpha1 DSPAs")
 
-	v1alpha1DSPAs, err := listDSPAs(ctx, target.Client, resources.DataSciencePipelinesApplicationV1Alpha1)
+	needsMigration, err := hasV1Alpha1StoredVersion(ctx, target.Client)
 	if err != nil {
-		step.Completef(result.StepFailed, "Failed to list v1alpha1 DSPAs: %v", err)
+		step.Completef(result.StepFailed, "Failed to check CRD stored versions: %v", err)
 
 		return recorder.Build(), nil
 	}
 
-	if len(v1alpha1DSPAs) == 0 {
+	if !needsMigration {
 		step.Completef(result.StepCompleted, "No v1alpha1 DSPAs found — nothing to migrate")
 	} else {
-		step.Completef(result.StepCompleted, "Found %d v1alpha1 DSPA(s) to migrate", len(v1alpha1DSPAs))
+		step.Completef(result.StepCompleted, "v1alpha1 is in CRD storedVersions — migration needed")
 	}
 
 	return recorder.Build(), nil
@@ -165,20 +161,6 @@ func (t *preUpgradeCheckRunTask) Execute(ctx context.Context, target action.Targ
 
 	if err := migrateAllDSPAsToV1(ctx, target.Client, recorder, migrateOpts{DryRun: target.DryRun}); err != nil {
 		return recorder.Build(), fmt.Errorf("v1alpha1 migration failed: %w", err)
-	}
-
-	// Verify no v1alpha1 DSPAs remain (skip in dry-run — we didn't actually migrate)
-	if !target.DryRun {
-		verifyStep := recorder.Child("verify-migration", "Verify no v1alpha1 DSPAs remain")
-
-		remaining, err := listDSPAs(ctx, target.Client, resources.DataSciencePipelinesApplicationV1Alpha1)
-		if err != nil {
-			verifyStep.Completef(result.StepFailed, "Failed to verify: %v", err)
-		} else if len(remaining) > 0 {
-			verifyStep.Completef(result.StepFailed, "%d v1alpha1 DSPA(s) still remain", len(remaining))
-		} else {
-			verifyStep.Completef(result.StepCompleted, "All DSPAs are now v1")
-		}
 	}
 
 	return recorder.Build(), nil

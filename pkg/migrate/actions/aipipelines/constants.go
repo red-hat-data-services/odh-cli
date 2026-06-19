@@ -46,6 +46,7 @@ const (
 )
 
 const dspaAPIGroup = "datasciencepipelinesapplications.opendatahub.io"
+const dspaCRDName = "datasciencepipelinesapplications.datasciencepipelinesapplications.opendatahub.io"
 
 const (
 	dirPermissions  fs.FileMode = 0o750
