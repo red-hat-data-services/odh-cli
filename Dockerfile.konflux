@@ -39,17 +39,6 @@ RUN make build \
     COMMIT=${COMMIT} \
     DATE=${DATE}
 
-
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:b2c0898987b688a95f4d2f38abdfd929f45903948831783153019ab749495c72 AS yq-builder
-
-WORKDIR /workspace
-
-USER root
-
-COPY ./yq .
-
-RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntime -ldflags "-s -w" .
-
 # Runtime stage
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.21.0
 
@@ -60,24 +49,8 @@ ARG TARGETARCH
 # Users can override this with -e KUBECONFIG=<path> when running the container
 ENV KUBECONFIG=/kubeconfig
 
-# Copy upgrade helpers from submodule folder
-COPY ./rhoai-upgrade-helpers /opt/rhai-upgrade-helpers
-
 # Copy requirements.txt
 COPY ./requirements.txt ./requirements.txt
-
-COPY --from=yq-builder /workspace/yq /usr/bin/yq
-
-# Install base utilities (jq, wget, python3, python3-pip)
-RUN yum install -y \
-    jq \
-    wget \
-    python3 \
-    python3-pip \
-    && yum clean all
-
-# Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
-RUN python3 -m pip install --use-pep517 -r requirements.txt
 
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
