@@ -12,6 +12,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/opendatahub-io/odh-cli/internal/version"
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/schema"
 )
 
@@ -111,6 +112,7 @@ func AddCommand(root *cobra.Command, _ *genericclioptions.ConfigFlags) {
 	}
 
 	cmd.Flags().StringVarP(&outputFormat, "output", "o", "text", "Output format (text|json)")
+	_ = cmd.Flags().SetAnnotation("output", api.AnnotationValidValues, []string{"text", "json"})
 	cmd.Flags().BoolVar(&outputSchema, "schema", false, "Output JSON Schema for the command's structured output format")
 	cmd.Flags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose output")
 	cmd.Flags().BoolVarP(&quiet, "quiet", "q", false, "Suppress all output")

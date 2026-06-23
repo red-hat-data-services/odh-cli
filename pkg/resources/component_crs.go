@@ -1,5 +1,7 @@
 package resources
 
+import "sort"
+
 const (
 	componentCRGroup = "components.platform.opendatahub.io"
 
@@ -27,6 +29,18 @@ var ComponentCRResourceTypes = map[string]ResourceType{
 	"trainingoperator":   newComponentCR("trainingoperators", "TrainingOperator"),
 	"trustyai":           newComponentCR("trustyais", "TrustyAI"),
 	"workbenches":        newComponentCR("workbenches", "Workbenches"),
+}
+
+// ComponentNames returns a sorted list of all valid component names.
+func ComponentNames() []string {
+	names := make([]string, 0, len(ComponentCRResourceTypes))
+	for name := range ComponentCRResourceTypes {
+		names = append(names, name)
+	}
+
+	sort.Strings(names)
+
+	return names
 }
 
 func newComponentCR(resource, kind string) ResourceType {

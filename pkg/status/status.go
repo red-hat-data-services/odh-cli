@@ -20,6 +20,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 	"k8s.io/client-go/rest"
 
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/deps"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
@@ -110,6 +111,7 @@ func NewCommand(
 // AddFlags registers command-specific flags with the provided FlagSet.
 func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescOutput)
+	_ = fs.SetAnnotation("output", api.AnnotationValidValues, []string{"table", "json", "yaml"})
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
 	fs.StringArrayVar(&c.Sections, "section", nil, flagDescSection)
 	fs.StringArrayVar(&c.Layers, "layer", nil, flagDescLayer)

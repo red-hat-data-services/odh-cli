@@ -1,0 +1,31 @@
+package api
+
+import (
+	"github.com/spf13/cobra"
+
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+
+	apipkg "github.com/opendatahub-io/odh-cli/pkg/api"
+)
+
+const (
+	cmdName  = "api"
+	cmdShort = "Output a JSON manifest describing all CLI commands and flags"
+)
+
+// AddCommand adds the api subcommand to the root command.
+func AddCommand(root *cobra.Command, _ *genericclioptions.ConfigFlags) {
+	cmd := &cobra.Command{
+		Use:           cmdName,
+		Short:         cmdShort,
+		Hidden:        true,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		Args:          cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return apipkg.Run(root, cmd.OutOrStdout())
+		},
+	}
+
+	root.AddCommand(cmd)
+}

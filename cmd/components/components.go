@@ -10,6 +10,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
 	componentspkg "github.com/opendatahub-io/odh-cli/pkg/components"
+	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
 )
 
@@ -141,6 +142,7 @@ func addDescribeCommand(parent *cobra.Command, flags *genericclioptions.ConfigFl
 		},
 	}
 
+	cmd.ValidArgs = resources.ComponentNames()
 	describeCommand.AddFlags(cmd.Flags())
 	parent.AddCommand(cmd)
 }
@@ -168,6 +170,7 @@ func addMutateCommand(parent *cobra.Command, command mutateCommand, use, short s
 		},
 	}
 
+	cmd.ValidArgs = resources.ComponentNames()
 	command.AddFlags(cmd.Flags())
 	parent.AddCommand(cmd)
 }

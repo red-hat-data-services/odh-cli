@@ -75,6 +75,7 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		Args:          cobra.ExactArgs(1),
+		ValidArgs:     logspkg.ValidTargets,
 		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				return logspkg.ValidTargets, cobra.ShellCompDirectiveNoFileComp

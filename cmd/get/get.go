@@ -73,6 +73,7 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 
 			return cobra.RangeArgs(1, maxArgs)(cmd, args)
 		},
+		ValidArgs: getpkg.Names(),
 		ValidArgsFunction: func(_ *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
 			if len(args) == 0 {
 				return getpkg.Names(), cobra.ShellCompDirectiveNoFileComp

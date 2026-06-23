@@ -17,6 +17,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/schema"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
@@ -87,6 +88,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.Refresh, "refresh", false, "Fetch latest manifest from odh-gitops")
 	fs.BoolVar(&c.DryRun, "dry-run", false, "Show manifest data without querying cluster")
 	fs.StringVarP(&c.Output, "output", "o", outputTable, "Output format: table, json, yaml")
+	_ = fs.SetAnnotation("output", api.AnnotationValidValues, []string{"table", "json", "yaml"})
 	fs.StringVar(&c.Version, "version", "", "ODH/RHOAI version to show dependencies for")
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
 	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")

@@ -8,6 +8,7 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
+	"github.com/opendatahub-io/odh-cli/cmd/api"
 	"github.com/opendatahub-io/odh-cli/cmd/completion"
 	"github.com/opendatahub-io/odh-cli/cmd/components"
 	"github.com/opendatahub-io/odh-cli/cmd/deps"
@@ -35,6 +36,7 @@ func main() {
 	// --client-certificate, --client-key, --insecure-skip-tls-verify, etc.
 	flags.AddFlags(cmd.PersistentFlags())
 
+	api.AddCommand(cmd, flags)
 	version.AddCommand(cmd, flags)
 	lint.AddCommand(cmd, flags)
 	get.AddCommand(cmd, flags)

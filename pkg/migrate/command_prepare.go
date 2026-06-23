@@ -13,6 +13,7 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 	"github.com/opendatahub-io/odh-cli/pkg/util/version"
@@ -60,6 +61,8 @@ func (c *PrepareCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescPrepareMigration)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescPrepareTargetVersion)
 	fs.StringVar(&c.Phase, "phase", "", flagDescPreparePhase)
+	// Empty string is intentionally excluded: it means "flag not provided" (the default), not a user-selectable value.
+	_ = fs.SetAnnotation("phase", api.AnnotationValidValues, []string{"pre-upgrade", "post-upgrade", "pre-enablement"})
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")

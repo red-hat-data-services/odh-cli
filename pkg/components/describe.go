@@ -11,6 +11,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	printerjson "github.com/opendatahub-io/odh-cli/pkg/printer/json"
 	printeryaml "github.com/opendatahub-io/odh-cli/pkg/printer/yaml"
@@ -64,6 +65,7 @@ func NewDescribeCommand(
 // AddFlags registers command-specific flags.
 func (c *DescribeCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
+	_ = fs.SetAnnotation("output", api.AnnotationValidValues, []string{"table", "json", "yaml"})
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
 	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
 	c.OutputOptions.AddFlags(fs)

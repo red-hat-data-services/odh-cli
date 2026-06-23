@@ -12,6 +12,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/schema"
@@ -77,6 +78,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVarP(&c.AllNamespaces, "all-namespaces", "A", false, "List resources across all namespaces")
 	fs.StringVarP(&c.LabelSelector, "selector", "l", "", "Label selector to filter resources (e.g. app=my-model)")
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
+	_ = fs.SetAnnotation("output", api.AnnotationValidValues, []string{"table", "json", "yaml"})
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, "Enable verbose output")
 	fs.BoolVarP(&c.Quiet, "quiet", "q", false, "Suppress all non-essential output")
 	c.OutputOptions.AddFlags(fs)

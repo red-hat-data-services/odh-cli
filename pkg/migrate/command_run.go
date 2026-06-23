@@ -10,6 +10,7 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 	clierrors "github.com/opendatahub-io/odh-cli/pkg/util/errors"
@@ -62,6 +63,8 @@ func (c *RunCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&c.MigrationIDs, "migration", "m", []string{}, flagDescRunMigration)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescRunTargetVersion)
 	fs.StringVar(&c.Phase, "phase", "", flagDescRunPhase)
+	// Empty string is intentionally excluded: it means "flag not provided" (the default), not a user-selectable value.
+	_ = fs.SetAnnotation("phase", api.AnnotationValidValues, []string{"pre-upgrade", "post-upgrade", "pre-enablement"})
 	fs.BoolVar(&c.FromStdin, "from-stdin", false, stdin.FlagDesc)
 
 	// Throttling settings

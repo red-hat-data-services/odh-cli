@@ -15,6 +15,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
@@ -82,6 +83,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&c.Since, "since", defaultSinceDuration, "Only show events newer than this duration (e.g., 5m, 1h, 30s)")
 	fs.BoolVarP(&c.AllNamespaces, "all-namespaces", "A", false, "List events across all ODH namespaces")
 	fs.StringVarP(&c.OutputFormat, "output", "o", outputFormatTable, "Output format: table, json, or yaml")
+	_ = fs.SetAnnotation("output", api.AnnotationValidValues, []string{"table", "json", "yaml"})
 	fs.StringVar(&c.OperatorNSOverride, "operator-namespace", "", "Override the operator namespace (auto-detected from OLM/CSV)")
 	fs.StringVar(&c.Component, "component", "", "Filter events by ODH component (dashboard, kserve, ray, etc.). Only filters core Kubernetes resources (Pods, Deployments, etc.); CRD-specific events are excluded")
 	fs.BoolVarP(&c.Follow, "follow", "f", false, "Stream new events in real-time")

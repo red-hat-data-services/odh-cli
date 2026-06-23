@@ -14,6 +14,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	resultpkg "github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
@@ -168,7 +169,9 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	c.flags = fs // Store for checking explicitly set flags in applyStdinInput
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescTargetVersion)
 	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescOutput)
+	_ = fs.SetAnnotation("output", api.AnnotationValidValues, []string{"table", "json", "yaml"})
 	fs.StringVar((*string)(&c.SeverityLevel), "severity", string(SeverityLevelInfo), flagDescSeverity)
+	_ = fs.SetAnnotation("severity", api.AnnotationValidValues, []string{"prohibited", "critical", "warning", "info"})
 	fs.StringArrayVar(&c.CheckSelectors, "checks", []string{"*"}, flagDescChecks)
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescVerbose)
 	fs.BoolVarP(&c.Quiet, "quiet", "q", false, flagDescQuiet)
@@ -176,6 +179,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.NoColor, "no-color", false, flagDescNoColor)
 	fs.DurationVar(&c.Timeout, "timeout", c.Timeout, flagDescTimeout)
 	fs.StringVar(&c.ISVCDeploymentMode, "isvc-deployment-mode", "all", flagDescISVCDeploymentMode)
+	_ = fs.SetAnnotation("isvc-deployment-mode", api.AnnotationValidValues, []string{"all", "serverless", "modelmesh"})
 	fs.BoolVar(&c.FromStdin, "from-stdin", false, stdin.FlagDesc)
 
 	// Throttling settings

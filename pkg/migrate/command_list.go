@@ -12,6 +12,7 @@ import (
 
 	"k8s.io/cli-runtime/pkg/genericiooptions"
 
+	"github.com/opendatahub-io/odh-cli/pkg/api"
 	"github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 	"github.com/opendatahub-io/odh-cli/pkg/printer/table"
@@ -54,10 +55,13 @@ func NewListCommand(streams genericiooptions.IOStreams) *ListCommand {
 
 func (c *ListCommand) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP((*string)(&c.OutputFormat), "output", "o", string(OutputFormatTable), flagDescListOutput)
+	_ = fs.SetAnnotation("output", api.AnnotationValidValues, []string{"table", "json", "yaml"})
 	fs.BoolVarP(&c.Verbose, "verbose", "v", false, flagDescListVerbose)
 	fs.StringVar(&c.TargetVersion, "target-version", "", flagDescListTargetVersion)
 	fs.BoolVar(&c.ShowAll, "all", false, flagDescListAll)
 	fs.StringVar(&c.Phase, "phase", "", flagDescListPhase)
+	// Empty string is intentionally excluded: it means "flag not provided" (the default), not a user-selectable value.
+	_ = fs.SetAnnotation("phase", api.AnnotationValidValues, []string{"pre-upgrade", "post-upgrade", "pre-enablement"})
 
 	// Throttling settings
 	fs.Float32Var(&c.QPS, "qps", c.QPS, "Kubernetes API QPS limit (queries per second)")
