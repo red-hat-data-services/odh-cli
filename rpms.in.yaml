@@ -23,10 +23,6 @@ contentOrigin:
     baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/codeready-builder/source/SRPMS
 
 packages:
-  - jq
-  - wget
-  - python3
-  - python3-pip
   - make
 context:
   containerfile:

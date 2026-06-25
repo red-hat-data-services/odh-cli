@@ -49,9 +49,6 @@ ARG TARGETARCH
 # Users can override this with -e KUBECONFIG=<path> when running the container
 ENV KUBECONFIG=/kubeconfig
 
-# Copy requirements.txt
-COPY ./requirements.txt ./requirements.txt
-
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
 
@@ -62,9 +59,9 @@ ENV PATH="/opt/rhai-cli/bin:${PATH}"
 # Users can override with --entrypoint /bin/bash for interactive debugging
 ENTRYPOINT ["/opt/rhai-cli/bin/rhai-cli"]
 
-LABEL name="rhoai/odh-cli-rhel9" \
-      com.redhat.component="odh-cli-rhel9" \
-      io.k8s.display-name="odh-cli-rhel9" \
+LABEL name="rhoai/rhai-cli-rhel9" \
+      com.redhat.component="rhai-cli-rhel9" \
+      io.k8s.display-name="rhai-cli-rhel9" \
       io.k8s.description="CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes." \
       description="CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes." \
       summary="CLI tool for RHOAI (Red Hat OpenShift AI) for interacting with RHOAI deployments on Kubernetes." \
