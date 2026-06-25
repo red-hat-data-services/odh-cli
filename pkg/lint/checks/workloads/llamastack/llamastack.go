@@ -25,7 +25,7 @@ const (
 	numConditions = 1 // Number of conditions in buildConditions
 )
 
-// ConfigCheck validates LlamaStackDistribution resources for 3.3 upgrade compatibility.
+// ConfigCheck validates LlamaStackDistribution resources for 3.3+ upgrade compatibility.
 type ConfigCheck struct {
 	check.BaseCheck
 }
@@ -37,9 +37,9 @@ func NewConfigCheck() *ConfigCheck {
 			Kind:             kind,
 			Type:             "config",
 			CheckID:          "workloads.llamastack.config",
-			CheckName:        "Workloads :: LlamaStack :: Upgrade Preparation (2.x to 3.3)",
-			CheckDescription: "Identifies LlamaStackDistribution resources that require deletion and recreation for RHOAI 3.3 upgrade",
-			CheckRemediation: "Back up configurations using the backup script from rhoai-upgrade-helpers repository, coordinate with owners, then delete and recreate LlamaStackDistributions in RHOAI 3.3.0 following the migration guide",
+			CheckName:        "Workloads :: LlamaStack :: Upgrade Preparation (2.x to 3.3+)",
+			CheckDescription: "Identifies LlamaStackDistribution resources that require deletion and recreation for RHOAI 3.3+ upgrade",
+			CheckRemediation: "Run 'kubectl odh migrate prepare' to back up LlamaStack resources, coordinate with owners about data loss, then delete and recreate LlamaStackDistributions after upgrade following RHOAI 3.3+ documentation",
 		},
 	}
 }
@@ -127,9 +127,9 @@ func (c *ConfigCheck) buildConditions(totalCount int) []result.Condition {
 		ConditionTypeRequiresRecreation,
 		metav1.ConditionFalse,
 		check.WithReason("ArchitecturalIncompatibility"),
-		check.WithMessage("Found %d LlamaStackDistribution(s) that must be deleted and recreated after RHOAI 3.3 upgrade. In-place upgrade is not supported. ALL DATA WILL BE LOST - Archive data before upgrade.", totalCount),
+		check.WithMessage("Found %d LlamaStackDistribution(s) that must be deleted and recreated after RHOAI 3.3+ upgrade. In-place upgrade is not supported. ALL DATA WILL BE LOST - Archive data before upgrade.", totalCount),
 		check.WithImpact(result.ImpactBlocking),
-		check.WithRemediation("1. Run backup script: llamastack/backup-all-llamastack.sh from rhoai-upgrade-helpers repo to archive existing configurations. 2. Coordinate with LLSD owners about data loss and recreation requirements. 3. After RHOAI 3.3 upgrade, delete old LLSDs and create new ones following RHOAI 3.3 documentation."),
+		check.WithRemediation("1. Run 'kubectl odh migrate prepare' to back up existing LlamaStack configurations and pod data. 2. Coordinate with LLSD owners about data loss and recreation requirements. 3. After RHOAI 3.3+ upgrade, delete old LLSDs and create new ones following RHOAI 3.3+ documentation."),
 	))
 
 	return conditions

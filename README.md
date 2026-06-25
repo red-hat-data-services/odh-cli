@@ -12,14 +12,14 @@ Run the CLI using the pre-built container image:
 ```bash
 podman run --rm -ti \
   -v $KUBECONFIG:/kubeconfig \
-  quay.io/rhoai/rhoai-upgrade-helpers-rhel9:dev lint --target-version 3.3.0
+  quay.io/rhoai/rhai-cli-rhel9:dev lint --target-version 3.3.0
 ```
 
 **Docker:**
 ```bash
 docker run --rm -ti \
   -v $KUBECONFIG:/kubeconfig \
-  quay.io/rhoai/rhoai-upgrade-helpers-rhel9:dev lint --target-version 3.3.0
+  quay.io/rhoai/rhai-cli-rhel9:dev lint --target-version 3.3.0
 ```
 
 The container has `KUBECONFIG=/kubeconfig` set by default, so you just need to mount your kubeconfig to that path.
@@ -29,12 +29,12 @@ The container has `KUBECONFIG=/kubeconfig` set by default, so you just need to m
 > # Podman
 > podman run --rm -ti \
 >   -v $KUBECONFIG:/kubeconfig:Z \
->   quay.io/rhoai/rhoai-upgrade-helpers-rhel9:dev lint --target-version 3.3.0
+>   quay.io/rhoai/rhai-cli-rhel9:dev lint --target-version 3.3.0
 >
 > # Docker
 > docker run --rm -ti \
 >   -v $KUBECONFIG:/kubeconfig:Z \
->   quay.io/rhoai/rhoai-upgrade-helpers-rhel9:dev lint --target-version 3.3.0
+>   quay.io/rhoai/rhai-cli-rhel9:dev lint --target-version 3.3.0
 > ```
 
 **Available Tags:**
@@ -53,7 +53,7 @@ The container also bundles migration tools and CLI utilities that can be used di
 podman run -it --rm \
   -v $KUBECONFIG:/kubeconfig \
   --entrypoint /bin/bash \
-  quay.io/rhoai/rhoai-upgrade-helpers-rhel9:dev
+  quay.io/rhoai/rhai-cli-rhel9:dev
 ```
 
 **Docker:**
@@ -61,7 +61,7 @@ podman run -it --rm \
 docker run -it --rm \
   -v $KUBECONFIG:/kubeconfig \
   --entrypoint /bin/bash \
-  quay.io/rhoai/rhoai-upgrade-helpers-rhel9:dev
+  quay.io/rhoai/rhai-cli-rhel9:dev
 ```
 
 Available tools:
@@ -92,7 +92,7 @@ For environments where you have a token and server URL instead of a kubeconfig f
 **Podman:**
 ```bash
 podman run --rm -ti \
-  quay.io/rhoai/rhoai-upgrade-helpers-rhel9:dev \
+  quay.io/rhoai/rhai-cli-rhel9:dev \
   lint \
   --target-version 3.3.0 \
   --token=sha256~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \
@@ -102,7 +102,7 @@ podman run --rm -ti \
 **Docker:**
 ```bash
 docker run --rm -ti \
-  quay.io/rhoai/rhoai-upgrade-helpers-rhel9:dev \
+  quay.io/rhoai/rhai-cli-rhel9:dev \
   lint \
   --target-version 3.3.0 \
   --token=sha256~xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx \

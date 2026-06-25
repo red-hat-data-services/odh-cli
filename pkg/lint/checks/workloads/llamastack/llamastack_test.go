@@ -176,7 +176,7 @@ func TestLlamaStackConfigCheck_WorkloadsFound(t *testing.T) {
 	g.Expect(res.Status.Conditions[0].Condition.Message).To(ContainSubstring("must be deleted and recreated"))
 	g.Expect(res.Status.Conditions[0].Condition.Message).To(ContainSubstring("ALL DATA WILL BE LOST"))
 	g.Expect(res.Status.Conditions[0].Impact).To(Equal(result.ImpactBlocking))
-	g.Expect(res.Status.Conditions[0].Remediation).To(ContainSubstring("backup script"))
+	g.Expect(res.Status.Conditions[0].Remediation).To(ContainSubstring("kubectl odh migrate prepare"))
 
 	// Verify impacted objects
 	g.Expect(res.ImpactedObjects).To(HaveLen(2))
@@ -193,7 +193,7 @@ func TestLlamaStackConfigCheck_Metadata(t *testing.T) {
 	chk := llamastack.NewConfigCheck()
 
 	g.Expect(chk.ID()).To(Equal("workloads.llamastack.config"))
-	g.Expect(chk.Name()).To(Equal("Workloads :: LlamaStack :: Upgrade Preparation (2.x to 3.3)"))
+	g.Expect(chk.Name()).To(Equal("Workloads :: LlamaStack :: Upgrade Preparation (2.x to 3.3+)"))
 	g.Expect(chk.Group()).To(Equal(check.GroupWorkload))
 	g.Expect(chk.Description()).ToNot(BeEmpty())
 	g.Expect(chk.CheckKind()).To(Equal("llamastackdistribution"))
