@@ -37,6 +37,8 @@ RUN make build \
     DATE=${DATE}
 
 
+FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.21.0 AS ose-cli
+
 FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:90a36bc2013b3fcb28e2a4b082c9b895d7c2c679e58b95aed9721970f3339d0e AS yq-builder
 
 WORKDIR /workspace
@@ -47,8 +49,8 @@ COPY ./yq .
 
 RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntime -ldflags "-s -w" .
 
-# Runtime stage
-FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.21.0
+# Runtime stage — Python 3.12 base enables urllib3 >= 2.7.0 (CVE-2026-44432 fix)
+FROM registry.redhat.io/rhel9/python-312-minimal@sha256:2dcdfdb631017d6ffaf584c4300c02de12f2e6f5913b21d76efea1e65e16e7b5
 
 # Build arguments for downloading architecture-specific binaries
 ARG TARGETARCH
@@ -56,6 +58,10 @@ ARG TARGETARCH
 # Set default KUBECONFIG path for container usage
 # Users can override this with -e KUBECONFIG=<path> when running the container
 ENV KUBECONFIG=/kubeconfig
+
+# Copy oc and kubectl from ose-cli image
+COPY --from=ose-cli /usr/bin/oc /usr/bin/oc
+COPY --from=ose-cli /usr/bin/kubectl /usr/bin/kubectl
 
 # Copy upgrade helpers from submodule folder
 COPY ./rhoai-upgrade-helpers /opt/rhai-upgrade-helpers
@@ -65,16 +71,11 @@ COPY ./requirements.txt ./requirements.txt
 
 COPY --from=yq-builder /workspace/yq /usr/bin/yq
 
-# Install base utilities (jq, wget, python3, python3-pip)
-RUN yum install -y \
-    jq \
-    wget \
-    python3 \
-    python3-pip \
-    && yum clean all
+# Install base utilities (jq, wget)
+RUN microdnf install -y jq wget && microdnf clean all
 
 # Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
-RUN python3 -m pip install --use-pep517 -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
