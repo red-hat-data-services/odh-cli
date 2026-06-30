@@ -72,7 +72,7 @@ func WriteStructuredError(w io.Writer, err error, format string) bool {
 		structErr = Classify(err)
 	}
 
-	envelope := errorEnvelope{Error: structErr}
+	envelope := ErrorEnvelope{Error: structErr}
 
 	switch format {
 	case "json":

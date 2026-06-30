@@ -117,7 +117,7 @@ func NewExitCodeError(code ExitCode, err error) error {
 	return &ExitCodeError{Code: code, Err: err}
 }
 
-// errorEnvelope wraps a StructuredError for JSON/YAML output rendering.
-type errorEnvelope struct {
+// ErrorEnvelope wraps a StructuredError for JSON/YAML output rendering.
+type ErrorEnvelope struct {
 	Error *StructuredError `json:"error" yaml:"error"`
 }
