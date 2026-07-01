@@ -40,6 +40,8 @@ const (
 
 	DefaultTimeout = 30 * time.Second
 
+	WaitConditionHealthy = "healthy"
+
 	// Default operator deployment name for RHOAI.
 	defaultRHOAIOperatorName = "rhods-operator"
 
@@ -68,6 +70,8 @@ const (
 
 // Command contains the status command configuration.
 type Command struct {
+	cmd.WaitOptions
+
 	IO          iostreams.Interface
 	ConfigFlags *genericclioptions.ConfigFlags
 
@@ -90,6 +94,10 @@ type Command struct {
 	// Populated during Complete
 	restConfig *rest.Config
 	client     client.Client
+
+	// healthConfig, when non-nil, skips buildHealthConfig and uses this
+	// config directly. Allows tests to inject a fake controller-runtime client.
+	healthConfig *clusterhealth.Config
 }
 
 // NewCommand creates a new status Command with defaults.
@@ -102,9 +110,12 @@ func NewCommand(
 		ConfigFlags:  configFlags,
 		OutputFormat: OutputFormatTable,
 		Timeout:      DefaultTimeout,
-		IncludeDeps:  true,
-		QPS:          client.DefaultQPS,
-		Burst:        client.DefaultBurst,
+		WaitOptions: cmd.WaitOptions{
+			PollInterval: cmd.DefaultPollInterval,
+		},
+		IncludeDeps: true,
+		QPS:         client.DefaultQPS,
+		Burst:       client.DefaultBurst,
 	}
 }
 
@@ -122,6 +133,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&c.OperatorName, "operator-name", "", flagDescOperName)
 	fs.BoolVar(&c.IncludeInfra, "include-infra", false, flagDescInfra)
 	fs.BoolVar(&c.IncludeDeps, "include-deps", c.IncludeDeps, flagDescIncludeDeps)
+	c.AddWaitFlags(fs, []string{WaitConditionHealthy})
 	fs.Float32Var(&c.QPS, "qps", c.QPS, flagDescQPS)
 	fs.IntVar(&c.Burst, "burst", c.Burst, flagDescBurst)
 }
@@ -165,7 +177,11 @@ func (c *Command) Validate() error {
 		return err
 	}
 
-	if c.Timeout <= 0 {
+	if err := c.ValidateWait(c.Timeout); err != nil {
+		return err //nolint:wrapcheck // structured validation errors propagate as-is
+	}
+
+	if !c.HasWaitMode() && c.Timeout <= 0 {
 		return ErrInvalidTimeout()
 	}
 
@@ -174,80 +190,21 @@ func (c *Command) Validate() error {
 
 // Run executes the status command.
 func (c *Command) Run(ctx context.Context) error {
+	if c.HasWaitMode() {
+		return c.runWaitFor(ctx)
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, c.Timeout)
 	defer cancel()
 
-	// Fetch DSCI once and reuse across namespace discovery and CR name extraction.
-	// NotFound is non-fatal (handled by discoverNamespaces), but other errors propagate.
-	dsci, err := client.GetDSCInitialization(ctx, c.client)
-	if err != nil && !apierrors.IsNotFound(err) {
-		return fmt.Errorf("getting DSCInitialization: %w", err)
-	}
-
-	nsCfg, opInfo, err := discoverNamespaces(ctx, c.client, dsci, c.AppsNamespace, c.OperatorNamespace)
-	if err != nil {
-		return fmt.Errorf("discovering namespaces: %w", err)
-	}
-
-	dsciName, dscName, err := discoverCRNames(ctx, c.client, dsci)
+	hc, err := c.resolveHealthConfig(ctx)
 	if err != nil {
 		return err
 	}
 
-	crClient, err := client.NewControllerRuntimeClient(c.restConfig)
+	report, depStatuses, err := c.runHealthCheck(ctx, hc)
 	if err != nil {
-		return fmt.Errorf("creating controller-runtime client: %w", err)
-	}
-
-	operatorName := discoverOperatorName(opInfo, c.OperatorName)
-
-	nsCfgHealth := clusterhealth.NamespaceConfig{
-		Apps:       nsCfg.Apps,
-		Monitoring: nsCfg.Monitoring,
-	}
-
-	if c.IncludeInfra {
-		nsCfgHealth.Extra = []string{"kube-system"}
-	}
-
-	cfg := clusterhealth.Config{
-		Client: crClient,
-		Operator: clusterhealth.OperatorConfig{
-			Namespace: nsCfg.Operator,
-			Name:      operatorName,
-		},
-		Namespaces:   nsCfgHealth,
-		DSCI:         dsciName,
-		DSC:          dscName,
-		OnlySections: c.Sections,
-		Layers:       c.Layers,
-	}
-
-	var report *clusterhealth.Report
-	var depStatuses []deps.DependencyStatus
-
-	g, gctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		var err error
-		report, err = clusterhealth.Run(gctx, cfg)
-		if err != nil {
-			return fmt.Errorf("health checks: %w", err)
-		}
-
-		return nil
-	})
-
-	if c.IncludeDeps {
-		g.Go(func() error {
-			depStatuses = c.checkDependencies(gctx)
-
-			return nil
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("running status checks: %w", err)
+		return err
 	}
 
 	return c.output(ctx, report, depStatuses)

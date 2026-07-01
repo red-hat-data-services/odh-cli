@@ -1,3 +1,0 @@
-[submodule "yq"]
-	path = yq
-	url = https://github.com/mikefarah/yq.git

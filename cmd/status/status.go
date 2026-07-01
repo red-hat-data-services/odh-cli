@@ -53,6 +53,12 @@ DSCInitialization resource and OLM ClusterServiceVersions. Use
 By default, also checks required operator dependencies (ServiceMesh,
 Serverless, etc.) and shows which components need them.
 
+Use --wait-for=healthy to poll until the platform reaches healthy status.
+This is useful for automation and agent workflows that need to wait for
+the platform to stabilize after changes. The --timeout flag controls
+how long to wait (default 30s; use --timeout=0 for no timeout).
+Exit code 5 indicates a timeout.
+
 Examples:
   # Show platform health summary
   kubectl odh status
@@ -93,6 +99,15 @@ const cmdExample = `
 
   # Override namespace detection
   kubectl odh status --apps-namespace my-apps --operator-namespace my-operator
+
+  # Wait until the platform is healthy (5 minute timeout)
+  kubectl odh status --wait-for=healthy --timeout=300s
+
+  # Wait with custom poll interval
+  kubectl odh status --wait-for=healthy --timeout=300s --poll-interval=5s
+
+  # Wait indefinitely (no timeout)
+  kubectl odh status --wait-for=healthy --timeout=0
 `
 
 // AddCommand adds the status command to the root command.

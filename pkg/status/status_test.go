@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	cmdpkg "github.com/opendatahub-io/odh-cli/pkg/cmd"
 	"github.com/opendatahub-io/odh-cli/pkg/status"
 )
 
@@ -68,11 +69,15 @@ func TestCommandValidate_Timeout(t *testing.T) {
 	tests := []struct {
 		name    string
 		timeout time.Duration
+		waitFor string
 		wantErr bool
 	}{
-		{"positive timeout", 30 * time.Second, false},
-		{"zero timeout", 0, true},
-		{"negative timeout", -1 * time.Second, true},
+		{"positive timeout", 30 * time.Second, "", false},
+		{"zero timeout without wait-for", 0, "", true},
+		{"negative timeout without wait-for", -1 * time.Second, "", true},
+		{"zero timeout with wait-for (means no timeout)", 0, "healthy", false},
+		{"positive timeout with wait-for", 300 * time.Second, "healthy", false},
+		{"negative timeout with wait-for", -1 * time.Second, "healthy", true},
 	}
 
 	for _, tt := range tests {
@@ -80,10 +85,64 @@ func TestCommandValidate_Timeout(t *testing.T) {
 			cmd := &status.Command{
 				OutputFormat: status.OutputFormatTable,
 				Timeout:      tt.timeout,
+				WaitOptions:  cmdpkg.WaitOptions{WaitFor: tt.waitFor, PollInterval: cmdpkg.DefaultPollInterval},
 			}
 			err := cmd.Validate()
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Command.Validate() with timeout %v error = %v, wantErr %v", tt.timeout, err, tt.wantErr)
+				t.Errorf("Command.Validate() with timeout %v, waitFor %q error = %v, wantErr %v", tt.timeout, tt.waitFor, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCommandValidate_WaitFor(t *testing.T) {
+	tests := []struct {
+		name    string
+		waitFor string
+		wantErr bool
+	}{
+		{"empty (no wait)", "", false},
+		{"valid healthy", "healthy", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &status.Command{
+				OutputFormat: status.OutputFormatTable,
+				Timeout:      30 * time.Second,
+				WaitOptions:  cmdpkg.WaitOptions{WaitFor: tt.waitFor, PollInterval: cmdpkg.DefaultPollInterval},
+			}
+			err := cmd.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Command.Validate() with waitFor %q error = %v, wantErr %v", tt.waitFor, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCommandValidate_PollInterval(t *testing.T) {
+	tests := []struct {
+		name         string
+		pollInterval time.Duration
+		waitFor      string
+		wantErr      bool
+	}{
+		{"positive interval with wait-for", 5 * time.Second, "healthy", false},
+		{"zero interval with wait-for", 0, "healthy", true},
+		{"negative interval with wait-for", -1 * time.Second, "healthy", true},
+		{"zero interval without wait-for (ignored)", 0, "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &status.Command{
+				OutputFormat: status.OutputFormatTable,
+				Timeout:      30 * time.Second,
+				WaitOptions:  cmdpkg.WaitOptions{WaitFor: tt.waitFor, PollInterval: tt.pollInterval},
+			}
+			err := cmd.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Command.Validate() with pollInterval %v, waitFor %q error = %v, wantErr %v", tt.pollInterval, tt.waitFor, err, tt.wantErr)
 			}
 		})
 	}

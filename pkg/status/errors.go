@@ -18,6 +18,8 @@ const (
 	msgInvalidOutputFormat = "invalid output format %q"
 	msgInvalidTimeout      = "timeout must be greater than 0"
 	msgDSCINotFound        = "no DSCInitialization found"
+	msgHealthCheckRetry    = "Warning: health check failed (retrying): %v\n"
+	msgWaitProgress        = "Waiting for %s status... (%s elapsed)\n"
 
 	suggestValidSections   = "Valid sections: nodes, deployments, pods, events, quotas, operator, dsci, dsc"
 	suggestValidLayers     = "Valid layers: infrastructure, workload, operator"

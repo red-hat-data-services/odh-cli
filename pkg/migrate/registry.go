@@ -13,6 +13,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/trustyai/guardrails"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/trustyai/metrics"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/trustyai/otelexporter"
+	workbenchkueue "github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches/kueue"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches/upgrade"
 )
 
@@ -29,6 +30,7 @@ func newDefaultRegistry() *action.ActionRegistry {
 	registry.MustRegister(&modelserving.AddOwnerReferencesAction{})
 	registry.MustRegister(&modelserving.ManagedISVCConfigAction{})
 	registry.MustRegister(&upgrade.WorkbenchUpgradeAction{})
+	registry.MustRegister(&workbenchkueue.AttachKueueLabelAction{})
 	registry.MustRegister(&deadlock.BreakGPUDeadlockAction{})
 	registry.MustRegister(&guardrails.PatchGuardrailsAction{})
 	registry.MustRegister(&otelexporter.MigrateOtelExporterAction{})
