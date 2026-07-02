@@ -484,6 +484,14 @@ var (
 		Resource: "gateways",
 	}
 
+	// OAuthClient is the OpenShift OAuthClient resource (cluster-scoped).
+	OAuthClient = ResourceType{
+		Group:    "oauth.openshift.io",
+		Version:  "v1",
+		Kind:     "OAuthClient",
+		Resource: "oauthclients",
+	}
+
 	// Route is the OpenShift Route resource for external service access.
 	Route = ResourceType{
 		Group:    "route.openshift.io",

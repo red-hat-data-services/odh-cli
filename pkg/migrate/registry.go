@@ -13,6 +13,8 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/trustyai/guardrails"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/trustyai/metrics"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/trustyai/otelexporter"
+	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches"
+	workbenchcleanup "github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches/cleanup"
 	workbenchkueue "github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches/kueue"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches/upgrade"
 )
@@ -30,7 +32,9 @@ func newDefaultRegistry() *action.ActionRegistry {
 	registry.MustRegister(&modelserving.AddOwnerReferencesAction{})
 	registry.MustRegister(&modelserving.ManagedISVCConfigAction{})
 	registry.MustRegister(&upgrade.WorkbenchUpgradeAction{})
-	registry.MustRegister(&workbenchkueue.AttachKueueLabelAction{})
+	wbScope := &workbenches.SharedScopeOptions{}
+	registry.MustRegister(&workbenchkueue.AttachKueueLabelAction{Scope: wbScope})
+	registry.MustRegister(&workbenchcleanup.CleanupOAuthAction{Scope: wbScope})
 	registry.MustRegister(&deadlock.BreakGPUDeadlockAction{})
 	registry.MustRegister(&guardrails.PatchGuardrailsAction{})
 	registry.MustRegister(&otelexporter.MigrateOtelExporterAction{})

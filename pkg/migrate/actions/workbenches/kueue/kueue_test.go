@@ -21,6 +21,7 @@ import (
 
 	"github.com/opendatahub-io/odh-cli/pkg/constants"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
+	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	"github.com/opendatahub-io/odh-cli/pkg/util/iostreams"
@@ -180,7 +181,7 @@ func withDryRun(t *action.Target) {
 func TestAttachKueueLabelAction_Metadata(t *testing.T) {
 	g := NewWithT(t)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 
 	g.Expect(a.ID()).To(Equal("workbenches.attach-kueue-label"))
 	g.Expect(a.Name()).To(Equal("Attach Kueue queue-name label to workbenches"))
@@ -209,7 +210,7 @@ func TestAttachKueueLabelAction_CanApply(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			a := &AttachKueueLabelAction{}
+			a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 			target := action.Target{
 				TargetVersion: tt.targetVersion,
 			}
@@ -222,21 +223,21 @@ func TestAttachKueueLabelAction_CanApply(t *testing.T) {
 func TestAttachKueueLabelAction_PrepareIsNil(t *testing.T) {
 	g := NewWithT(t)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	g.Expect(a.Prepare()).To(BeNil())
 }
 
 func TestAttachKueueLabelAction_RunNotNil(t *testing.T) {
 	g := NewWithT(t)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	g.Expect(a.Run()).ToNot(BeNil())
 }
 
 func TestAttachKueueLabelAction_AddFlags(t *testing.T) {
 	g := NewWithT(t)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	fs := pflag.NewFlagSet("test", pflag.ContinueOnError)
 	a.AddFlags(fs)
 
@@ -293,7 +294,7 @@ func TestHasQueueNameLabel(t *testing.T) {
 func TestQueueName_DefaultAndCustom(t *testing.T) {
 	g := NewWithT(t)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	g.Expect(a.queueName()).To(Equal("default"))
 
 	a.QueueName = "custom-queue"
@@ -325,7 +326,7 @@ func TestRunTask_Validate_InvalidQueueName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			g := NewWithT(t)
 
-			a := &AttachKueueLabelAction{QueueName: tt.queueName}
+			a := &AttachKueueLabelAction{QueueName: tt.queueName, Scope: &workbenches.SharedScopeOptions{}}
 			runTask := a.Run()
 
 			_, err := runTask.Validate(ctx, target)
@@ -334,7 +335,7 @@ func TestRunTask_Validate_InvalidQueueName(t *testing.T) {
 		})
 	}
 
-	a := &AttachKueueLabelAction{QueueName: "my queue"}
+	a := &AttachKueueLabelAction{QueueName: "my queue", Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	_, err := runTask.Execute(ctx, target)
@@ -353,7 +354,7 @@ func TestRunTask_Validate_NoNotebooks(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Validate(ctx, target)
@@ -372,7 +373,7 @@ func TestRunTask_Validate_NoKueueNamespaces(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Validate(ctx, target)
@@ -392,7 +393,7 @@ func TestRunTask_Validate_NotebooksMissingLabel(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Validate(ctx, target)
@@ -413,7 +414,7 @@ func TestRunTask_Validate_AllNotebooksAlreadyLabeled(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Validate(ctx, target)
@@ -431,7 +432,7 @@ func TestRunTask_Validate_ListError(t *testing.T) {
 	}, listErrorReactor())
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Validate(ctx, target)
@@ -460,7 +461,7 @@ func TestRunTask_Execute_NoNotebooks(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -479,7 +480,7 @@ func TestRunTask_Execute_LabelApplied(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -503,7 +504,7 @@ func TestRunTask_Execute_CustomQueueName(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{QueueName: "my-queue"}
+	a := &AttachKueueLabelAction{QueueName: "my-queue", Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -530,7 +531,7 @@ func TestRunTask_Execute_SkipsAlreadyLabeledNotebook(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -561,7 +562,7 @@ func TestRunTask_Execute_SkipsNonKueueNamespace(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -592,7 +593,7 @@ func TestRunTask_Execute_MultipleNamespaces(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -621,7 +622,7 @@ func TestRunTask_Execute_NoKueueNamespaces(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -647,7 +648,7 @@ func TestRunTask_Execute_DryRun_NoChanges(t *testing.T) {
 	})
 	target := newTarget(k8sClient, withDryRun)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -672,7 +673,7 @@ func TestRunTask_Execute_DryRun_MultipleNotebooks(t *testing.T) {
 	})
 	target := newTarget(k8sClient, withDryRun)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -700,7 +701,7 @@ func TestRunTask_Execute_PatchError(t *testing.T) {
 	}, patchErrorReactor())
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -750,7 +751,7 @@ func TestRunTask_Execute_PatchError_ContinuesWithRemaining(t *testing.T) {
 
 	target := newTarget(k8sClient)
 
-	act := &AttachKueueLabelAction{}
+	act := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := act.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -776,7 +777,7 @@ func TestRunTask_Execute_StepRecording(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	actionResult, err := runTask.Execute(ctx, target)
@@ -804,7 +805,7 @@ func TestRunTask_Validate_StepRecording(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	actionResult, err := runTask.Validate(ctx, target)
@@ -834,7 +835,7 @@ func TestRunTask_Validate_NameRequiresNamespace(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{WorkbenchName: "nb1"}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{WorkbenchName: "nb1"}}
 	runTask := a.Run()
 
 	_, err := runTask.Validate(ctx, target)
@@ -852,7 +853,7 @@ func TestRunTask_Execute_NameRequiresNamespace(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{WorkbenchName: "nb1"}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{WorkbenchName: "nb1"}}
 	runTask := a.Run()
 
 	_, err := runTask.Execute(ctx, target)
@@ -872,7 +873,7 @@ func TestRunTask_Execute_NamespaceScopedTargeting(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{WorkbenchNamespace: "ns-a"}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{WorkbenchNamespace: "ns-a"}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -901,7 +902,7 @@ func TestRunTask_Execute_NamespaceScopedTargeting_NonKueueNamespace(t *testing.T
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{WorkbenchNamespace: "regular-ns"}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{WorkbenchNamespace: "regular-ns"}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -926,10 +927,10 @@ func TestRunTask_Execute_SingleNotebookTargeting(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{
 		WorkbenchNamespace: "ns1",
 		WorkbenchName:      "target-nb",
-	}
+	}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -958,10 +959,10 @@ func TestRunTask_Execute_SingleNotebookTargeting_NotFound(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{
 		WorkbenchNamespace: "ns1",
 		WorkbenchName:      "nonexistent-nb",
-	}
+	}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -994,10 +995,10 @@ func TestRunTask_Execute_SingleNotebookTargeting_NonKueueNamespace(t *testing.T)
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{
 		WorkbenchNamespace: "regular-ns",
 		WorkbenchName:      "nb1",
-	}
+	}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -1028,7 +1029,7 @@ func TestRunTask_Execute_MixedManagedAndNonManaged(t *testing.T) {
 	})
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -1061,7 +1062,7 @@ func TestRunTask_Execute_ListError(t *testing.T) {
 	}, listErrorReactor())
 	target := newTarget(k8sClient)
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -1109,7 +1110,7 @@ func TestRunTask_Execute_ConfirmationCancelled(t *testing.T) {
 		IO:            io,
 	}
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)
@@ -1151,7 +1152,7 @@ func TestRunTask_Execute_ConfirmationAccepted(t *testing.T) {
 		IO:            io,
 	}
 
-	a := &AttachKueueLabelAction{}
+	a := &AttachKueueLabelAction{Scope: &workbenches.SharedScopeOptions{}}
 	runTask := a.Run()
 
 	result, err := runTask.Execute(ctx, target)

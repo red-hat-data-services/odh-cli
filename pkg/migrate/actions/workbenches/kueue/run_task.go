@@ -2,7 +2,6 @@ package kueue
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -22,8 +21,8 @@ func (t *runTask) Validate(
 	ctx context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
-	if t.action.WorkbenchName != "" && t.action.WorkbenchNamespace == "" {
-		return nil, errors.New("--workbench-name requires --workbench-namespace")
+	if err := t.action.Scope.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid flags: %w", err)
 	}
 
 	if errs := validation.IsValidLabelValue(t.action.queueName()); len(errs) > 0 {
@@ -58,8 +57,8 @@ func (t *runTask) Execute(
 	ctx context.Context,
 	target action.Target,
 ) (*result.ActionResult, error) {
-	if t.action.WorkbenchName != "" && t.action.WorkbenchNamespace == "" {
-		return nil, errors.New("--workbench-name requires --workbench-namespace")
+	if err := t.action.Scope.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid flags: %w", err)
 	}
 
 	if errs := validation.IsValidLabelValue(t.action.queueName()); len(errs) > 0 {
@@ -106,9 +105,9 @@ func (t *runTask) findEligibleNotebooks(
 		return nil, nil
 	}
 
-	notebooks, err := t.action.listNotebooks(ctx, target)
+	notebooks, err := t.action.Scope.ListNotebooks(ctx, target)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("listing notebooks: %w", err)
 	}
 
 	var eligible []*unstructured.Unstructured

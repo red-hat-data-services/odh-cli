@@ -15,8 +15,8 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/constants"
 	kueuediscovery "github.com/opendatahub-io/odh-cli/pkg/lint/checks/kueue/discovery"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
+	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
-	"github.com/opendatahub-io/odh-cli/pkg/util/client"
 	"github.com/opendatahub-io/odh-cli/pkg/util/confirmation"
 )
 
@@ -34,9 +34,8 @@ const (
 // It adds the kueue.x-k8s.io/queue-name label to notebooks in namespaces
 // that have the kueue.openshift.io/managed=true label.
 type AttachKueueLabelAction struct {
-	QueueName          string
-	WorkbenchNamespace string
-	WorkbenchName      string
+	QueueName string
+	Scope     *workbenches.SharedScopeOptions
 }
 
 func (a *AttachKueueLabelAction) ID() string          { return actionID }
@@ -54,10 +53,7 @@ func (a *AttachKueueLabelAction) Phase() action.ActionPhase {
 func (a *AttachKueueLabelAction) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&a.QueueName, "queue-name", defaultQueueName,
 		"Queue name value for the kueue.x-k8s.io/queue-name label")
-	fs.StringVar(&a.WorkbenchNamespace, "workbench-namespace", "",
-		"Limit to notebooks in this namespace (default: all namespaces)")
-	fs.StringVar(&a.WorkbenchName, "workbench-name", "",
-		"Target a single notebook by name (requires --workbench-namespace)")
+	workbenches.AddScopeFlags(a.Scope, fs)
 }
 
 func (a *AttachKueueLabelAction) CanApply(target action.Target) bool {
@@ -96,34 +92,6 @@ func (a *AttachKueueLabelAction) queueName() string {
 	}
 
 	return a.QueueName
-}
-
-func (a *AttachKueueLabelAction) listNotebooks(
-	ctx context.Context,
-	target action.Target,
-) ([]*unstructured.Unstructured, error) {
-	if a.WorkbenchName != "" {
-		nb, err := target.Client.Dynamic().Resource(resources.Notebook.GVR()).
-			Namespace(a.WorkbenchNamespace).
-			Get(ctx, a.WorkbenchName, metav1.GetOptions{})
-		if err != nil {
-			return nil, fmt.Errorf("getting notebook %s/%s: %w", a.WorkbenchNamespace, a.WorkbenchName, err)
-		}
-
-		return []*unstructured.Unstructured{nb}, nil
-	}
-
-	var opts []client.ListResourcesOption
-	if a.WorkbenchNamespace != "" {
-		opts = append(opts, client.WithNamespace(a.WorkbenchNamespace))
-	}
-
-	nbs, err := target.Client.List(ctx, resources.Notebook, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("listing notebooks: %w", err)
-	}
-
-	return nbs, nil
 }
 
 func (a *AttachKueueLabelAction) kueueManagedNamespaces(
