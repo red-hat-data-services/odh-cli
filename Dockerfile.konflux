@@ -71,9 +71,10 @@ COPY ./requirements.txt ./requirements.txt
 
 COPY --from=yq-builder /workspace/yq /usr/bin/yq
 
-# Install base utilities (jq, wget)
-RUN microdnf install -y jq wget && microdnf clean all
-
+# The minimal base image lacks /var/cache/yum which the cachi2 repo config expects.
+RUN mkdir -p /var/cache/yum && \                                                            
+    microdnf install -y jq wget && microdnf clean all
+    
 # Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
 RUN pip3 install --no-cache-dir -r requirements.txt
 
