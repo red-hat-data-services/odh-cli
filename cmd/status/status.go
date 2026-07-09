@@ -59,6 +59,10 @@ the platform to stabilize after changes. The --timeout flag controls
 how long to wait (default 30s; use --timeout=0 for no timeout).
 Exit code 5 indicates a timeout.
 
+Use --watch with -o json or -o yaml to stream status changes. Each state
+change emits one JSON line (NDJSON) or YAML document. Only changes are
+emitted; duplicate states are suppressed. Agents consume this as a stream.
+
 Examples:
   # Show platform health summary
   kubectl odh status
@@ -108,6 +112,15 @@ const cmdExample = `
 
   # Wait indefinitely (no timeout)
   kubectl odh status --wait-for=healthy --timeout=0
+
+  # Watch status changes as streaming JSON (NDJSON)
+  kubectl odh status --watch -o json
+
+  # Watch with custom poll interval
+  kubectl odh status --watch -o json --poll-interval=30s
+
+  # Watch as YAML stream
+  kubectl odh status --watch -o yaml
 `
 
 // AddCommand adds the status command to the root command.
@@ -130,6 +143,7 @@ func AddCommand(root *cobra.Command, flags *genericclioptions.ConfigFlags) {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			errOut := cmd.ErrOrStderr()
 			outputFormat := string(command.OutputFormat)
+			command.TimeoutExplicit = cmd.Flags().Changed("timeout")
 
 			if err := command.Complete(); err != nil {
 				return handleErr(errOut, err, outputFormat)

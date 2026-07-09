@@ -71,6 +71,7 @@ const (
 // Command contains the status command configuration.
 type Command struct {
 	cmd.WaitOptions
+	cmd.WatchOptions
 
 	IO          iostreams.Interface
 	ConfigFlags *genericclioptions.ConfigFlags
@@ -90,6 +91,10 @@ type Command struct {
 
 	QPS   float32
 	Burst int
+
+	// TimeoutExplicit is true when --timeout was explicitly passed by the user.
+	// When false and --watch is active, timeout defaults to 0 (indefinite).
+	TimeoutExplicit bool
 
 	// Populated during Complete
 	restConfig *rest.Config
@@ -134,6 +139,7 @@ func (c *Command) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&c.IncludeInfra, "include-infra", false, flagDescInfra)
 	fs.BoolVar(&c.IncludeDeps, "include-deps", c.IncludeDeps, flagDescIncludeDeps)
 	c.AddWaitFlags(fs, []string{WaitConditionHealthy})
+	c.AddWatchFlag(fs)
 	fs.Float32Var(&c.QPS, "qps", c.QPS, flagDescQPS)
 	fs.IntVar(&c.Burst, "burst", c.Burst, flagDescBurst)
 }
@@ -177,11 +183,15 @@ func (c *Command) Validate() error {
 		return err
 	}
 
+	if err := c.ValidateWatch(c.HasWaitMode(), string(c.OutputFormat), []string{"json", "yaml"}, c.Timeout, c.PollInterval); err != nil {
+		return err //nolint:wrapcheck // structured validation errors propagate as-is
+	}
+
 	if err := c.ValidateWait(c.Timeout); err != nil {
 		return err //nolint:wrapcheck // structured validation errors propagate as-is
 	}
 
-	if !c.HasWaitMode() && c.Timeout <= 0 {
+	if !c.HasWaitMode() && !c.Watch && c.Timeout <= 0 {
 		return ErrInvalidTimeout()
 	}
 
@@ -190,6 +200,10 @@ func (c *Command) Validate() error {
 
 // Run executes the status command.
 func (c *Command) Run(ctx context.Context) error {
+	if c.Watch {
+		return c.runWatch(ctx)
+	}
+
 	if c.HasWaitMode() {
 		return c.runWaitFor(ctx)
 	}

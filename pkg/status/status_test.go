@@ -178,3 +178,46 @@ func TestCommandValidate_Layers(t *testing.T) {
 		})
 	}
 }
+
+func TestCommandValidate_Watch(t *testing.T) {
+	tests := []struct {
+		name    string
+		watch   bool
+		format  status.OutputFormat
+		wantErr bool
+	}{
+		{"watch with json", true, status.OutputFormatJSON, false},
+		{"watch with yaml", true, status.OutputFormatYAML, false},
+		{"watch with table rejected", true, status.OutputFormatTable, true},
+		{"no watch with table", false, status.OutputFormatTable, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := &status.Command{
+				OutputFormat: tt.format,
+				Timeout:      30 * time.Second,
+				WatchOptions: cmdpkg.WatchOptions{Watch: tt.watch},
+				WaitOptions:  cmdpkg.WaitOptions{PollInterval: cmdpkg.DefaultPollInterval},
+			}
+			err := cmd.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Command.Validate() watch=%v format=%q error = %v, wantErr %v", tt.watch, tt.format, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCommandValidate_WatchWaitExclusive(t *testing.T) {
+	cmd := &status.Command{
+		OutputFormat: status.OutputFormatJSON,
+		Timeout:      30 * time.Second,
+		WatchOptions: cmdpkg.WatchOptions{Watch: true},
+		WaitOptions:  cmdpkg.WaitOptions{WaitFor: "healthy", PollInterval: cmdpkg.DefaultPollInterval},
+	}
+
+	err := cmd.Validate()
+	if err == nil {
+		t.Error("Command.Validate() expected error for --watch + --wait-for, got nil")
+	}
+}
