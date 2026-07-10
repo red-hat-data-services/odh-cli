@@ -31,23 +31,26 @@ type Server struct {
 	mcpServer   *server.MCPServer
 }
 
-// NewServer creates a new MCP server.
-// Call registerTools to add tool definitions before calling Serve.
+// NewServer creates a new MCP server with all tools registered.
 func NewServer(configFlags *genericclioptions.ConfigFlags, transport Transport, port int) *Server {
 	mcpServer := server.NewMCPServer(
 		"odh-cli",
 		version.GetVersion(),
 	)
 
-	return &Server{
+	s := &Server{
 		configFlags: configFlags,
 		transport:   transport,
 		port:        port,
 		mcpServer:   mcpServer,
 	}
+
+	s.registerTools(allTools(configFlags))
+
+	return s
 }
 
-func (s *Server) registerTools(tools []toolDefinition) { //nolint:unused // used by tools.go in a follow-up PR
+func (s *Server) registerTools(tools []toolDefinition) {
 	for _, def := range tools {
 		s.mcpServer.AddTool(def.tool, def.handler)
 	}

@@ -23,6 +23,28 @@ func TestNewServer(t *testing.T) {
 	})
 }
 
+func TestNewServerRegistersAllTools(t *testing.T) {
+	t.Run("should register all 12 tools on the MCP server", func(t *testing.T) {
+		g := NewWithT(t)
+
+		flags := genericclioptions.NewConfigFlags(true)
+		srv := NewServer(flags, TransportStdio, 8080)
+
+		registered := srv.mcpServer.ListTools()
+		g.Expect(registered).To(HaveLen(12))
+
+		expectedTools := []string{
+			"odh_status", "odh_lint", "odh_get", "odh_deps", "odh_deps_install",
+			"odh_backup", "odh_logs", "odh_events",
+			"odh_components_list", "odh_components_describe",
+			"odh_migrate_list", "odh_migrate_run",
+		}
+		for _, name := range expectedTools {
+			g.Expect(registered).To(HaveKey(name), "tool %s should be registered", name)
+		}
+	})
+}
+
 func TestServeUnsupportedTransport(t *testing.T) {
 	t.Run("should return error for unsupported transport", func(t *testing.T) {
 		g := NewWithT(t)

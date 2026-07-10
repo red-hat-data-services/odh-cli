@@ -16,6 +16,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/cmd/get"
 	"github.com/opendatahub-io/odh-cli/cmd/lint"
 	"github.com/opendatahub-io/odh-cli/cmd/logs"
+	"github.com/opendatahub-io/odh-cli/cmd/mcp"
 	"github.com/opendatahub-io/odh-cli/cmd/migrate"
 	"github.com/opendatahub-io/odh-cli/cmd/status"
 	"github.com/opendatahub-io/odh-cli/cmd/version"
@@ -45,6 +46,7 @@ func main() {
 	status.AddCommand(cmd, flags)
 	logs.AddCommand(cmd, flags)
 	completion.AddCommand(cmd, flags)
+	mcp.AddCommand(cmd, flags)
 	migrate.AddCommand(cmd, flags)
 	events.AddCommand(cmd, flags)
 
