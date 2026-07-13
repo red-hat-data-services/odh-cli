@@ -163,6 +163,8 @@ func TestGetComponentCR(t *testing.T) {
 
 			if got == nil {
 				t.Fatal("expected non-nil ResourceType")
+
+				return
 			}
 
 			if got.Kind != tt.wantKind {

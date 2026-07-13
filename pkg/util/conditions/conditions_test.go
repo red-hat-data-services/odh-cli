@@ -55,6 +55,8 @@ func TestFindCondition(t *testing.T) {
 			if tt.wantFound {
 				if got == nil {
 					t.Fatalf("expected condition, got nil")
+
+					return
 				}
 
 				if got.Status != tt.wantStatus {
@@ -78,6 +80,8 @@ func TestFindReady(t *testing.T) {
 	got := conditions.FindReady(conds)
 	if got == nil {
 		t.Fatal("expected Ready condition, got nil")
+
+		return
 	}
 
 	if got.Status != metav1.ConditionFalse {

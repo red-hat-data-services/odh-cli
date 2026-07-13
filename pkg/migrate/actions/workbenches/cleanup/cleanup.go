@@ -15,6 +15,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action/result"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/workbenches"
+	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/confirmation"
 	"github.com/opendatahub-io/odh-cli/pkg/util/jq"
 )
@@ -76,10 +77,10 @@ func (a *CleanupOAuthAction) Run() action.Task {
 	return &runTask{action: a}
 }
 
-// checkMigrationState verifies that a notebook has been successfully migrated
+// CheckMigrationState verifies that a notebook has been successfully migrated
 // from OAuth-proxy to kube-rbac-proxy. Returns true if all checks pass, along
 // with a list of failure messages for any checks that did not pass.
-func checkMigrationState(nb *unstructured.Unstructured) (bool, []string) {
+func CheckMigrationState(nb *unstructured.Unstructured) (bool, []string) {
 	var failures []string
 
 	annotations := nb.GetAnnotations()
@@ -169,11 +170,11 @@ func hasTornadoSettings(containers []any) bool {
 	return false
 }
 
-// deleteResourceIfPresent performs an idempotent deletion: if the resource
+// DeleteResourceIfPresent performs an idempotent deletion: if the resource
 // exists it is deleted; if it is already absent, no error is raised.
 // For cluster-scoped resources, pass an empty namespace.
 // Returns true if the resource was deleted or already absent; false on error.
-func deleteResourceIfPresent(
+func DeleteResourceIfPresent(
 	ctx context.Context,
 	target action.Target,
 	gvr schema.GroupVersionResource,
@@ -224,25 +225,104 @@ func resourceLabel(gvr schema.GroupVersionResource, name, namespace string) stri
 	return fmt.Sprintf("%s/%s (cluster-scoped)", gvr.Resource, name)
 }
 
-func (a *CleanupOAuthAction) promptCleanupContinueOrSkip(
+// CleanupResult indicates the outcome of a single notebook cleanup.
+type CleanupResult int
+
+const (
+	CleanupResultCleaned CleanupResult = iota
+	CleanupResultSkipped
+	CleanupResultFailed
+)
+
+// CleanupNotebook deletes the legacy OAuth resources for a single notebook.
+// It runs the pre-check and prompts for confirmation if the check fails.
+func CleanupNotebook(
+	ctx context.Context,
 	target action.Target,
-	name string,
-	namespace string,
-	failures []string,
-) bool {
-	if target.SkipConfirm {
-		return true
+	nb *unstructured.Unstructured,
+	parentStep action.StepRecorder,
+) CleanupResult {
+	name := nb.GetName()
+	namespace := nb.GetNamespace()
+
+	step := parentStep.Child(
+		fmt.Sprintf("cleanup-%s-%s", namespace, name),
+		fmt.Sprintf("Clean up OAuth resources for %s/%s", namespace, name),
+	)
+
+	passed, failures := CheckMigrationState(nb)
+	if !passed {
+		step.Recordf("precheck",
+			"Pre-check failed: %s",
+			result.StepFailed,
+			strings.Join(failures, "; "))
+
+		if !target.SkipConfirm {
+			target.IO.Fprintln()
+			target.IO.Errorf("Pre-checks failed for %s/%s:", namespace, name)
+
+			for _, f := range failures {
+				target.IO.Errorf("  - %s", f)
+			}
+
+			if !confirmation.Prompt(target.IO,
+				fmt.Sprintf("Continue cleanup for %s/%s despite failed pre-checks?", namespace, name)) {
+				step.Completef(result.StepSkipped,
+					"Skipped cleanup for %s/%s (pre-check failed)", namespace, name)
+
+				return CleanupResultSkipped
+			}
+		}
+
+		step.Recordf("precheck-override",
+			"Continuing cleanup despite failed pre-checks", result.StepCompleted)
 	}
 
-	target.IO.Fprintln()
-	target.IO.Errorf("Pre-checks failed for %s/%s:", namespace, name)
+	hasFailed := !DeleteResourceIfPresent(ctx, target,
+		resources.Route.GVR(), name, namespace, step)
 
-	for _, f := range failures {
-		target.IO.Errorf("  - %s", f)
+	if !DeleteResourceIfPresent(ctx, target,
+		resources.Service.GVR(), name+"-tls", namespace, step) {
+		hasFailed = true
 	}
 
-	return confirmation.Prompt(target.IO,
-		fmt.Sprintf("Continue cleanup for %s/%s despite failed pre-checks?", namespace, name))
+	if !DeleteResourceIfPresent(ctx, target,
+		resources.Secret.GVR(), name+"-oauth-client", namespace, step) {
+		hasFailed = true
+	}
+
+	if !DeleteResourceIfPresent(ctx, target,
+		resources.Secret.GVR(), name+"-oauth-config", namespace, step) {
+		hasFailed = true
+	}
+
+	if !DeleteResourceIfPresent(ctx, target,
+		resources.Secret.GVR(), name+"-tls", namespace, step) {
+		hasFailed = true
+	}
+
+	oauthClientName := fmt.Sprintf("%s-%s-oauth-client", name, namespace)
+	if !DeleteResourceIfPresent(ctx, target,
+		resources.OAuthClient.GVR(), oauthClientName, "", step) {
+		hasFailed = true
+	}
+
+	if hasFailed {
+		step.Completef(result.StepFailed,
+			"Cleanup partially failed for %s/%s", namespace, name)
+
+		return CleanupResultFailed
+	}
+
+	if target.DryRun {
+		step.Completef(result.StepSkipped,
+			"Would clean up OAuth resources for %s/%s", namespace, name)
+	} else {
+		step.Completef(result.StepCompleted,
+			"Cleaned up OAuth resources for %s/%s", namespace, name)
+	}
+
+	return CleanupResultCleaned
 }
 
 func (a *CleanupOAuthAction) promptBeforeCleanup(

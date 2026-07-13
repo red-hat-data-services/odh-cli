@@ -9,7 +9,6 @@ import (
 
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action/result"
-	"github.com/opendatahub-io/odh-cli/pkg/resources"
 )
 
 type runTask struct {
@@ -46,7 +45,7 @@ func (t *runTask) Validate(
 	failCount := 0
 
 	for _, nb := range notebooks {
-		passed, failures := checkMigrationState(nb)
+		passed, failures := CheckMigrationState(nb)
 		if passed {
 			passCount++
 		} else {
@@ -117,11 +116,11 @@ func (t *runTask) Execute(
 		r := t.cleanupWorkbench(ctx, target, nb)
 
 		switch r {
-		case cleanupResultCleaned:
+		case CleanupResultCleaned:
 			cleanedCount++
-		case cleanupResultSkipped:
+		case CleanupResultSkipped:
 			skippedCount++
-		case cleanupResultFailed:
+		case CleanupResultFailed:
 			failedCount++
 		}
 	}
@@ -144,90 +143,12 @@ func (t *runTask) Execute(
 	return action.BuildResult(target)
 }
 
-type cleanupResult int
-
-const (
-	cleanupResultCleaned cleanupResult = iota
-	cleanupResultSkipped
-	cleanupResultFailed
-)
-
 func (t *runTask) cleanupWorkbench(
 	ctx context.Context,
 	target action.Target,
 	nb *unstructured.Unstructured,
-) cleanupResult {
-	name := nb.GetName()
-	namespace := nb.GetNamespace()
-
-	step := target.Recorder.Child(
-		fmt.Sprintf("cleanup-%s-%s", namespace, name),
-		fmt.Sprintf("Clean up OAuth resources for %s/%s", namespace, name),
-	)
-
-	passed, failures := checkMigrationState(nb)
-	if !passed {
-		step.Recordf("precheck",
-			"Pre-check failed: %s",
-			result.StepFailed,
-			joinFailures(failures))
-
-		if !t.action.promptCleanupContinueOrSkip(target, name, namespace, failures) {
-			step.Completef(result.StepSkipped,
-				"Skipped cleanup for %s/%s (pre-check failed)", namespace, name)
-
-			return cleanupResultSkipped
-		}
-
-		step.Recordf("precheck-override",
-			"Continuing cleanup despite failed pre-checks", result.StepCompleted)
-	}
-
-	hasFailed := !deleteResourceIfPresent(ctx, target,
-		resources.Route.GVR(), name, namespace, step)
-
-	if !deleteResourceIfPresent(ctx, target,
-		resources.Service.GVR(), name+"-tls", namespace, step) {
-		hasFailed = true
-	}
-
-	if !deleteResourceIfPresent(ctx, target,
-		resources.Secret.GVR(), name+"-oauth-client", namespace, step) {
-		hasFailed = true
-	}
-
-	if !deleteResourceIfPresent(ctx, target,
-		resources.Secret.GVR(), name+"-oauth-config", namespace, step) {
-		hasFailed = true
-	}
-
-	if !deleteResourceIfPresent(ctx, target,
-		resources.Secret.GVR(), name+"-tls", namespace, step) {
-		hasFailed = true
-	}
-
-	oauthClientName := fmt.Sprintf("%s-%s-oauth-client", name, namespace)
-	if !deleteResourceIfPresent(ctx, target,
-		resources.OAuthClient.GVR(), oauthClientName, "", step) {
-		hasFailed = true
-	}
-
-	if hasFailed {
-		step.Completef(result.StepFailed,
-			"Cleanup partially failed for %s/%s", namespace, name)
-
-		return cleanupResultFailed
-	}
-
-	if target.DryRun {
-		step.Completef(result.StepSkipped,
-			"Would clean up OAuth resources for %s/%s", namespace, name)
-	} else {
-		step.Completef(result.StepCompleted,
-			"Cleaned up OAuth resources for %s/%s", namespace, name)
-	}
-
-	return cleanupResultCleaned
+) CleanupResult {
+	return CleanupNotebook(ctx, target, nb, target.Recorder)
 }
 
 func joinFailures(failures []string) string {

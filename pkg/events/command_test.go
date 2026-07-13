@@ -141,6 +141,8 @@ func TestNewCommand(t *testing.T) {
 
 	if cmd == nil {
 		t.Fatal("NewCommand() returned nil")
+
+		return
 	}
 
 	if cmd.OutputFormat != "table" {

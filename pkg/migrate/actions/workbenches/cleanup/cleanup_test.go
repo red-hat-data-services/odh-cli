@@ -355,7 +355,7 @@ func TestCheckMigrationState_AllPassed(t *testing.T) {
 	g := NewWithT(t)
 
 	nb := newMigratedNotebook("wb1", "ns1")
-	passed, failures := checkMigrationState(nb)
+	passed, failures := CheckMigrationState(nb)
 
 	g.Expect(passed).To(BeTrue())
 	g.Expect(failures).To(BeEmpty())
@@ -367,7 +367,7 @@ func TestCheckMigrationState_InjectAuthMissing(t *testing.T) {
 	nb := newNotebook("wb1", "ns1",
 		withContainers(migratedContainers()...))
 
-	passed, failures := checkMigrationState(nb)
+	passed, failures := CheckMigrationState(nb)
 
 	g.Expect(passed).To(BeFalse())
 	g.Expect(failures).To(ContainElement(ContainSubstring("inject-auth")))
@@ -380,7 +380,7 @@ func TestCheckMigrationState_KubeRBACProxyMissing(t *testing.T) {
 		withAnnotations(migratedAnnotations()),
 		withContainers(container("my-notebook")))
 
-	passed, failures := checkMigrationState(nb)
+	passed, failures := CheckMigrationState(nb)
 
 	g.Expect(passed).To(BeFalse())
 	g.Expect(failures).To(ContainElement(ContainSubstring("kube-rbac-proxy")))
@@ -396,7 +396,7 @@ func TestCheckMigrationState_OAuthProxyStillPresent(t *testing.T) {
 			container(containerKubeRBACProxy),
 			container(containerOAuthProxy)))
 
-	passed, failures := checkMigrationState(nb)
+	passed, failures := CheckMigrationState(nb)
 
 	g.Expect(passed).To(BeFalse())
 	g.Expect(failures).To(ContainElement(ContainSubstring("oauth-proxy")))
@@ -414,7 +414,7 @@ func TestCheckMigrationState_InjectOAuthTolerated(t *testing.T) {
 			container("my-notebook"),
 			container(containerKubeRBACProxy)))
 
-	passed, failures := checkMigrationState(nb)
+	passed, failures := CheckMigrationState(nb)
 
 	g.Expect(passed).To(BeTrue(), "inject-oauth tolerated when kube-rbac-proxy present and oauth-proxy absent")
 	g.Expect(failures).To(BeEmpty())
@@ -430,7 +430,7 @@ func TestCheckMigrationState_InjectOAuthFails(t *testing.T) {
 		}),
 		withContainers(container("my-notebook")))
 
-	passed, failures := checkMigrationState(nb)
+	passed, failures := CheckMigrationState(nb)
 
 	g.Expect(passed).To(BeFalse())
 	g.Expect(failures).To(ContainElement(ContainSubstring("inject-oauth")))
@@ -446,7 +446,7 @@ func TestCheckMigrationState_TornadoSettingsPresent(t *testing.T) {
 				envVar("NOTEBOOK_ARGS", "--ServerApp.tornado_settings={\"xsrf_cookies\": false}")),
 			container(containerKubeRBACProxy)))
 
-	passed, failures := checkMigrationState(nb)
+	passed, failures := CheckMigrationState(nb)
 
 	g.Expect(passed).To(BeFalse())
 	g.Expect(failures).To(ContainElement(ContainSubstring("tornado_settings")))
@@ -458,7 +458,7 @@ func TestCheckMigrationState_NoContainers(t *testing.T) {
 	nb := newNotebook("wb1", "ns1",
 		withAnnotations(migratedAnnotations()))
 
-	passed, failures := checkMigrationState(nb)
+	passed, failures := CheckMigrationState(nb)
 
 	g.Expect(passed).To(BeFalse())
 	g.Expect(failures).To(ContainElement(ContainSubstring("could not read containers")))
@@ -474,7 +474,7 @@ func TestCheckMigrationState_TornadoSettingsInDifferentEnvVar(t *testing.T) {
 				envVar("OTHER_VAR", "--ServerApp.tornado_settings={\"xsrf_cookies\": false}")),
 			container(containerKubeRBACProxy)))
 
-	passed, failures := checkMigrationState(nb)
+	passed, failures := CheckMigrationState(nb)
 
 	g.Expect(passed).To(BeTrue(), "tornado_settings in a non-NOTEBOOK_ARGS env var should be ignored")
 	g.Expect(failures).To(BeEmpty())
