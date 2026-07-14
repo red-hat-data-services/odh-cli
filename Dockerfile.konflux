@@ -37,13 +37,9 @@ RUN make build \
     DATE=${DATE}
 
 
-<<<<<<< HEAD
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:a6ba68b40051fe65e6852c69e4a9496aec2ac28f7ac92431ce2529bae2d105f3 AS yq-builder
-=======
 FROM registry.redhat.io/openshift4/ose-cli-rhel9:v4.21.0 AS ose-cli
 
 FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.25@sha256:90a36bc2013b3fcb28e2a4b082c9b895d7c2c679e58b95aed9721970f3339d0e AS yq-builder
->>>>>>> e32d5dd (Upgrade runtime image to Python 3.12 and fix CVE-2026-44432)
 
 WORKDIR /workspace
 
@@ -76,7 +72,7 @@ COPY --from=yq-builder /workspace/yq /usr/bin/yq
 
 # The minimal base image lacks /var/cache/yum which the cachi2 repo config expects.
 RUN mkdir -p /var/cache/yum && \                                                            
-    microdnf install -y jq wget && microdnf clean all
+    yum install -y jq wget && yum clean all
     
 # Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
 RUN pip3 install --no-cache-dir -r requirements.txt
