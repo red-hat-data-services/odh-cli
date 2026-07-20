@@ -52,6 +52,7 @@ RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntim
 # Runtime stage — Python 3.12 base enables urllib3 >= 2.7.0 (CVE-2026-44432 fix)
 FROM registry.redhat.io/rhel9/python-312@sha256:88277e9671092de1c89e562e920823e82a70b75a6b02db9ba8ad78dcfaf6b591
 # Build arguments for downloading architecture-specific binaries
+USER root
 ARG TARGETARCH
 
 # Set default KUBECONFIG path for container usage
@@ -70,8 +71,8 @@ COPY ./requirements.txt ./requirements.txt
 
 COPY --from=yq-builder /workspace/yq /usr/bin/yq
 
-# The minimal base image lacks /var/cache/yum which the cachi2 repo config expects.
-RUN mkdir -p /var/cache/yum && yum install -y jq wget && yum clean all
+
+RUN dnf install -y jq wget && dnf clean all
     
 # Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
 RUN pip3 install --no-cache-dir -r requirements.txt
