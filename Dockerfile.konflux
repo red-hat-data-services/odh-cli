@@ -73,7 +73,7 @@ COPY ./requirements.txt ./requirements.txt
 COPY --from=yq-builder /workspace/yq /usr/bin/yq
 
 
-RUN dnf install -y jq wget && dnf clean all
+RUN microdnf install -y jq wget && microdnf clean all
     
 # Python deps for ray_cluster_migration.py (kubernetes, PyYAML)
 RUN pip3 install --no-cache-dir -r requirements.txt
