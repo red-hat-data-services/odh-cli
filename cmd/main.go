@@ -12,6 +12,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/cmd/completion"
 	"github.com/opendatahub-io/odh-cli/cmd/components"
 	"github.com/opendatahub-io/odh-cli/cmd/deps"
+	"github.com/opendatahub-io/odh-cli/cmd/diagnose"
 	"github.com/opendatahub-io/odh-cli/cmd/events"
 	"github.com/opendatahub-io/odh-cli/cmd/get"
 	"github.com/opendatahub-io/odh-cli/cmd/lint"
@@ -49,6 +50,7 @@ func main() {
 	mcp.AddCommand(cmd, flags)
 	migrate.AddCommand(cmd, flags)
 	events.AddCommand(cmd, flags)
+	diagnose.AddCommand(cmd, flags)
 
 	if err := cmd.Execute(); err != nil {
 		exitCode := int(clierrors.ExitCodeFromError(err))

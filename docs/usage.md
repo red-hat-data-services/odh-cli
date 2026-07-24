@@ -44,3 +44,28 @@ Install the `kubectl-odh` binary to your PATH:
 kubectl odh lint --target-version 3.3.0
 kubectl odh version
 ```
+
+## Diagnosing ODH/RHOAI Issues
+
+The `diagnose` command runs a 4-step diagnostic flow — triage, investigate, correlate, report — and exits 0 if healthy, 1 if issues are found.
+
+```bash
+# Full triage (human-readable)
+kubectl odh diagnose
+
+# Focus on one component
+kubectl odh diagnose --component kserve
+
+# Machine-readable output (CI/scripting)
+kubectl odh diagnose --json
+
+# Pipe JSON to jq for specific fields
+kubectl odh diagnose --json | jq .classification
+```
+
+For AI-assisted diagnosis, use the MCP server mode:
+
+```bash
+kubectl odh mcp serve
+```
+

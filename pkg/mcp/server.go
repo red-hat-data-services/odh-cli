@@ -46,6 +46,7 @@ func NewServer(configFlags *genericclioptions.ConfigFlags, transport Transport, 
 	}
 
 	s.registerTools(allTools(configFlags))
+	registerDiagnosticTools(mcpServer, configFlags)
 
 	return s
 }

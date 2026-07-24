@@ -38,6 +38,9 @@ linters:
         linters:
           - wrapcheck  # Mocks must return errors as-is from testify/mock framework
   settings:
+    gomoddirectives:
+      replace-allow-list:
+        - github.com/opendatahub-io/opendatahub-operator/pkg/failureclassifier
     wrapcheck:
       ignore-package-globs:
         - github.com/opendatahub-io/odh-cli/pkg/lint/check/validate

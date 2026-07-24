@@ -11,7 +11,9 @@ require (
 	github.com/mark3labs/mcp-go v0.55.1
 	github.com/olekukonko/tablewriter v1.1.3
 	github.com/onsi/gomega v1.39.1
-	github.com/opendatahub-io/opendatahub-operator/pkg/clusterhealth v0.1.1-0.20260504121932-5bc4a11a6a87
+	github.com/opendatahub-io/opendatahub-operator/pkg/clusterhealth v0.1.1-0.20260703000804-a2438f2515dc
+	github.com/opendatahub-io/opendatahub-operator/pkg/failureclassifier v0.0.0
+	github.com/opendatahub-io/opendatahub-operator/pkg/mcptools v0.0.0-20260722060059-afca9ec2807d
 	github.com/operator-framework/api v0.39.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -114,3 +116,5 @@ require (
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 )
+
+replace github.com/opendatahub-io/opendatahub-operator/pkg/failureclassifier v0.0.0 => github.com/opendatahub-io/opendatahub-operator/pkg/failureclassifier v0.0.0-20260722060059-afca9ec2807d

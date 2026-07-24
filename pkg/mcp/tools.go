@@ -2,11 +2,14 @@ package mcp
 
 import (
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
+	"github.com/opendatahub-io/opendatahub-operator/pkg/mcptools"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/cli-runtime/pkg/genericiooptions"
@@ -22,6 +25,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/migrate"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/status"
+	utilclient "github.com/opendatahub-io/odh-cli/pkg/util/client"
 )
 
 const outputJSON = "json"
@@ -56,6 +60,28 @@ func allTools(configFlags *genericclioptions.ConfigFlags) []toolDefinition {
 		migrateListTool(configFlags),
 		migrateRunTool(configFlags),
 	}
+}
+
+// registerDiagnosticTools adds the 5 ODH diagnostic tools to the MCP server.
+// These tools (platform_health, classify_failure, component_status, recent_events,
+// operator_dependencies) query the cluster directly via a controller-runtime client.
+// If the kubeconfig is unavailable, registration is skipped with a log warning.
+func registerDiagnosticTools(mcpServer *server.MCPServer, configFlags *genericclioptions.ConfigFlags) {
+	restConfig, err := utilclient.NewRESTConfig(configFlags, 0, 0)
+	if err != nil {
+		slog.Debug("mcp: skipping diagnostic tools: kubeconfig unavailable", "error", err)
+
+		return
+	}
+
+	crClient, err := utilclient.NewControllerRuntimeClient(restConfig)
+	if err != nil {
+		slog.Debug("mcp: skipping diagnostic tools: client error", "error", err)
+
+		return
+	}
+
+	mcptools.RegisterAll(mcpServer, crClient)
 }
 
 // --- odh_status ---
