@@ -51,7 +51,7 @@ RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntim
 
 # Runtime stage — Python 3.12 base enables urllib3 >= 2.7.0 (CVE-2026-44432 fix)
 # FROM registry.redhat.io/rhel9/python-312@sha256:88277e9671092de1c89e562e920823e82a70b75a6b02db9ba8ad78dcfaf6b591
-FROM registry.redhat.io/rhel9/python-312-minimal@sha256:5f177f3017eb5735b154fe01baae405e3278671c0bfa3978137ef7ad66ebeab9
+FROM registry.redhat.io/rhel9/python-312-minimal@sha256:1e500d67f47c589fd982216e4297ba3f66dc5b5c1f8866b88efb59cbbe3a6108
 # Build arguments for downloading architecture-specific binaries
 USER root
 ARG TARGETARCH
