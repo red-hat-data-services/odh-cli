@@ -10,6 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	k8sdiscovery "k8s.io/client-go/discovery"
 
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util"
@@ -325,6 +326,13 @@ func (c *defaultClient) Get(ctx context.Context, gvr schema.GroupVersionResource
 
 // --- Standalone helper functions that accept Reader ---
 
+// discoverer is satisfied by types that expose a Kubernetes discovery client (e.g. Client).
+// Used internally to attempt API version negotiation when the caller passes a full Client
+// as a Reader.
+type discoverer interface {
+	Discovery() k8sdiscovery.DiscoveryInterface
+}
+
 // GetSingleton expects exactly one instance of the resource type to exist.
 // Returns error if zero or multiple instances found.
 func GetSingleton(ctx context.Context, r Reader, resourceType resources.ResourceType) (*unstructured.Unstructured, error) {
@@ -345,14 +353,105 @@ func GetSingleton(ctx context.Context, r Reader, resourceType resources.Resource
 	return items[0], nil
 }
 
+// getSingletonWithDiscovery dynamically detects the available API version and retrieves
+// a singleton resource. Tries v2 first, falls back to v1.
+//
+// When the Reader also implements discoverer (i.e. is a full Client), this function
+// uses API discovery to check whether the v2 API group exists on the cluster before
+// querying it. On RHOAI 2.x clusters that only serve v1, this avoids the "resource
+// not found" error that would otherwise occur.
+//
+// When the Reader does not implement discoverer, this falls back to v2-only behavior
+// (the previous default), preserving backward compatibility for pure Reader callers.
+func getSingletonWithDiscovery(
+	ctx context.Context,
+	r Reader,
+	v2Resource, v1Resource resources.ResourceType,
+) (*unstructured.Unstructured, error) {
+	d, hasDiscovery := r.(discoverer)
+
+	var disc k8sdiscovery.DiscoveryInterface
+	if hasDiscovery {
+		disc = d.Discovery()
+	}
+
+	if disc == nil {
+		return GetSingleton(ctx, r, v2Resource)
+	}
+
+	obj, fallbackToV1, err := tryGetV2Singleton(ctx, r, disc, v2Resource)
+	if err != nil {
+		return nil, fmt.Errorf("getting %s (v2): %w", v2Resource.Kind, err)
+	}
+
+	if !fallbackToV1 {
+		return obj, nil
+	}
+
+	obj, err = GetSingleton(ctx, r, v1Resource)
+	if err != nil {
+		return nil, fmt.Errorf("getting %s (v1): %w", v1Resource.Kind, err)
+	}
+
+	return obj, nil
+}
+
+// tryGetV2Singleton attempts to get the v2 singleton if the v2 API exists.
+// Returns:
+//   - (obj, false, nil) if v2 singleton found
+//   - (nil, true, nil) if should fall back to v1 (v2 API absent or v2 instance not found)
+//   - (nil, false, err) if a real error occurred (403, timeout, unexpected count, etc.)
+func tryGetV2Singleton(
+	ctx context.Context,
+	r Reader,
+	disc k8sdiscovery.DiscoveryInterface,
+	v2Resource resources.ResourceType,
+) (*unstructured.Unstructured, bool, error) {
+	if !hasGroupVersion(disc, schema.GroupVersion{Group: v2Resource.Group, Version: v2Resource.Version}) {
+		return nil, true, nil
+	}
+
+	obj, err := GetSingleton(ctx, r, v2Resource)
+	if err != nil {
+		if IsResourceTypeNotFound(err) {
+			return nil, true, nil
+		}
+
+		return nil, false, fmt.Errorf("getting v2 singleton: %w", err)
+	}
+
+	return obj, false, nil
+}
+
+// hasGroupVersion checks whether the API server serves the given group/version.
+func hasGroupVersion(disc k8sdiscovery.DiscoveryInterface, gv schema.GroupVersion) bool {
+	_, apiResourceLists, _ := disc.ServerGroupsAndResources()
+	if apiResourceLists == nil {
+		return false
+	}
+
+	target := gv.String()
+	for _, list := range apiResourceLists {
+		if list.GroupVersion == target {
+			return len(list.APIResources) > 0
+		}
+	}
+
+	return false
+}
+
 // GetDataScienceCluster retrieves the cluster's DataScienceCluster singleton resource.
+// Uses API discovery to negotiate between v2 (RHOAI 3.x) and v1 (RHOAI 2.x) when
+// the Reader also implements the Client interface.
 func GetDataScienceCluster(ctx context.Context, r Reader) (*unstructured.Unstructured, error) {
-	return GetSingleton(ctx, r, resources.DataScienceCluster)
+	return getSingletonWithDiscovery(ctx, r, resources.DataScienceCluster, resources.DataScienceClusterV1)
 }
 
 // GetDSCInitialization retrieves the cluster's DSCInitialization singleton resource.
+// Uses API discovery to negotiate between v2 (RHOAI 3.x) and v1 (RHOAI 2.x) when
+// the Reader also implements the Client interface.
 func GetDSCInitialization(ctx context.Context, r Reader) (*unstructured.Unstructured, error) {
-	return GetSingleton(ctx, r, resources.DSCInitialization)
+	return getSingletonWithDiscovery(ctx, r, resources.DSCInitialization, resources.DSCInitializationV1)
 }
 
 // GetApplicationsNamespace retrieves the applications namespace from DSCInitialization.

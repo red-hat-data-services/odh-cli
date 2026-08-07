@@ -56,7 +56,7 @@ func TestDetect_FromDataScienceCluster(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create fake DataScienceCluster with version (using v1 API - fallback when Discovery is nil)
+	// Create fake DataScienceCluster with version (using v1 API - fallback when v2 absent)
 	dsc := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.DataScienceClusterV1.APIVersion(),
@@ -76,7 +76,8 @@ func TestDetect_FromDataScienceCluster(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc)
 
 	c := client.NewForTesting(client.TestClientConfig{
-		Dynamic: dynamicClient,
+		Dynamic:   dynamicClient,
+		Discovery: newFakeDiscoveryWithResources(resources.DataScienceCluster.Group + "/v1"),
 	})
 
 	clusterVersion, err := version.Detect(ctx, c)
@@ -177,7 +178,7 @@ func TestDetect_FromDSCInitialization(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 
-	// Create fake DSCInitialization with version (using v1 API - fallback when Discovery is nil)
+	// Create fake DSCInitialization with version (using v1 API - fallback when v2 absent)
 	dsci := &unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": resources.DSCInitializationV1.APIVersion(),
@@ -197,7 +198,8 @@ func TestDetect_FromDSCInitialization(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsci)
 
 	c := client.NewForTesting(client.TestClientConfig{
-		Dynamic: dynamicClient,
+		Dynamic:   dynamicClient,
+		Discovery: newFakeDiscoveryWithResources(resources.DSCInitialization.Group + "/v1"),
 	})
 
 	clusterVersion, err := version.Detect(ctx, c)
@@ -342,7 +344,8 @@ func TestDetect_PriorityOrder(t *testing.T) {
 	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, listKinds, dsc, dsci, csv)
 
 	c := client.NewForTesting(client.TestClientConfig{
-		Dynamic: dynamicClient,
+		Dynamic:   dynamicClient,
+		Discovery: newFakeDiscoveryWithResources(resources.DataScienceCluster.Group + "/v1"),
 	})
 
 	clusterVersion, err := version.Detect(ctx, c)
