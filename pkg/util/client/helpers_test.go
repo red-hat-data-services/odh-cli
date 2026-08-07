@@ -4,6 +4,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/onsi/gomega/types"
@@ -14,8 +15,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	discoveryfake "k8s.io/client-go/discovery/fake"
 	dynamicfake "k8s.io/client-go/dynamic/fake"
 	metadatafake "k8s.io/client-go/metadata/fake"
+	coretesting "k8s.io/client-go/testing"
 
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 
@@ -813,3 +816,265 @@ func (r *errorReader) OLM() OLMReader {
 
 // Compile-time check that errorReader implements Reader.
 var _ Reader = (*errorReader)(nil)
+
+// pureReader is a Reader that does NOT implement discoverer.
+// Used to test that GetDataScienceCluster falls back to v2-only when no discovery is available.
+type pureReader struct {
+	dynamic *dynamicfake.FakeDynamicClient
+}
+
+func (r *pureReader) List(
+	ctx context.Context,
+	resourceType resources.ResourceType,
+	_ ...ListResourcesOption,
+) ([]*unstructured.Unstructured, error) {
+	list, err := r.dynamic.Resource(resourceType.GVR()).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("listing %s: %w", resourceType.Kind, err)
+	}
+
+	result := make([]*unstructured.Unstructured, len(list.Items))
+	for i := range list.Items {
+		result[i] = &list.Items[i]
+	}
+
+	return result, nil
+}
+
+func (r *pureReader) ListMetadata(
+	_ context.Context,
+	_ resources.ResourceType,
+	_ ...ListResourcesOption,
+) ([]*metav1.PartialObjectMetadata, error) {
+	return nil, nil
+}
+
+func (r *pureReader) ListResources(
+	_ context.Context,
+	_ schema.GroupVersionResource,
+	_ ...ListResourcesOption,
+) ([]*unstructured.Unstructured, error) {
+	return nil, nil
+}
+
+func (r *pureReader) Get(
+	_ context.Context,
+	_ schema.GroupVersionResource,
+	_ string,
+	_ ...GetOption,
+) (*unstructured.Unstructured, error) {
+	return nil, nil
+}
+
+func (r *pureReader) GetResource(
+	_ context.Context,
+	_ resources.ResourceType,
+	_ string,
+	_ ...GetOption,
+) (*unstructured.Unstructured, error) {
+	return nil, nil
+}
+
+func (r *pureReader) GetResourceMetadata(
+	_ context.Context,
+	_ resources.ResourceType,
+	_ string,
+	_ ...GetOption,
+) (*metav1.PartialObjectMetadata, error) {
+	return nil, nil
+}
+
+func (r *pureReader) OLM() OLMReader {
+	return newOLMReader(nil)
+}
+
+var _ Reader = (*pureReader)(nil)
+
+// --- getSingletonWithDiscovery tests ---
+
+//nolint:gochecknoglobals // Test fixture
+var dscListKinds = map[schema.GroupVersionResource]string{
+	resources.DataScienceCluster.GVR():   resources.DataScienceCluster.ListKind(),
+	resources.DataScienceClusterV1.GVR(): resources.DataScienceClusterV1.ListKind(),
+	resources.DSCInitialization.GVR():    resources.DSCInitialization.ListKind(),
+	resources.DSCInitializationV1.GVR():  resources.DSCInitializationV1.ListKind(),
+}
+
+func newFakeDiscovery(groupVersions ...string) *discoveryfake.FakeDiscovery {
+	fd := &discoveryfake.FakeDiscovery{Fake: &coretesting.Fake{}}
+
+	lists := make([]*metav1.APIResourceList, 0, len(groupVersions))
+	for _, gv := range groupVersions {
+		lists = append(lists, &metav1.APIResourceList{
+			GroupVersion: gv,
+			APIResources: []metav1.APIResource{
+				{Name: "datascienceclusters", Kind: "DataScienceCluster"},
+				{Name: "dscinitializations", Kind: "DSCInitialization"},
+			},
+		})
+	}
+
+	fd.Resources = lists
+
+	return fd
+}
+
+func createDSCV2() runtime.Object {
+	return &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceCluster.APIVersion(),
+			"kind":       resources.DataScienceCluster.Kind,
+			"metadata":   map[string]any{"name": "default-dsc"},
+		},
+	}
+}
+
+func createDSCV1() runtime.Object {
+	return &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DataScienceClusterV1.APIVersion(),
+			"kind":       resources.DataScienceClusterV1.Kind,
+			"metadata":   map[string]any{"name": "default-dsc"},
+		},
+	}
+}
+
+func TestGetDataScienceCluster_V2Available(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	dsc := createDSCV2()
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
+
+	c := NewForTesting(TestClientConfig{
+		Dynamic:   dynamicClient,
+		Discovery: newFakeDiscovery(resources.DataScienceCluster.Group + "/v2"),
+	})
+
+	result, err := GetDataScienceCluster(ctx, c)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).ToNot(BeNil())
+	g.Expect(result.GetName()).To(Equal("default-dsc"))
+	g.Expect(result.GetAPIVersion()).To(Equal(resources.DataScienceCluster.APIVersion()))
+}
+
+func TestGetDataScienceCluster_V2AbsentFallsBackToV1(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	dsc := createDSCV1()
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
+
+	c := NewForTesting(TestClientConfig{
+		Dynamic:   dynamicClient,
+		Discovery: newFakeDiscovery(resources.DataScienceCluster.Group + "/v1"),
+	})
+
+	result, err := GetDataScienceCluster(ctx, c)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).ToNot(BeNil())
+	g.Expect(result.GetName()).To(Equal("default-dsc"))
+	g.Expect(result.GetAPIVersion()).To(Equal(resources.DataScienceClusterV1.APIVersion()))
+}
+
+func TestGetDataScienceCluster_MidUpgradeFallsBackToV1(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	dsc := createDSCV1()
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
+
+	c := NewForTesting(TestClientConfig{
+		Dynamic:   dynamicClient,
+		Discovery: newFakeDiscovery(resources.DataScienceCluster.Group+"/v2", resources.DataScienceCluster.Group+"/v1"),
+	})
+
+	result, err := GetDataScienceCluster(ctx, c)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).ToNot(BeNil())
+	g.Expect(result.GetAPIVersion()).To(Equal(resources.DataScienceClusterV1.APIVersion()))
+}
+
+func TestGetDataScienceCluster_NeitherVersionAvailable(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds)
+
+	c := NewForTesting(TestClientConfig{
+		Dynamic:   dynamicClient,
+		Discovery: newFakeDiscovery(),
+	})
+
+	_, err := GetDataScienceCluster(ctx, c)
+	g.Expect(err).To(HaveOccurred())
+	g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
+}
+
+func TestGetDataScienceCluster_PureReaderTriesV2Only(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	dsc := createDSCV2()
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
+
+	reader := &pureReader{
+		dynamic: dynamicClient,
+	}
+
+	result, err := GetDataScienceCluster(ctx, reader)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).ToNot(BeNil())
+	g.Expect(result.GetAPIVersion()).To(Equal(resources.DataScienceCluster.APIVersion()))
+}
+
+func TestGetDataScienceCluster_NilDiscoveryUsesV2Only(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	dsc := createDSCV2()
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsc)
+
+	c := NewForTesting(TestClientConfig{
+		Dynamic:   dynamicClient,
+		Discovery: nil,
+	})
+
+	result, err := GetDataScienceCluster(ctx, c)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).ToNot(BeNil())
+	g.Expect(result.GetAPIVersion()).To(Equal(resources.DataScienceCluster.APIVersion()))
+}
+
+func TestGetDSCInitialization_V2AbsentFallsBackToV1(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	dsci := &unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": resources.DSCInitializationV1.APIVersion(),
+			"kind":       resources.DSCInitializationV1.Kind,
+			"metadata":   map[string]any{"name": "default-dsci"},
+		},
+	}
+
+	scheme := runtime.NewScheme()
+	dynamicClient := dynamicfake.NewSimpleDynamicClientWithCustomListKinds(scheme, dscListKinds, dsci)
+
+	c := NewForTesting(TestClientConfig{
+		Dynamic:   dynamicClient,
+		Discovery: newFakeDiscovery(resources.DSCInitialization.Group + "/v1"),
+	})
+
+	result, err := GetDSCInitialization(ctx, c)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(result).ToNot(BeNil())
+	g.Expect(result.GetName()).To(Equal("default-dsci"))
+	g.Expect(result.GetAPIVersion()).To(Equal(resources.DSCInitializationV1.APIVersion()))
+}
