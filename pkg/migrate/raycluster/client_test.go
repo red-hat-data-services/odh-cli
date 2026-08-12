@@ -574,7 +574,7 @@ func TestRunPreUpgradeChecks_AllPass(t *testing.T) {
 
 	c := newFakeClientWithAPIExtensions(t, []runtime.Object{certManagerCRD}, ns, rc, dsc)
 
-	checks := raycluster.RunPreUpgradeChecks(t.Context(), c)
+	checks := raycluster.RunPreUpgradeChecks(t.Context(), c, false)
 	g.Expect(checks).To(HaveLen(3))
 	for _, chk := range checks {
 		g.Expect(chk.Passed).To(BeTrue(), "check %s should pass", chk.Name)
@@ -601,7 +601,7 @@ func TestRunPreUpgradeChecks_PermissionsDenied(t *testing.T) {
 		APIExtensions: apiextClient,
 	})
 
-	checks := raycluster.RunPreUpgradeChecks(t.Context(), c)
+	checks := raycluster.RunPreUpgradeChecks(t.Context(), c, false)
 	g.Expect(checks).To(HaveLen(3))
 	g.Expect(checks[0].Passed).To(BeFalse())
 	g.Expect(checks[0].Name).To(Equal("Permissions"))
@@ -630,7 +630,7 @@ func TestRunPreUpgradeChecks_CertManagerNotFound(t *testing.T) {
 		APIExtensions: apiextClient,
 	})
 
-	checks := raycluster.RunPreUpgradeChecks(t.Context(), c)
+	checks := raycluster.RunPreUpgradeChecks(t.Context(), c, false)
 	g.Expect(checks).To(HaveLen(3))
 	g.Expect(checks[1].Name).To(Equal("cert-manager"))
 	g.Expect(checks[1].Passed).To(BeFalse())
@@ -658,7 +658,7 @@ func TestRunPreUpgradeChecks_CertManagerNamespaceFound(t *testing.T) {
 		APIExtensions: apiextClient,
 	})
 
-	checks := raycluster.RunPreUpgradeChecks(t.Context(), c)
+	checks := raycluster.RunPreUpgradeChecks(t.Context(), c, false)
 	g.Expect(checks[1].Name).To(Equal("cert-manager"))
 	g.Expect(checks[1].Passed).To(BeTrue())
 	g.Expect(checks[1].Message).To(ContainSubstring("cert-manager namespace found"))
@@ -678,10 +678,38 @@ func TestRunPreUpgradeChecks_CodeflareManaged(t *testing.T) {
 
 	c := newFakeClientWithAPIExtensions(t, []runtime.Object{certManagerCRD}, ns, dsc)
 
-	checks := raycluster.RunPreUpgradeChecks(t.Context(), c)
+	checks := raycluster.RunPreUpgradeChecks(t.Context(), c, false)
 	g.Expect(checks[2].Name).To(Equal("codeflare-operator"))
 	g.Expect(checks[2].Passed).To(BeFalse())
 	g.Expect(checks[2].Message).To(ContainSubstring("Managed"))
+}
+
+func TestRunPreUpgradeChecks_CodeflareAutoRemove(t *testing.T) {
+	g := NewWithT(t)
+
+	ns := makeNamespace("ns-a")
+	dsc := makeDSC("default-dsc", map[string]any{
+		"codeflare": map[string]any{"managementState": "Managed"},
+	})
+
+	certManagerCRD := &apiextensionsv1.CustomResourceDefinition{
+		ObjectMeta: metav1.ObjectMeta{Name: "certificates.cert-manager.io"},
+	}
+
+	c := newFakeClientWithAPIExtensions(t, []runtime.Object{certManagerCRD}, ns, dsc)
+
+	checks := raycluster.RunPreUpgradeChecks(t.Context(), c, true)
+	g.Expect(checks[2].Name).To(Equal("codeflare-operator"))
+	g.Expect(checks[2].Passed).To(BeTrue())
+	g.Expect(checks[2].Message).To(ContainSubstring("Set codeflare to Removed"))
+
+	// Verify DSC was actually patched
+	updated, err := c.Dynamic().Resource(resources.DataScienceCluster.GVR()).
+		Get(t.Context(), "default-dsc", metav1.GetOptions{})
+	g.Expect(err).ToNot(HaveOccurred())
+
+	state, _, _ := unstructured.NestedString(updated.Object, "spec", "components", "codeflare", "managementState")
+	g.Expect(state).To(Equal("Removed"))
 }
 
 func TestRunPreUpgradeChecks_CodeflareUnmanaged(t *testing.T) {
@@ -697,7 +725,7 @@ func TestRunPreUpgradeChecks_CodeflareUnmanaged(t *testing.T) {
 
 	c := newFakeClientWithAPIExtensions(t, []runtime.Object{certManagerCRD}, dsc)
 
-	checks := raycluster.RunPreUpgradeChecks(t.Context(), c)
+	checks := raycluster.RunPreUpgradeChecks(t.Context(), c, false)
 	g.Expect(checks[2].Passed).To(BeTrue())
 	g.Expect(checks[2].Message).To(ContainSubstring("Unmanaged"))
 }
@@ -711,7 +739,7 @@ func TestRunPreUpgradeChecks_NoDSC(t *testing.T) {
 
 	c := newFakeClientWithAPIExtensions(t, []runtime.Object{certManagerCRD})
 
-	checks := raycluster.RunPreUpgradeChecks(t.Context(), c)
+	checks := raycluster.RunPreUpgradeChecks(t.Context(), c, false)
 	g.Expect(checks[2].Name).To(Equal("codeflare-operator"))
 	g.Expect(checks[2].Passed).To(BeTrue())
 }
@@ -729,7 +757,7 @@ func TestRunPreUpgradeChecks_CodeflareNoManagementState(t *testing.T) {
 
 	c := newFakeClientWithAPIExtensions(t, []runtime.Object{certManagerCRD}, dsc)
 
-	checks := raycluster.RunPreUpgradeChecks(t.Context(), c)
+	checks := raycluster.RunPreUpgradeChecks(t.Context(), c, false)
 	g.Expect(checks[2].Passed).To(BeTrue())
 	g.Expect(checks[2].Message).To(ContainSubstring("without managementState"))
 }

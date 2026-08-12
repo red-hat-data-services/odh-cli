@@ -80,6 +80,9 @@ RUN set -e; \
     mv oc /usr/local/bin/oc; \
     rm -f openshift-client.tar.gz kubectl README.md
 
+# Install jq for JSON processing in migration verification steps
+RUN dnf install -y jq && dnf clean all
+
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
 

@@ -43,7 +43,7 @@ func (a *PatchAuthModelAction) Group() action.ActionGroup {
 }
 
 func (a *PatchAuthModelAction) Phase() action.ActionPhase {
-	return action.PhasePreUpgrade
+	return action.PhasePostUpgrade
 }
 
 func (a *PatchAuthModelAction) AddFlags(fs *pflag.FlagSet) {

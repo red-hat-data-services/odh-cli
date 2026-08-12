@@ -111,7 +111,7 @@ func TestVerifyWorkloadsAction_Metadata(t *testing.T) {
 	a := &trainingaction.VerifyWorkloadsAction{}
 	g.Expect(a.ID()).To(Equal("training.verify-workloads"))
 	g.Expect(a.Group()).To(Equal(action.GroupValidation))
-	g.Expect(a.Phase()).To(Equal(action.PhasePreUpgrade))
+	g.Expect(a.Phase()).To(Equal(action.PhasePostUpgrade))
 	g.Expect(a.Prepare()).To(BeNil())
 	g.Expect(a.Run()).ToNot(BeNil())
 }

@@ -77,7 +77,7 @@ func (t *backupPrepareTask) Execute(ctx context.Context, target action.Target) (
 func (t *backupPrepareTask) runPreflightChecks(ctx context.Context, target action.Target) {
 	step := target.Recorder.Child("preflight-checks", "Run RayCluster pre-upgrade checks")
 
-	checks := rcpkg.RunPreUpgradeChecks(ctx, target.Client)
+	checks := rcpkg.RunPreUpgradeChecks(ctx, target.Client, false)
 
 	allPassed := true
 	hasRequiredFailure := false
@@ -125,7 +125,7 @@ func (t *backupRunTask) Execute(ctx context.Context, target action.Target) (*res
 
 	step := target.Recorder.Child("backup-rayclusters", "Backup RayCluster configurations")
 
-	checks := rcpkg.RunPreUpgradeChecks(ctx, target.Client)
+	checks := rcpkg.RunPreUpgradeChecks(ctx, target.Client, !target.DryRun)
 
 	if target.DryRun {
 		clusters, err := rcpkg.GetClusters(ctx, target.Client, t.opts.ClusterName, t.opts.Namespace)

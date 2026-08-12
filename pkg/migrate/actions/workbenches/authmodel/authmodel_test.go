@@ -430,7 +430,7 @@ func TestPatchAuthModelAction_Metadata(t *testing.T) {
 	g.Expect(a.Name()).To(ContainSubstring("auth model"))
 	g.Expect(a.Description()).To(ContainSubstring("oauth-proxy"))
 	g.Expect(a.Group()).To(Equal(action.GroupMigration))
-	g.Expect(a.Phase()).To(Equal(action.PhasePreUpgrade))
+	g.Expect(a.Phase()).To(Equal(action.PhasePostUpgrade))
 }
 
 func TestPatchAuthModelAction_CanApply(t *testing.T) {

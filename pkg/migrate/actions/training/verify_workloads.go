@@ -20,7 +20,7 @@ func (a *VerifyWorkloadsAction) Name() string        { return verifyWorkloadsNam
 func (a *VerifyWorkloadsAction) Description() string { return verifyWorkloadsDescription }
 
 func (a *VerifyWorkloadsAction) Group() action.ActionGroup { return action.GroupValidation }
-func (a *VerifyWorkloadsAction) Phase() action.ActionPhase { return action.PhasePreUpgrade }
+func (a *VerifyWorkloadsAction) Phase() action.ActionPhase { return action.PhasePostUpgrade }
 
 func (a *VerifyWorkloadsAction) CanApply(target action.Target) bool {
 	return target.CurrentVersion != nil && target.TargetVersion != nil &&

@@ -102,7 +102,7 @@ func TestMigrateOtelExporterAction_Metadata(t *testing.T) {
 	g.Expect(a.Name()).To(ContainSubstring("otelExporter"))
 	g.Expect(a.Description()).To(ContainSubstring("otelExporter"))
 	g.Expect(a.Group()).To(Equal(action.GroupMigration))
-	g.Expect(a.Phase()).To(Equal(action.PhasePreUpgrade))
+	g.Expect(a.Phase()).To(Equal(action.PhasePostUpgrade))
 	g.Expect(a.Prepare()).To(BeNil())
 	g.Expect(a.Run()).ToNot(BeNil())
 }

@@ -21,7 +21,7 @@ func (a *MigrateOtelExporterAction) Group() action.ActionGroup {
 }
 
 func (a *MigrateOtelExporterAction) Phase() action.ActionPhase {
-	return action.PhasePreUpgrade
+	return action.PhasePostUpgrade
 }
 
 func (a *MigrateOtelExporterAction) CanApply(target action.Target) bool {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/blang/semver/v4"
@@ -106,11 +105,31 @@ func (c *PrepareCommand) Complete() error {
 
 	// Set default output directory if not specified
 	if c.OutputDir == "" {
-		timestamp := time.Now().Format("20060102-150405")
-		c.OutputDir = filepath.Join(".", "backup-migrate-"+timestamp)
+		dir, err := defaultBackupDir()
+		if err != nil {
+			return err
+		}
+
+		c.OutputDir = dir
 	}
 
 	return nil
+}
+
+func defaultBackupDir() (string, error) {
+	pattern := "backup-migrate-" + time.Now().Format("20060102-150405") + "-*"
+
+	dir, err := os.MkdirTemp(".", pattern)
+	if err == nil {
+		return dir, nil
+	}
+
+	dir, err = os.MkdirTemp("", pattern)
+	if err != nil {
+		return "", fmt.Errorf("creating default backup directory: %w", err)
+	}
+
+	return dir, nil
 }
 
 func (c *PrepareCommand) Validate() error {

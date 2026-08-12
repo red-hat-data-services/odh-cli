@@ -2,10 +2,14 @@ package raycluster
 
 import (
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
 	"github.com/opendatahub-io/odh-cli/pkg/util/client"
@@ -22,8 +26,16 @@ type PreflightCheck struct {
 	Details  []string
 }
 
+const (
+	retryInitialDuration = 500 * time.Millisecond
+	retryFactor          = 2.0
+	retryJitter          = 0.1
+	retryMaxSteps        = 5
+)
+
 // RunPreUpgradeChecks runs pre-upgrade checks (permissions, cert-manager, codeflare-operator).
-func RunPreUpgradeChecks(ctx context.Context, c client.Client) []PreflightCheck {
+// When autoRemoveCodeflare is true, CodeFlare is automatically set to Removed if currently Managed.
+func RunPreUpgradeChecks(ctx context.Context, c client.Client, autoRemoveCodeflare bool) []PreflightCheck {
 	const numChecks = 3
 	checks := make([]PreflightCheck, 0, numChecks)
 
@@ -52,7 +64,7 @@ func RunPreUpgradeChecks(ctx context.Context, c client.Client) []PreflightCheck 
 	})
 
 	// Codeflare-operator in DSC
-	cfOK, cfMsg := checkCodeflareOperator(ctx, c)
+	cfOK, cfMsg := checkCodeflareOperator(ctx, c, autoRemoveCodeflare)
 	checks = append(checks, PreflightCheck{
 		Name:     "codeflare-operator",
 		Passed:   cfOK,
@@ -110,7 +122,7 @@ func checkCertManager(ctx context.Context, c client.Client) (bool, string) {
 	return false, "cert-manager not detected"
 }
 
-func checkCodeflareOperator(ctx context.Context, c client.Client) (bool, string) {
+func checkCodeflareOperator(ctx context.Context, c client.Client, autoRemove bool) (bool, string) {
 	dsc, err := client.GetDataScienceCluster(ctx, c)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -144,10 +156,67 @@ func checkCodeflareOperator(ctx context.Context, c client.Client) (bool, string)
 	case "unmanaged":
 		return true, "codeflare is Unmanaged in DSC '" + dscName + "'"
 	case "managed":
+		if autoRemove {
+			if err := patchCodeflareToRemoved(ctx, c); err != nil {
+				return false, fmt.Sprintf("failed to auto-remove codeflare in DSC '%s': %v", dscName, err)
+			}
+
+			return true, "Set codeflare to Removed in DataScienceCluster '" + dscName + "'"
+		}
+
 		return false, "codeflare is Managed in DSC '" + dscName + "' (should be Removed)"
 	case "":
 		return true, "codeflare present without managementState in DSC '" + dscName + "' (OK to proceed)"
 	default:
 		return false, "codeflare is '" + state + "' in DSC '" + dscName + "'"
 	}
+}
+
+func patchCodeflareToRemoved(ctx context.Context, c client.Client) error {
+	err := wait.ExponentialBackoffWithContext(ctx, wait.Backoff{
+		Duration: retryInitialDuration,
+		Factor:   retryFactor,
+		Jitter:   retryJitter,
+		Steps:    retryMaxSteps,
+	}, func(ctx context.Context) (bool, error) {
+		latestDSC, err := client.GetDataScienceCluster(ctx, c)
+		if err != nil {
+			return false, fmt.Errorf("getting DataScienceCluster: %w", err)
+		}
+
+		currentState, _ := jq.Query[string](latestDSC, ".spec.components.codeflare.managementState")
+		currentState = strings.ToLower(currentState)
+
+		if currentState == "removed" || currentState == "unmanaged" {
+			return true, nil
+		}
+
+		if err := jq.Transform(latestDSC, `.spec.components.codeflare.managementState = "Removed"`); err != nil {
+			return false, fmt.Errorf("setting codeflare managementState: %w", err)
+		}
+
+		gvk := latestDSC.GroupVersionKind()
+		gvr := schema.GroupVersionResource{
+			Group:    gvk.Group,
+			Version:  gvk.Version,
+			Resource: resources.DataScienceCluster.Resource,
+		}
+
+		_, err = c.Dynamic().Resource(gvr).
+			Update(ctx, latestDSC, metav1.UpdateOptions{})
+		if err != nil {
+			if apierrors.IsConflict(err) {
+				return false, nil
+			}
+
+			return false, fmt.Errorf("updating DataScienceCluster: %w", err)
+		}
+
+		return true, nil
+	})
+	if err != nil {
+		return fmt.Errorf("patching codeflare to Removed: %w", err)
+	}
+
+	return nil
 }
