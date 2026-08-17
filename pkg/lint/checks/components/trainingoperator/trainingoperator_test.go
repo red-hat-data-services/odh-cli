@@ -73,7 +73,7 @@ func TestTrainingOperatorDeprecationCheck_ManagedDeprecated(t *testing.T) {
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonDeprecated),
-		"Message": And(ContainSubstring("enabled"), ContainSubstring("deprecated in RHOAI 3.3")),
+		"Message": And(ContainSubstring("enabled"), ContainSubstring("deprecated since RHOAI 3.3")),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactAdvisory))
 	g.Expect(result.Annotations).To(And(
@@ -175,13 +175,43 @@ func TestTrainingOperatorDeprecationCheck_CanApply_Version34(t *testing.T) {
 	g.Expect(canApply).To(BeTrue())
 }
 
+func TestTrainingOperatorDeprecationCheck_CanApply_Version36(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Managed"})},
+		TargetVersion: "3.6.0",
+	})
+
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
+}
+
+func TestTrainingOperatorDeprecationCheck_CanApply_Version55(t *testing.T) {
+	g := NewWithT(t)
+
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:     listKinds,
+		Objects:       []*unstructured.Unstructured{testutil.NewDSC(map[string]string{"trainingoperator": "Managed"})},
+		TargetVersion: "3.5.0",
+	})
+
+	chk := trainingoperator.NewDeprecationCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
+}
+
 func TestTrainingOperatorDeprecationCheck_Metadata(t *testing.T) {
 	g := NewWithT(t)
 
 	trainingoperatorCheck := trainingoperator.NewDeprecationCheck()
 
 	g.Expect(trainingoperatorCheck.ID()).To(Equal("components.trainingoperator.deprecation"))
-	g.Expect(trainingoperatorCheck.Name()).To(Equal("Components :: TrainingOperator :: Deprecation (3.3+)"))
+	g.Expect(trainingoperatorCheck.Name()).To(Equal("Components :: TrainingOperator :: Deprecation (3.3–3.5)"))
 	g.Expect(trainingoperatorCheck.Group()).To(Equal(check.GroupComponent))
 	g.Expect(trainingoperatorCheck.Description()).ToNot(BeEmpty())
 }

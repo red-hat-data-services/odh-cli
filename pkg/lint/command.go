@@ -110,7 +110,7 @@ func NewCommand(
 	registry.MustRegister(dscinitialization.NewDSCInitializationReadinessCheck())
 	registry.MustRegister(datasciencecluster.NewDataScienceClusterReadinessCheck())
 
-	// Components (14)
+	// Components (16)
 	registry.MustRegister(aigateway.NewMaaSFieldMigrationCheck())
 	registry.MustRegister(raycomponent.NewCodeFlareRemovalCheck())
 	registry.MustRegister(dashboard.NewAcceleratorProfileMigrationCheck())
@@ -126,6 +126,7 @@ func NewCommand(
 	registry.MustRegister(llamastack.NewRemovalCheck())
 	registry.MustRegister(modelmesh.NewRemovalCheck())
 	registry.MustRegister(trainingoperator.NewDeprecationCheck())
+	registry.MustRegister(trainingoperator.NewRemovalCheck())
 
 	// Dependencies (6)
 	registry.MustRegister(certmanager.NewCheck())
