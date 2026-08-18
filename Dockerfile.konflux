@@ -1,5 +1,5 @@
 # Build stage - use native platform for builder to avoid emulation
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:1a9bbbfa854931a97dbff276bd69dc0e32b36cb2fbce3b9813b2cf9892aa8d43 AS builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:36077bc7ad852d91162bf017460de6fef84bf3c2c887be05cd1c761885ef2ac3 AS builder
 
 # Build arguments for cross-compilation
 ARG TARGETOS
@@ -40,7 +40,7 @@ RUN make build \
     DATE=${DATE}
 
 # Runtime stage
-FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:1ee2b215464ff7b92638995b19f53a35435eedd27774c1b7158a75207186191e
+FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:8c717f0325304843d321c1915a5172b8945720a807d4bb548f5bd935d7f1a9e9
 
 # Build arguments for downloading architecture-specific binaries
 ARG TARGETARCH
