@@ -210,9 +210,10 @@ func TestManagementStateCheck_ManagedBlocking(t *testing.T) {
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(result.Status.Conditions).To(HaveLen(1))
 	g.Expect(result.Status.Conditions[0].Condition).To(MatchFields(IgnoreExtras, Fields{
-		"Type":   Equal(check.ConditionTypeCompatible),
-		"Status": Equal(metav1.ConditionFalse),
-		"Reason": Equal(check.ReasonVersionIncompatible),
+		"Type":    Equal(check.ConditionTypeCompatible),
+		"Status":  Equal(metav1.ConditionFalse),
+		"Reason":  Equal(check.ReasonVersionIncompatible),
+		"Message": And(ContainSubstring("Removed or Unmanaged"), ContainSubstring("Set the Kueue managementState to Removed or Unmanaged")),
 	}))
 	g.Expect(result.Status.Conditions[0].Impact).To(Equal(resultpkg.ImpactBlocking))
 	g.Expect(result.Annotations).To(
