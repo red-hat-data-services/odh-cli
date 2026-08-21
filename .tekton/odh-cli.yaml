@@ -44,6 +44,9 @@ spec:
           {"type": "gomod", "path": "."}
         ]
 
+  - name: build-args
+    value:
+    - COMMIT={{revision}}
   - name: build-source-image
     value: true
   - name: build-image-index
