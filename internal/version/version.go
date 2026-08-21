@@ -10,6 +10,8 @@ var (
 	Commit = "unknown"
 	// Date is the build date.
 	Date = "unknown"
+	// CLIName is the display name of the CLI binary.
+	CLIName = "odh-cli"
 )
 
 // GetVersion returns the current version string.
@@ -27,8 +29,14 @@ func GetDate() string {
 	return Date
 }
 
+// GetCLIName returns the CLI display name.
+func GetCLIName() string {
+	return CLIName
+}
+
 // Info holds version information for JSON/YAML output.
 type Info struct {
+	Name    string `json:"name"    jsonschema:"description=CLI display name"`
 	Version string `json:"version" jsonschema:"description=CLI version string"`
 	Commit  string `json:"commit"  jsonschema:"description=Git commit hash"`
 	Date    string `json:"date"    jsonschema:"description=Build date"`
@@ -36,6 +44,7 @@ type Info struct {
 
 // VerboseInfo holds extended version information including Go runtime details.
 type VerboseInfo struct {
+	Name      string `json:"name"      jsonschema:"description=CLI display name"`
 	Version   string `json:"version"   jsonschema:"description=CLI version string"`
 	Commit    string `json:"commit"    jsonschema:"description=Git commit hash"`
 	Date      string `json:"date"      jsonschema:"description=Build date"`
@@ -46,6 +55,7 @@ type VerboseInfo struct {
 // GetInfo returns the version info struct.
 func GetInfo() Info {
 	return Info{
+		Name:    CLIName,
 		Version: Version,
 		Commit:  Commit,
 		Date:    Date,

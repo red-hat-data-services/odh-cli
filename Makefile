@@ -7,6 +7,7 @@ BINARY_NAME=bin/kubectl-odh
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+CLI_NAME ?= odh-cli
 
 # Pinned commit SHA from odh-gitops for reproducible builds
 ODH_GITOPS_COMMIT ?= 1a55af06b8fe85c8ed63b1eff680477d9bf86be3
@@ -15,6 +16,7 @@ ODH_GITOPS_COMMIT ?= 1a55af06b8fe85c8ed63b1eff680477d9bf86be3
 LDFLAGS = -X 'github.com/opendatahub-io/odh-cli/internal/version.Version=$(VERSION)' \
           -X 'github.com/opendatahub-io/odh-cli/internal/version.Commit=$(COMMIT)' \
           -X 'github.com/opendatahub-io/odh-cli/internal/version.Date=$(DATE)' \
+          -X 'github.com/opendatahub-io/odh-cli/internal/version.CLIName=$(CLI_NAME)' \
           -X 'github.com/opendatahub-io/odh-cli/pkg/deps.gitopsRef=$(ODH_GITOPS_COMMIT)'
 
 # Linter configuration
@@ -163,6 +165,7 @@ build-image:
 		--build-arg VERSION=$(VERSION) \
 		--build-arg COMMIT=$(COMMIT) \
 		--build-arg DATE=$(DATE) \
+		--build-arg CLI_NAME=$(CLI_NAME) \
 		--manifest=$$MANIFEST_NAME \
 		.
 	@echo "Container image built successfully: localhost/odh-cli:$(VERSION)"

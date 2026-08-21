@@ -85,6 +85,7 @@ func AddCommand(root *cobra.Command, _ *genericclioptions.ConfigFlags) {
 			}
 
 			data := map[string]string{
+				"name":    version.GetCLIName(),
 				"version": version.GetVersion(),
 				"commit":  version.GetCommit(),
 				"date":    version.GetDate(),
@@ -101,13 +102,13 @@ func AddCommand(root *cobra.Command, _ *genericclioptions.ConfigFlags) {
 
 			if verbose {
 				return writeTextVersion(out,
-					"kubectl-odh version %s\n  Commit:     %s\n  Built:      %s\n  Go version: %s\n  Platform:   %s\n",
-					data["version"], data["commit"], data["date"], data["goVersion"], data["platform"])
+					"%s version %s\n  Commit:     %s\n  Built:      %s\n  Go version: %s\n  Platform:   %s\n",
+					version.GetCLIName(), data["version"], data["commit"], data["date"], data["goVersion"], data["platform"])
 			}
 
 			return writeTextVersion(out,
-				"kubectl-odh version %s (commit: %s, built: %s)\n",
-				data["version"], data["commit"], data["date"])
+				"%s version %s (commit: %s, built: %s)\n",
+				version.GetCLIName(), data["version"], data["commit"], data["date"])
 		},
 	}
 
