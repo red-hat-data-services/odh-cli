@@ -27,6 +27,7 @@ COPY . .
 ARG VERSION=""
 ARG COMMIT=""
 ARG DATE=""
+ARG CLI_NAME=rhoai-cli
 
 # Build using Makefile with cross-compilation
 # Compute fallback values for any version args not provided via --build-arg
@@ -41,7 +42,8 @@ RUN EFFECTIVE_VERSION="${VERSION:-$(git describe --tags --always 2>/dev/null || 
     GOARCH=${TARGETARCH} \
     VERSION="${EFFECTIVE_VERSION}" \
     COMMIT="${EFFECTIVE_COMMIT}" \
-    DATE="${EFFECTIVE_DATE}"
+    DATE="${EFFECTIVE_DATE}" \
+    CLI_NAME="${CLI_NAME}"
 
 # Runtime stage
 FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:8c717f0325304843d321c1915a5172b8945720a807d4bb548f5bd935d7f1a9e9
