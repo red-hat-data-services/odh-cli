@@ -23,21 +23,25 @@ RUN go mod download
 # Copy source code and Makefile
 COPY . .
 
-# Build arguments for version information
-ARG VERSION=dev
-ARG COMMIT=unknown
-ARG DATE=unknown
+# Build arguments for version information (passed via --build-arg or computed below)
+ARG VERSION=""
+ARG COMMIT=""
+ARG DATE=""
 
 # Build using Makefile with cross-compilation
-RUN make build \
+# Compute fallback values for any version args not provided via --build-arg
+RUN EFFECTIVE_VERSION="${VERSION:-$(git describe --tags --always 2>/dev/null || echo "dev")}"; \
+    EFFECTIVE_COMMIT="${COMMIT:-$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")}"; \
+    EFFECTIVE_DATE="${DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"; \
+    make build \
     CGO_ENABLED=1 \
     GOEXPERIMENT=strictfipsruntime \
     GO_BUILD_TAGS="-tags strictfipsruntime" \
     GOOS=${TARGETOS} \
     GOARCH=${TARGETARCH} \
-    VERSION=${VERSION} \
-    COMMIT=${COMMIT} \
-    DATE=${DATE}
+    VERSION="${EFFECTIVE_VERSION}" \
+    COMMIT="${EFFECTIVE_COMMIT}" \
+    DATE="${EFFECTIVE_DATE}"
 
 # Runtime stage
 FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:8c717f0325304843d321c1915a5172b8945720a807d4bb548f5bd935d7f1a9e9
