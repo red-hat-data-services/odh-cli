@@ -8,6 +8,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	pipelinesrbac "github.com/opendatahub-io/odh-cli/pkg/aipipelines/rbac"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action"
 	"github.com/opendatahub-io/odh-cli/pkg/migrate/action/result"
 	"github.com/opendatahub-io/odh-cli/pkg/resources"
@@ -86,7 +87,7 @@ func (t *updateDSPRoleRunTask) patchRole(
 	ctx context.Context,
 	target action.Target,
 	recorder action.StepRecorder,
-	role roleClassification,
+	role pipelinesrbac.Classification,
 ) {
 	step := recorder.Child(
 		"patch-"+role.Namespace+"-"+role.RoleName,
@@ -117,7 +118,7 @@ func (t *updateDSPRoleRunTask) patchRoleForDSPA(
 	ctx context.Context,
 	target action.Target,
 	recorder action.StepRecorder,
-	role roleClassification,
+	role pipelinesrbac.Classification,
 	dspa dspaInfo,
 ) {
 	stepID := "add-rule-" + dspa.Name
@@ -193,7 +194,7 @@ func (t *updateDSPRoleRunTask) patchRoleForDSPA(
 		return
 	}
 
-	validated := classifyRole(updatedRole)
+	validated := pipelinesrbac.ClassifyRole(updatedRole)
 	if validated.NeedsFix {
 		step.Completef(result.StepFailed,
 			"Patch succeeded but validation failed — datasciencepipelinesapplications/api rule not found in re-read")

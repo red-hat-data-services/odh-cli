@@ -39,7 +39,8 @@ func NewRenamingCheck() *RenamingCheck {
 }
 
 // CanApply returns whether this check should run for the given target.
-// This check only applies when upgrading FROM 2.x TO 3.x and DataSciencePipelines is Managed.
+// This check applies when upgrading FROM 2.x TO 3.x and DataSciencePipelines is Managed
+// under the v1 component key. DSC v2 clusters that only expose aipipelines skip this check.
 func (c *RenamingCheck) CanApply(ctx context.Context, target check.Target) (bool, error) {
 	if !version.IsUpgradeFrom2xTo3x(target.CurrentVersion, target.TargetVersion) {
 		return false, nil

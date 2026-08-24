@@ -139,6 +139,7 @@ func NewCommand(
 
 	// Workloads (22)
 	registry.MustRegister(ray.NewAppWrapperCleanupCheck())
+	registry.MustRegister(datasciencepipelinesworkloads.NewCustomRBACAPISubresourceCheck())
 	registry.MustRegister(datasciencepipelinesworkloads.NewInstructLabRemovalCheck())
 	registry.MustRegister(datasciencepipelinesworkloads.NewStoredVersionRemovalCheck())
 	registry.MustRegister(guardrails.NewImpactedWorkloadsCheck())

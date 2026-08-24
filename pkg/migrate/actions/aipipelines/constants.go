@@ -30,8 +30,6 @@ const (
 const defaultStateDir = "/tmp/rhoai-upgrade-backup/ai_pipelines"
 const stateFileName = "dspa_pre_upgrade_pods.json"
 
-const systemNamespacePattern = `^(kube-system|default|openshift.*|redhat-ods-.*)$`
-
 const (
 	retryMaxSteps        = 10
 	retryInitialDuration = 1 * time.Second

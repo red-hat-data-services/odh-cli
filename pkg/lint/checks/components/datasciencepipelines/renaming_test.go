@@ -7,6 +7,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/opendatahub-io/odh-cli/pkg/aipipelines"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/testutil"
@@ -19,7 +20,8 @@ import (
 
 //nolint:gochecknoglobals // Test fixture - shared across test functions
 var listKinds = map[schema.GroupVersionResource]string{
-	resources.DataScienceCluster.GVR(): resources.DataScienceCluster.ListKind(),
+	resources.DataScienceCluster.GVR():   resources.DataScienceCluster.ListKind(),
+	resources.DataScienceClusterV1.GVR(): resources.DataScienceClusterV1.ListKind(),
 }
 
 func TestRenamingCheck_CanApply_NoDSC(t *testing.T) {
@@ -116,6 +118,26 @@ func TestRenamingCheck_CanApply_Managed(t *testing.T) {
 
 	g.Expect(err).ToNot(HaveOccurred())
 	g.Expect(canApply).To(BeTrue())
+}
+
+func TestRenamingCheck_CanApply_V2ComponentKeySkips(t *testing.T) {
+	g := NewWithT(t)
+
+	// DSC v2 only carries aipipelines; datasciencepipelines is absent (treated as Removed).
+	dsc := testutil.NewDSC(map[string]string{aipipelines.ComponentKeyV2: "Managed"})
+	dsc.SetAPIVersion(resources.DataScienceCluster.APIVersion())
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      listKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	chk := datasciencepipelines.NewRenamingCheck()
+	canApply, err := chk.CanApply(t.Context(), target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeFalse())
 }
 
 func TestRenamingCheck_CanApply_VersionFiltering(t *testing.T) {
