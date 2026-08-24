@@ -1,18 +1,39 @@
-package aipipelines_test
+package rbac_test
 
 import (
 	"testing"
 
-	"github.com/opendatahub-io/odh-cli/pkg/migrate/actions/aipipelines"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/opendatahub-io/odh-cli/pkg/aipipelines/rbac"
 
 	. "github.com/onsi/gomega"
 )
+
+func makeRoleUnstructured(name, namespace string, rules []map[string]any) unstructured.Unstructured {
+	rulesAny := make([]any, len(rules))
+	for i, r := range rules {
+		rulesAny[i] = r
+	}
+
+	return unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "rbac.authorization.k8s.io/v1",
+			"kind":       "Role",
+			"metadata": map[string]any{
+				"name":      name,
+				"namespace": namespace,
+			},
+			"rules": rulesAny,
+		},
+	}
+}
 
 func TestClassifyRole(t *testing.T) {
 	t.Run("role needing fix — has route.openshift.io but missing dspa subresource", func(t *testing.T) {
 		g := NewWithT(t)
 
-		role := aipipelines.MakeRoleUnstructured("my-custom-role", "user-ns", []map[string]any{
+		role := makeRoleUnstructured("my-custom-role", "user-ns", []map[string]any{
 			{
 				"apiGroups": []any{"route.openshift.io"},
 				"resources": []any{"routes"},
@@ -20,7 +41,7 @@ func TestClassifyRole(t *testing.T) {
 			},
 		})
 
-		result := aipipelines.ClassifyRole(&role)
+		result := rbac.ClassifyRole(&role)
 		g.Expect(result.NeedsFix).To(BeTrue())
 		g.Expect(result.RoleName).To(Equal("my-custom-role"))
 		g.Expect(result.Namespace).To(Equal("user-ns"))
@@ -30,7 +51,7 @@ func TestClassifyRole(t *testing.T) {
 	t.Run("role needing fix — infers verbs including create and update", func(t *testing.T) {
 		g := NewWithT(t)
 
-		role := aipipelines.MakeRoleUnstructured("my-custom-role", "user-ns", []map[string]any{
+		role := makeRoleUnstructured("my-custom-role", "user-ns", []map[string]any{
 			{
 				"apiGroups": []any{"route.openshift.io"},
 				"resources": []any{"routes"},
@@ -38,15 +59,75 @@ func TestClassifyRole(t *testing.T) {
 			},
 		})
 
-		result := aipipelines.ClassifyRole(&role)
+		result := rbac.ClassifyRole(&role)
 		g.Expect(result.NeedsFix).To(BeTrue())
 		g.Expect(result.RouteVerbs).To(Equal([]string{"get", "list", "create", "update", "delete"}))
+	})
+
+	t.Run("role with dspa resource under unrelated api group in same rule — still needs fix", func(t *testing.T) {
+		g := NewWithT(t)
+
+		role := makeRoleUnstructured("my-custom-role", "user-ns", []map[string]any{
+			{
+				"apiGroups": []any{"route.openshift.io"},
+				"resources": []any{"routes"},
+				"verbs":     []any{"get"},
+			},
+			{
+				"apiGroups": []any{"example.invalid"},
+				"resources": []any{"datasciencepipelinesapplications/api"},
+				"verbs":     []any{"get"},
+			},
+		})
+
+		result := rbac.ClassifyRole(&role)
+		g.Expect(result.NeedsFix).To(BeTrue())
+	})
+
+	t.Run("role with wildcard dspa grant — no fix needed", func(t *testing.T) {
+		g := NewWithT(t)
+
+		role := makeRoleUnstructured("my-custom-role", "user-ns", []map[string]any{
+			{
+				"apiGroups": []any{"route.openshift.io"},
+				"resources": []any{"routes"},
+				"verbs":     []any{"get"},
+			},
+			{
+				"apiGroups": []any{"*"},
+				"resources": []any{"datasciencepipelinesapplications/api"},
+				"verbs":     []any{"get"},
+			},
+		})
+
+		result := rbac.ClassifyRole(&role)
+		g.Expect(result.NeedsFix).To(BeFalse())
+	})
+
+	t.Run("role with wildcard dspa resource — no fix needed", func(t *testing.T) {
+		g := NewWithT(t)
+
+		role := makeRoleUnstructured("my-custom-role", "user-ns", []map[string]any{
+			{
+				"apiGroups": []any{"route.openshift.io"},
+				"resources": []any{"routes"},
+				"verbs":     []any{"get"},
+			},
+			{
+				"apiGroups": []any{"datasciencepipelinesapplications.opendatahub.io"},
+				"resources": []any{"*"},
+				"verbs":     []any{"get"},
+			},
+		})
+
+		result := rbac.ClassifyRole(&role)
+		g.Expect(result.NeedsFix).To(BeFalse())
 	})
 
 	t.Run("role already has dspa subresource — no fix needed", func(t *testing.T) {
 		g := NewWithT(t)
 
-		role := aipipelines.MakeRoleUnstructured("my-custom-role", "user-ns", []map[string]any{
+		role := makeRoleUnstructured("my-custom-role", "user-ns", []map[string]any{
 			{
 				"apiGroups": []any{"route.openshift.io"},
 				"resources": []any{"routes"},
@@ -59,14 +140,14 @@ func TestClassifyRole(t *testing.T) {
 			},
 		})
 
-		result := aipipelines.ClassifyRole(&role)
+		result := rbac.ClassifyRole(&role)
 		g.Expect(result.NeedsFix).To(BeFalse())
 	})
 
 	t.Run("role without route.openshift.io — no fix needed", func(t *testing.T) {
 		g := NewWithT(t)
 
-		role := aipipelines.MakeRoleUnstructured("my-role", "user-ns", []map[string]any{
+		role := makeRoleUnstructured("my-role", "user-ns", []map[string]any{
 			{
 				"apiGroups": []any{""},
 				"resources": []any{"pods"},
@@ -74,14 +155,14 @@ func TestClassifyRole(t *testing.T) {
 			},
 		})
 
-		result := aipipelines.ClassifyRole(&role)
+		result := rbac.ClassifyRole(&role)
 		g.Expect(result.NeedsFix).To(BeFalse())
 	})
 
 	t.Run("operator-managed role is excluded — ds-pipeline prefix", func(t *testing.T) {
 		g := NewWithT(t)
 
-		role := aipipelines.MakeRoleUnstructured("ds-pipeline-mydspa", "user-ns", []map[string]any{
+		role := makeRoleUnstructured("ds-pipeline-mydspa", "user-ns", []map[string]any{
 			{
 				"apiGroups": []any{"route.openshift.io"},
 				"resources": []any{"routes"},
@@ -89,14 +170,14 @@ func TestClassifyRole(t *testing.T) {
 			},
 		})
 
-		result := aipipelines.ClassifyRole(&role)
+		result := rbac.ClassifyRole(&role)
 		g.Expect(result.NeedsFix).To(BeFalse())
 	})
 
 	t.Run("operator-managed role is excluded — pipeline-runner prefix", func(t *testing.T) {
 		g := NewWithT(t)
 
-		role := aipipelines.MakeRoleUnstructured("pipeline-runner-mydspa", "user-ns", []map[string]any{
+		role := makeRoleUnstructured("pipeline-runner-mydspa", "user-ns", []map[string]any{
 			{
 				"apiGroups": []any{"route.openshift.io"},
 				"resources": []any{"routes"},
@@ -104,14 +185,14 @@ func TestClassifyRole(t *testing.T) {
 			},
 		})
 
-		result := aipipelines.ClassifyRole(&role)
+		result := rbac.ClassifyRole(&role)
 		g.Expect(result.NeedsFix).To(BeFalse())
 	})
 
 	t.Run("system namespace is excluded", func(t *testing.T) {
 		g := NewWithT(t)
 
-		role := aipipelines.MakeRoleUnstructured("my-role", "kube-system", []map[string]any{
+		role := makeRoleUnstructured("my-role", "kube-system", []map[string]any{
 			{
 				"apiGroups": []any{"route.openshift.io"},
 				"resources": []any{"routes"},
@@ -119,16 +200,16 @@ func TestClassifyRole(t *testing.T) {
 			},
 		})
 
-		result := aipipelines.ClassifyRole(&role)
+		result := rbac.ClassifyRole(&role)
 		g.Expect(result.NeedsFix).To(BeFalse())
 	})
 
 	t.Run("role with no rules", func(t *testing.T) {
 		g := NewWithT(t)
 
-		role := aipipelines.MakeRoleUnstructured("empty-role", "user-ns", nil)
+		role := makeRoleUnstructured("empty-role", "user-ns", nil)
 
-		result := aipipelines.ClassifyRole(&role)
+		result := rbac.ClassifyRole(&role)
 		g.Expect(result.NeedsFix).To(BeFalse())
 	})
 }
@@ -153,7 +234,7 @@ func TestIsSystemNamespace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.ns, func(t *testing.T) {
 			g := NewWithT(t)
-			g.Expect(aipipelines.IsSystemNamespace(tt.ns)).To(Equal(tt.expected))
+			g.Expect(rbac.IsSystemNamespace(tt.ns)).To(Equal(tt.expected))
 		})
 	}
 }
@@ -166,7 +247,7 @@ func TestExtractStringSlice(t *testing.T) {
 			"verbs": []any{"get", "list", "watch"},
 		}
 
-		result, ok := aipipelines.ExtractStringSlice(obj, "verbs")
+		result, ok := rbac.ExtractStringSlice(obj, "verbs")
 		g.Expect(ok).To(BeTrue())
 		g.Expect(result).To(Equal([]string{"get", "list", "watch"}))
 	})
@@ -176,7 +257,7 @@ func TestExtractStringSlice(t *testing.T) {
 
 		obj := map[string]any{}
 
-		_, ok := aipipelines.ExtractStringSlice(obj, "verbs")
+		_, ok := rbac.ExtractStringSlice(obj, "verbs")
 		g.Expect(ok).To(BeFalse())
 	})
 
@@ -187,7 +268,7 @@ func TestExtractStringSlice(t *testing.T) {
 			"verbs": "get",
 		}
 
-		_, ok := aipipelines.ExtractStringSlice(obj, "verbs")
+		_, ok := rbac.ExtractStringSlice(obj, "verbs")
 		g.Expect(ok).To(BeFalse())
 	})
 }

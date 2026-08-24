@@ -7,6 +7,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/opendatahub-io/odh-cli/pkg/aipipelines"
+	"github.com/opendatahub-io/odh-cli/pkg/constants"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/result"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/check/testutil"
@@ -20,20 +22,28 @@ import (
 //nolint:gochecknoglobals // Test fixture - shared across test functions
 var instructLabListKinds = map[schema.GroupVersionResource]string{
 	resources.DataScienceCluster.GVR():                      resources.DataScienceCluster.ListKind(),
+	resources.DataScienceClusterV1.GVR():                    resources.DataScienceClusterV1.ListKind(),
 	resources.DataSciencePipelinesApplicationV1.GVR():       resources.DataSciencePipelinesApplicationV1.ListKind(),
 	resources.DataSciencePipelinesApplicationV1Alpha1.GVR(): resources.DataSciencePipelinesApplicationV1Alpha1.ListKind(),
 }
 
 func newDSPAv1(name string, namespace string, withInstructLab bool) *unstructured.Unstructured {
-	spec := map[string]any{}
+	apiServer := map[string]any{}
 	if withInstructLab {
-		spec["apiServer"] = map[string]any{
-			"managedPipelines": map[string]any{
-				"instructLab": map[string]any{
-					"enabled": true,
-				},
+		apiServer["managedPipelines"] = map[string]any{
+			"instructLab": map[string]any{
+				"enabled": true,
 			},
 		}
+	}
+
+	return newDSPAv1WithAPIServer(name, namespace, apiServer)
+}
+
+func newDSPAv1WithAPIServer(name, namespace string, apiServer map[string]any) *unstructured.Unstructured {
+	spec := map[string]any{}
+	if len(apiServer) > 0 {
+		spec["apiServer"] = apiServer
 	}
 
 	return &unstructured.Unstructured{
@@ -63,6 +73,42 @@ func TestInstructLabRemovalCheck_CanApply_NoDSC(t *testing.T) {
 
 	g.Expect(err).To(HaveOccurred())
 	g.Expect(canApply).To(BeFalse())
+}
+
+func TestInstructLabRemovalCheck_CanApply_AIPipelinesManagedV2(t *testing.T) {
+	g := NewWithT(t)
+
+	chk := datasciencepipelines.NewInstructLabRemovalCheck()
+	dsc := testutil.NewDSC(map[string]string{aipipelines.ComponentKeyV2: constants.ManagementStateManaged})
+	dsc.SetAPIVersion(resources.DataScienceCluster.APIVersion())
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
+}
+
+func TestInstructLabRemovalCheck_CanApply_RemovedWithDSPAs(t *testing.T) {
+	g := NewWithT(t)
+
+	chk := datasciencepipelines.NewInstructLabRemovalCheck()
+	dsc := testutil.NewDSC(map[string]string{aipipelines.ComponentKeyV1: constants.ManagementStateRemoved})
+	dspa := newDSPAv1("my-dspa", "test-ns", false)
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc, dspa},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	canApply, err := chk.CanApply(t.Context(), target)
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(canApply).To(BeTrue())
 }
 
 func TestInstructLabRemovalCheck_CanApply_ManagementState(t *testing.T) {
@@ -145,13 +191,57 @@ func TestInstructLabRemovalCheck_DSPAWithInstructLab(t *testing.T) {
 		"Type":    Equal(check.ConditionTypeCompatible),
 		"Status":  Equal(metav1.ConditionFalse),
 		"Reason":  Equal(check.ReasonFeatureRemoved),
-		"Message": And(ContainSubstring("Found 1"), ContainSubstring("instructLab")),
+		"Message": And(ContainSubstring("Found 1"), ContainSubstring("deprecated apiServer managed-pipelines fields")),
 	}))
 	g.Expect(dr.Status.Conditions[0].Impact).To(Equal(result.ImpactAdvisory))
 	g.Expect(dr.Annotations).To(HaveKeyWithValue(check.AnnotationImpactedWorkloadCount, "1"))
 	g.Expect(dr.ImpactedObjects).To(HaveLen(1))
 	g.Expect(dr.ImpactedObjects[0].Name).To(Equal("my-dspa"))
 	g.Expect(dr.ImpactedObjects[0].Namespace).To(Equal("test-ns"))
+}
+
+func TestInstructLabRemovalCheck_DSPAWithRuntimeGenericImage(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	dsc := testutil.NewDSC(map[string]string{"datasciencepipelines": "Managed"})
+	dspa := newDSPAv1WithAPIServer("legacy-dspa", "test-ns", map[string]any{
+		"runtimeGenericImage": "registry.example/legacy-runtime:latest",
+	})
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc, dspa},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
+	dr, err := ilCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(dr.Status.Conditions[0].Impact).To(Equal(result.ImpactAdvisory))
+	g.Expect(dr.ImpactedObjects).To(HaveLen(1))
+	g.Expect(dr.ImpactedObjects[0].Name).To(Equal("legacy-dspa"))
+}
+
+func TestInstructLabRemovalCheck_Validate_AIPipelinesManagedV2Annotation(t *testing.T) {
+	g := NewWithT(t)
+	ctx := t.Context()
+
+	dsc := testutil.NewDSC(map[string]string{aipipelines.ComponentKeyV2: constants.ManagementStateManaged})
+	dsc.SetAPIVersion(resources.DataScienceCluster.APIVersion())
+	target := testutil.NewTarget(t, testutil.TargetConfig{
+		ListKinds:      instructLabListKinds,
+		Objects:        []*unstructured.Unstructured{dsc},
+		CurrentVersion: "2.17.0",
+		TargetVersion:  "3.0.0",
+	})
+
+	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
+	dr, err := ilCheck.Validate(ctx, target)
+
+	g.Expect(err).ToNot(HaveOccurred())
+	g.Expect(dr.Annotations).To(HaveKeyWithValue(check.AnnotationComponentManagementState, constants.ManagementStateManaged))
 }
 
 func TestInstructLabRemovalCheck_DSPAWithoutInstructLab(t *testing.T) {
@@ -267,7 +357,7 @@ func TestInstructLabRemovalCheck_Metadata(t *testing.T) {
 	ilCheck := datasciencepipelines.NewInstructLabRemovalCheck()
 
 	g.Expect(ilCheck.ID()).To(Equal("workloads.datasciencepipelines.instructlab-removal"))
-	g.Expect(ilCheck.Name()).To(Equal("Workloads :: DataSciencePipelines :: InstructLab ManagedPipelines Removal (3.x)"))
+	g.Expect(ilCheck.Name()).To(Equal("Workloads :: DataSciencePipelines :: Deprecated apiServer Managed-Pipelines Fields (3.x)"))
 	g.Expect(ilCheck.Group()).To(Equal(check.GroupWorkload))
 	g.Expect(ilCheck.Description()).ToNot(BeEmpty())
 }
