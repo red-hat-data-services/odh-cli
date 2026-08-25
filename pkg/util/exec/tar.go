@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +14,14 @@ import (
 const (
 	tarDirPermission  = 0o755
 	tarFilePermission = 0o644
+
+	// maxTrailingTarBytes is the maximum number of trailing bytes we drain from
+	// the pipe after tar extraction finishes. This prevents a compromised or
+	// misbehaving pod from sending unbounded data after the tar end marker.
+	maxTrailingTarBytes int64 = 1 << 20 // 1 MiB
+
+	msgSkippingSymlink      = "skipping symlink during tar creation"
+	msgSkippingTarEntryType = "skipping unsupported tar entry type"
 )
 
 // CopyOptions configures a file copy between a local path and a pod.
@@ -44,7 +53,15 @@ func CopyFromPod(ctx context.Context, executor Executor, opts CopyOptions) error
 	}()
 
 	extractErr := extractTar(reader, opts.LocalPath)
-	// Close the read end so the producer goroutine unblocks if it is still writing.
+	if extractErr == nil {
+		// Drain remaining bytes so SPDY executor goroutines finish cleanly
+		// before we close the pipe. Use a bounded reader to guard against a
+		// compromised pod streaming data indefinitely after the tar end marker.
+		n, _ := io.Copy(io.Discard, io.LimitReader(reader, maxTrailingTarBytes+1))
+		if n > maxTrailingTarBytes {
+			extractErr = fmt.Errorf("trailing data after tar archive exceeds %d bytes", maxTrailingTarBytes)
+		}
+	}
 	_ = reader.CloseWithError(extractErr)
 
 	execErr := <-errCh
@@ -138,6 +155,8 @@ func extractTar(r io.Reader, destDir string) error {
 			if err := f.Close(); err != nil {
 				return fmt.Errorf("closing file %s: %w", target, err)
 			}
+		default:
+			slog.Info(msgSkippingTarEntryType, "type", header.Typeflag, "name", header.Name)
 		}
 	}
 }
@@ -162,6 +181,15 @@ func createTar(w io.Writer, srcDir string) error {
 
 		if info.IsDir() && info.Name() == "lost+found" {
 			return filepath.SkipDir
+		}
+
+		// Symlinks cannot be followed safely inside a tar archive because
+		// their targets may not exist on the receiving end. Skip them and
+		// log so operators can investigate if needed.
+		if info.Mode()&os.ModeSymlink != 0 {
+			slog.Info(msgSkippingSymlink, "path", path)
+
+			return nil
 		}
 
 		header, err := tar.FileInfoHeader(info, "")
