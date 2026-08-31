@@ -52,10 +52,6 @@ spec:
         }
       ]
 
-  - name: build-args
-    value:
-    - COMMIT={{revision}}
-    - CLI_NAME=rhoai-cli
   - name: build-source-image
     value: true
   - name: build-image-index
