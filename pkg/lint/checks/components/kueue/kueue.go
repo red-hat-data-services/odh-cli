@@ -25,7 +25,7 @@ const (
 	// Version-parameterized message formats. The single %s is the target's major.minor label
 	// (e.g. "3.5"), supplied via version.MajorMinorLabel(req.TargetVersion) at call time.
 	msgManagedProhibitedFmt   = "The %s upgrade does not support the Kueue managementState of Managed. Migrate Kueue to Unmanaged with the Red Hat build of Kueue Operator before upgrading."
-	msgManagedBlockingFmt     = "The %s upgrade currently only supports the Kueue managementState of Removed. The Kueue managementState is currently Managed but no workloads on the cluster are using Kueue. Set the Kueue managementState to Removed and then re-run this check to proceed with migration."
+	msgManagedBlockingFmt     = "The %s upgrade supports the Kueue managementState of Removed or Unmanaged. The Kueue managementState is currently Managed but no workloads on the cluster are using Kueue. Set the Kueue managementState to Removed or Unmanaged and then re-run this check to proceed with migration."
 	msgUnmanagedCompatibleFmt = "The Kueue managementState is Unmanaged, which is supported for the %s upgrade."
 
 	// remediationManagedMigrate advises migrating away from embedded (Managed) Kueue. Mirrors
