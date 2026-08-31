@@ -27,6 +27,7 @@ COPY . .
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG DATE=unknown
+ARG CLI_NAME=odh-cli
 
 # Build using Makefile with cross-compilation
 RUN make build \
@@ -37,7 +38,8 @@ RUN make build \
     GOARCH=${TARGETARCH} \
     VERSION=${VERSION} \
     COMMIT=${COMMIT} \
-    DATE=${DATE}
+    DATE=${DATE} \
+    CLI_NAME=${CLI_NAME}
 
 # Runtime stage
 FROM registry.access.redhat.com/ubi9/ubi:latest
