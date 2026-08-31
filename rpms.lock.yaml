@@ -4,6 +4,20 @@ lockfileVendor: redhat
 arches:
 - arch: aarch64
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/os/Packages/o/oniguruma-6.9.6-1.el9.5.aarch64.rpm
+    repoid: ubi-9-for-aarch64-appstream-rpms
+    size: 222582
+    checksum: sha256:bc2305dad655ddb94f966158112efd6cefa6824d5aa2e80f63881f16cee74598
+    name: oniguruma
+    evr: 6.9.6-1.el9.5
+    sourcerpm: oniguruma-6.9.6-1.el9.5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/j/jq-1.6-19.el9_8.2.aarch64.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 191195
+    checksum: sha256:633aaf3e87b19d4a591bd9f47cd81fde8ec49629d3f58932addfc8a134b7949d
+    name: jq
+    evr: 1.6-19.el9_8.2
+    sourcerpm: jq-1.6-19.el9_8.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/m/make-4.3-8.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 550249
@@ -12,6 +26,18 @@ arches:
     evr: 1:4.3-8.el9
     sourcerpm: make-4.3-8.el9.src.rpm
   source:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/source/SRPMS/Packages/o/oniguruma-6.9.6-1.el9.5.src.rpm
+    repoid: ubi-9-for-aarch64-appstream-source-rpms
+    size: 934541
+    checksum: sha256:cba17754ccaffd886995aec7f152aadbc5d9932a2a2cdf1d983291c7b2838404
+    name: oniguruma
+    evr: 6.9.6-1.el9.5
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/source/SRPMS/Packages/j/jq-1.6-19.el9_8.2.src.rpm
+    repoid: ubi-9-for-aarch64-baseos-source-rpms
+    size: 1512470
+    checksum: sha256:abe953ef93fb49db17177190dc0698ab649f18a0bfaef4bb0ef0cd94644d1ec3
+    name: jq
+    evr: 1.6-19.el9_8.2
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/source/SRPMS/Packages/m/make-4.3-8.el9.src.rpm
     repoid: ubi-9-for-aarch64-baseos-source-rpms
     size: 2335546
@@ -21,6 +47,20 @@ arches:
   module_metadata: []
 - arch: ppc64le
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/os/Packages/o/oniguruma-6.9.6-1.el9.5.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-appstream-rpms
+    size: 246370
+    checksum: sha256:0b700ed36523819c0dd5066cf5835c7ffb3691dbc13657e3f49acc71635fd6a6
+    name: oniguruma
+    evr: 6.9.6-1.el9.5
+    sourcerpm: oniguruma-6.9.6-1.el9.5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/j/jq-1.6-19.el9_8.2.ppc64le.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 210467
+    checksum: sha256:bd22f9b12aaae090e7d6d6a94eae6cd2a0de75b1f983696066b5c8691075012e
+    name: jq
+    evr: 1.6-19.el9_8.2
+    sourcerpm: jq-1.6-19.el9_8.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/m/make-4.3-8.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 567121
@@ -29,6 +69,18 @@ arches:
     evr: 1:4.3-8.el9
     sourcerpm: make-4.3-8.el9.src.rpm
   source:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/source/SRPMS/Packages/o/oniguruma-6.9.6-1.el9.5.src.rpm
+    repoid: ubi-9-for-ppc64le-appstream-source-rpms
+    size: 934541
+    checksum: sha256:cba17754ccaffd886995aec7f152aadbc5d9932a2a2cdf1d983291c7b2838404
+    name: oniguruma
+    evr: 6.9.6-1.el9.5
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/source/SRPMS/Packages/j/jq-1.6-19.el9_8.2.src.rpm
+    repoid: ubi-9-for-ppc64le-baseos-source-rpms
+    size: 1512470
+    checksum: sha256:abe953ef93fb49db17177190dc0698ab649f18a0bfaef4bb0ef0cd94644d1ec3
+    name: jq
+    evr: 1.6-19.el9_8.2
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/source/SRPMS/Packages/m/make-4.3-8.el9.src.rpm
     repoid: ubi-9-for-ppc64le-baseos-source-rpms
     size: 2335546
@@ -38,6 +90,20 @@ arches:
   module_metadata: []
 - arch: x86_64
   packages:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/os/Packages/o/oniguruma-6.9.6-1.el9.5.x86_64.rpm
+    repoid: ubi-9-for-x86_64-appstream-rpms
+    size: 226331
+    checksum: sha256:6c884cc2216e5b4699ebd8cde27b39e99532520b367f645ed6cc660d081916dc
+    name: oniguruma
+    evr: 6.9.6-1.el9.5
+    sourcerpm: oniguruma-6.9.6-1.el9.5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/j/jq-1.6-19.el9_8.2.x86_64.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 197453
+    checksum: sha256:9793a39a4746a09ba89c3d9ccc70150ac6c878286deee26d7e3aabede4666417
+    name: jq
+    evr: 1.6-19.el9_8.2
+    sourcerpm: jq-1.6-19.el9_8.2.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/m/make-4.3-8.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 553896
@@ -46,6 +112,18 @@ arches:
     evr: 1:4.3-8.el9
     sourcerpm: make-4.3-8.el9.src.rpm
   source:
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/source/SRPMS/Packages/o/oniguruma-6.9.6-1.el9.5.src.rpm
+    repoid: ubi-9-for-x86_64-appstream-source-rpms
+    size: 934541
+    checksum: sha256:cba17754ccaffd886995aec7f152aadbc5d9932a2a2cdf1d983291c7b2838404
+    name: oniguruma
+    evr: 6.9.6-1.el9.5
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/j/jq-1.6-19.el9_8.2.src.rpm
+    repoid: ubi-9-for-x86_64-baseos-source-rpms
+    size: 1512470
+    checksum: sha256:abe953ef93fb49db17177190dc0698ab649f18a0bfaef4bb0ef0cd94644d1ec3
+    name: jq
+    evr: 1.6-19.el9_8.2
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/m/make-4.3-8.el9.src.rpm
     repoid: ubi-9-for-x86_64-baseos-source-rpms
     size: 2335546
