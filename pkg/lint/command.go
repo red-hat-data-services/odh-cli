@@ -29,6 +29,7 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/trainingoperator"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/certmanager"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/openshift"
+	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/orphanedcrds"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/ossm34"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/servicemesh"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/sharedossm"
@@ -111,11 +112,16 @@ func NewCommand(
 	registry.MustRegister(dscinitialization.NewDSCInitializationReadinessCheck())
 	registry.MustRegister(datasciencecluster.NewDataScienceClusterReadinessCheck())
 
-	// Components (16)
+	// Components (21)
 	registry.MustRegister(aigateway.NewMaaSFieldMigrationCheck())
 	registry.MustRegister(raycomponent.NewCodeFlareRemovalCheck())
 	registry.MustRegister(dashboard.NewAcceleratorProfileMigrationCheck())
 	registry.MustRegister(dashboard.NewHardwareProfileMigrationCheck())
+	registry.MustRegister(dashboard.NewAuthModelMigrationCheck())
+	registry.MustRegister(dashboard.NewRouteMigrationCheck())
+	registry.MustRegister(dashboard.NewResourceCapacityCheck())
+	registry.MustRegister(dashboard.NewRolloutStrategyCheck())
+	registry.MustRegister(dashboard.NewConfigCompatibilityCheck())
 	registry.MustRegister(datasciencepipelines.NewRenamingCheck())
 	registry.MustRegister(kserve.NewServerlessRemovalCheck())
 	registry.MustRegister(kserve.NewKuadrantReadinessCheck())
@@ -129,9 +135,10 @@ func NewCommand(
 	registry.MustRegister(trainingoperator.NewDeprecationCheck())
 	registry.MustRegister(trainingoperator.NewRemovalCheck())
 
-	// Dependencies (6)
+	// Dependencies (7)
 	registry.MustRegister(certmanager.NewCheck())
 	registry.MustRegister(openshift.NewCheck())
+	registry.MustRegister(orphanedcrds.NewCheck())
 	registry.MustRegister(ossm34.NewCheck())
 	registry.MustRegister(servicemesh.NewCheck())
 	registry.MustRegister(sharedossm.NewCheck())
