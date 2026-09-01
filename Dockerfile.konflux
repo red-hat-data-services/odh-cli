@@ -27,7 +27,7 @@ COPY . .
 ARG VERSION=""
 ARG COMMIT=""
 ARG DATE=""
-ARG CLI_NAME=rhoai-cli
+ARG CLI_NAME=rhai-cli
 
 # Build using Makefile with cross-compilation
 # Compute fallback values for any version args not provided via --build-arg
