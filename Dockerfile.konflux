@@ -61,6 +61,19 @@ RUN dnf install -y jq && dnf clean all
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
 
+# Create wrapper script at the original path that sets PQ crypto policy at runtime (RHOAIENG-94192)
+RUN cat > /opt/rhai-cli/bin/rhai-cli <<'EOF' && \
+    chmod +x /opt/rhai-cli/bin/rhai-cli
+#!/bin/bash
+set -e
+# Set PQ crypto policy at runtime
+if command -v update-crypto-policies >/dev/null 2>&1; then
+    update-crypto-policies --set DEFAULT:PQ --no-reload 2>/dev/null || true
+fi
+# Execute the actual CLI binary with all provided arguments
+exec /opt/rhai-cli/bin/rhai-cli-bin "$@"
+EOF
+
 # Add rhai-cli to PATH
 ENV PATH="/opt/rhai-cli/bin:${PATH}"
 
