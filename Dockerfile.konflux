@@ -58,6 +58,14 @@ ENV KUBECONFIG=/kubeconfig
 # Install jq for JSON processing in migration verification steps
 RUN dnf install -y jq && dnf clean all
 
+# Set the PQ (Post-Quantum) crypto policy at build time (RHOAIENG-94192).
+# The runtime stage is root, so this bakes DEFAULT:PQ into /etc/crypto-policies
+# and applies regardless of the UID the container runs as. The ose-cli-rhel9
+# base image does not ship update-crypto-policies, so install it first.
+RUN dnf install -y crypto-policies-scripts && \
+    update-crypto-policies --set DEFAULT:PQ && \
+    dnf clean all
+
 # Copy binary from builder (cross-compiled for target platform)
 COPY --from=builder /workspace/bin/kubectl-odh /opt/rhai-cli/bin/rhai-cli
 
