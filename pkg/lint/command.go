@@ -144,7 +144,7 @@ func NewCommand(
 	registry.MustRegister(sharedossm.NewCheck())
 	registry.MustRegister(sharedserverless.NewCheck())
 
-	// Workloads (22)
+	// Workloads (23)
 	registry.MustRegister(ray.NewAppWrapperCleanupCheck())
 	registry.MustRegister(datasciencepipelinesworkloads.NewCustomRBACAPISubresourceCheck())
 	registry.MustRegister(datasciencepipelinesworkloads.NewInstructLabRemovalCheck())
@@ -166,6 +166,7 @@ func NewCommand(
 	registry.MustRegister(notebook.NewImpactedWorkloadsCheck())
 	registry.MustRegister(notebook.NewNonStoppedWorkloadsCheck())
 	registry.MustRegister(ray.NewImpactedWorkloadsCheck())
+	registry.MustRegister(trainerworkloads.NewNumProcPerNodeCheck())
 	registry.MustRegister(trainerworkloads.NewPodTemplateOverridesCheck())
 	registry.MustRegister(trainingoperatorworkloads.NewImpactedWorkloadsCheck())
 
