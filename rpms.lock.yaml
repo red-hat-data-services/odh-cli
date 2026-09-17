@@ -18,6 +18,13 @@ arches:
     name: jq
     evr: 1.6-19.el9_8.2
     sourcerpm: jq-1.6-19.el9_8.2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/c/crypto-policies-scripts-20260224-1.gitea0f072.el9_8.noarch.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 111065
+    checksum: sha256:cec44db94e9132008a7fe4e1aa764a29e9c125989c9ac2411f3cf6f8fb669dfd
+    name: crypto-policies-scripts
+    evr: 20260224-1.gitea0f072.el9_8
+    sourcerpm: crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/m/make-4.3-8.el9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 550249
@@ -38,6 +45,12 @@ arches:
     checksum: sha256:abe953ef93fb49db17177190dc0698ab649f18a0bfaef4bb0ef0cd94644d1ec3
     name: jq
     evr: 1.6-19.el9_8.2
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/source/SRPMS/Packages/c/crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
+    repoid: ubi-9-for-aarch64-baseos-source-rpms
+    size: 112905
+    checksum: sha256:775d926429179caeade6af8dc7dea15a0bea49102c2592d5b712f996a329ec38
+    name: crypto-policies
+    evr: 20260224-1.gitea0f072.el9_8
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/source/SRPMS/Packages/m/make-4.3-8.el9.src.rpm
     repoid: ubi-9-for-aarch64-baseos-source-rpms
     size: 2335546
@@ -61,6 +74,13 @@ arches:
     name: jq
     evr: 1.6-19.el9_8.2
     sourcerpm: jq-1.6-19.el9_8.2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/c/crypto-policies-scripts-20260224-1.gitea0f072.el9_8.noarch.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 111065
+    checksum: sha256:cec44db94e9132008a7fe4e1aa764a29e9c125989c9ac2411f3cf6f8fb669dfd
+    name: crypto-policies-scripts
+    evr: 20260224-1.gitea0f072.el9_8
+    sourcerpm: crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/m/make-4.3-8.el9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 567121
@@ -81,6 +101,12 @@ arches:
     checksum: sha256:abe953ef93fb49db17177190dc0698ab649f18a0bfaef4bb0ef0cd94644d1ec3
     name: jq
     evr: 1.6-19.el9_8.2
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/source/SRPMS/Packages/c/crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
+    repoid: ubi-9-for-ppc64le-baseos-source-rpms
+    size: 112905
+    checksum: sha256:775d926429179caeade6af8dc7dea15a0bea49102c2592d5b712f996a329ec38
+    name: crypto-policies
+    evr: 20260224-1.gitea0f072.el9_8
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/source/SRPMS/Packages/m/make-4.3-8.el9.src.rpm
     repoid: ubi-9-for-ppc64le-baseos-source-rpms
     size: 2335546
@@ -104,6 +130,13 @@ arches:
     name: jq
     evr: 1.6-19.el9_8.2
     sourcerpm: jq-1.6-19.el9_8.2.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/c/crypto-policies-scripts-20260224-1.gitea0f072.el9_8.noarch.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 111065
+    checksum: sha256:cec44db94e9132008a7fe4e1aa764a29e9c125989c9ac2411f3cf6f8fb669dfd
+    name: crypto-policies-scripts
+    evr: 20260224-1.gitea0f072.el9_8
+    sourcerpm: crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/m/make-4.3-8.el9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 553896
@@ -124,6 +157,12 @@ arches:
     checksum: sha256:abe953ef93fb49db17177190dc0698ab649f18a0bfaef4bb0ef0cd94644d1ec3
     name: jq
     evr: 1.6-19.el9_8.2
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/c/crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
+    repoid: ubi-9-for-x86_64-baseos-source-rpms
+    size: 112905
+    checksum: sha256:775d926429179caeade6af8dc7dea15a0bea49102c2592d5b712f996a329ec38
+    name: crypto-policies
+    evr: 20260224-1.gitea0f072.el9_8
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/m/make-4.3-8.el9.src.rpm
     repoid: ubi-9-for-x86_64-baseos-source-rpms
     size: 2335546
