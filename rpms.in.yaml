@@ -25,6 +25,7 @@ contentOrigin:
 packages:
   - make
   - jq
+  - crypto-policies-scripts
 context:
   containerfile:
     file: Dockerfile
