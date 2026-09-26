@@ -48,7 +48,7 @@ COPY ./yq .
 RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntime -ldflags "-s -w" .
 
 # Runtime stage
-FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:8946e875b8c70aba812220ab6f6607097da88ae08ef6bebdabadea24dd62613d
+FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:679f03aaf1ef6c32c8483f1bae9b9fe39dc2ce09c830c19335e47e255d56a257
 
 # Build arguments for downloading architecture-specific binaries
 ARG TARGETARCH
