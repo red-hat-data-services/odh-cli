@@ -37,7 +37,7 @@ RUN make build \
     DATE=${DATE}
 
 
-FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:8946e875b8c70aba812220ab6f6607097da88ae08ef6bebdabadea24dd62613d AS ose-cli
+FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:679f03aaf1ef6c32c8483f1bae9b9fe39dc2ce09c830c19335e47e255d56a257 AS ose-cli
 
 FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:0a4666f7a4eb0644c97a73cba198eb268691b270d97831822689e7a2088f87be AS yq-builder
 
