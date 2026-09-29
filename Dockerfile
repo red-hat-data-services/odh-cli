@@ -1,5 +1,5 @@
 # Build stage - use native platform for builder to avoid emulation
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26 AS builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:0a4666f7a4eb0644c97a73cba198eb268691b270d97831822689e7a2088f87be AS builder
 
 # Build arguments for cross-compilation
 ARG TARGETOS
@@ -42,7 +42,7 @@ RUN make build \
     CLI_NAME=${CLI_NAME}
 
 # Runtime stage
-FROM registry.access.redhat.com/ubi9/ubi:latest
+FROM registry.access.redhat.com/ubi9/ubi:9.8@sha256:094ea2ecfd3225af8f93807b99daa9ff33710fc705ebdf6e8466f46ed605585c
 
 # Build arguments for downloading architecture-specific binaries
 ARG TARGETARCH
