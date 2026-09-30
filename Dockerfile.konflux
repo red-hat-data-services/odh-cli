@@ -37,7 +37,7 @@ RUN make build \
     DATE=${DATE}
 
 
-FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:679f03aaf1ef6c32c8483f1bae9b9fe39dc2ce09c830c19335e47e255d56a257 AS ose-cli
+FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:b36a4c332f05bd71c5315b6cfe38987809bae09c2865217e1c7240fa6bfd813b AS ose-cli
 
 FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:0a4666f7a4eb0644c97a73cba198eb268691b270d97831822689e7a2088f87be AS yq-builder
 
@@ -51,7 +51,7 @@ RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntim
 
 # Runtime stage — Python 3.12 base enables urllib3 >= 2.7.0 (CVE-2026-44432 fix)
 # FROM registry.redhat.io/rhel9/python-312@sha256:88277e9671092de1c89e562e920823e82a70b75a6b02db9ba8ad78dcfaf6b591
-FROM registry.redhat.io/rhel9/python-312-minimal@sha256:03765a8ed9391a4c8df742d5783dc1257510a9369b6009f54641d62233548a52
+FROM registry.redhat.io/rhel9/python-312-minimal@sha256:bdfae86a800f2a1eb520a69e79e59f9f03ba5368dc54be5caf454dd5c0f382f2
 # Build arguments for downloading architecture-specific binaries
 USER root
 ARG TARGETARCH
