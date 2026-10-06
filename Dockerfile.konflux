@@ -46,7 +46,7 @@ RUN EFFECTIVE_VERSION="${VERSION:-$(git describe --tags --always 2>/dev/null || 
     CLI_NAME="${CLI_NAME}"
 
 # Runtime stage
-FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:b36a4c332f05bd71c5315b6cfe38987809bae09c2865217e1c7240fa6bfd813b
+FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:13c5f16e7c053162007e96bcddaaa31f22c6e3d68dc991970219dcad36a346e5
 
 # Build arguments for downloading architecture-specific binaries
 ARG TARGETARCH
