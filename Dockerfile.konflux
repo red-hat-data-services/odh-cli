@@ -1,5 +1,5 @@
 # Build stage - use native platform for builder to avoid emulation
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:8648cd4d48e09e8cef8ad031aabc34953c264990697fe9535b9c3392f83c86b0 AS builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:f9e171ed4a2ecfd284b6d977d60f6a0ed33eac8628ad806a80cdf3521cb8bede AS builder
 
 # Build arguments for cross-compilation
 ARG TARGETOS
@@ -39,7 +39,7 @@ RUN make build \
 
 FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:13c5f16e7c053162007e96bcddaaa31f22c6e3d68dc991970219dcad36a346e5 AS ose-cli
 
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:8648cd4d48e09e8cef8ad031aabc34953c264990697fe9535b9c3392f83c86b0 AS yq-builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:f9e171ed4a2ecfd284b6d977d60f6a0ed33eac8628ad806a80cdf3521cb8bede AS yq-builder
 
 WORKDIR /workspace
 
@@ -51,7 +51,7 @@ RUN CGO_ENABLED=1 GOEXPERIMENT=strictfipsruntime go build -tags strictfipsruntim
 
 # Runtime stage — Python 3.12 base enables urllib3 >= 2.7.0 (CVE-2026-44432 fix)
 # FROM registry.redhat.io/rhel9/python-312@sha256:88277e9671092de1c89e562e920823e82a70b75a6b02db9ba8ad78dcfaf6b591
-FROM registry.redhat.io/rhel9/python-312-minimal@sha256:1a6537ee64a911606c9941ec02740230edbb0344eae3d610f6f55046abf30bfb
+FROM registry.redhat.io/rhel9/python-312-minimal@sha256:8d9955078019f81659230b378bf916da4cd63ccc82f7f88a40ab642730cb776f
 # Build arguments for downloading architecture-specific binaries
 USER root
 ARG TARGETARCH
