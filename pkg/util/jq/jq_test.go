@@ -459,6 +459,57 @@ func TestPredicate(t *testing.T) {
 	})
 }
 
+// TestMatches tests the Matches helper for direct boolean expression evaluation.
+func TestMatches(t *testing.T) {
+	g := NewWithT(t)
+
+	t.Run("should return true when expression evaluates to true", func(t *testing.T) {
+		obj := unstructured.Unstructured{
+			Object: map[string]any{
+				"spec": map[string]any{
+					"multiModel": true,
+				},
+			},
+		}
+
+		g.Expect(jq.Matches(obj, ".spec.multiModel")).To(BeTrue())
+	})
+
+	t.Run("should return false when expression evaluates to false", func(t *testing.T) {
+		obj := unstructured.Unstructured{
+			Object: map[string]any{
+				"spec": map[string]any{
+					"multiModel": false,
+				},
+			},
+		}
+
+		g.Expect(jq.Matches(obj, ".spec.multiModel")).To(BeFalse())
+	})
+
+	t.Run("should return false when field does not exist", func(t *testing.T) {
+		obj := unstructured.Unstructured{
+			Object: map[string]any{
+				"spec": map[string]any{},
+			},
+		}
+
+		g.Expect(jq.Matches(obj, ".spec.multiModel")).To(BeFalse())
+	})
+
+	t.Run("should return false on query error", func(t *testing.T) {
+		obj := unstructured.Unstructured{
+			Object: map[string]any{
+				"spec": map[string]any{
+					"multiModel": "not-a-bool",
+				},
+			},
+		}
+
+		g.Expect(jq.Matches(obj, ".spec.multiModel.storage")).To(BeFalse())
+	})
+}
+
 // TestQuery_NestedStructConversion tests deep nested structure conversion.
 func TestQuery_NestedStructConversion(t *testing.T) {
 	g := NewWithT(t)
