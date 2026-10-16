@@ -13,13 +13,93 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/util/jq"
 )
 
-// dsciStatusCondition is a minimal representation of a DSCI status condition used for
-// collecting unhappy condition messages regardless of phase.
-type dsciStatusCondition struct {
-	Type    string `json:"type"`
-	Status  string `json:"status"`
-	Reason  string `json:"reason"`
-	Message string `json:"message"`
+// Condition types for optional observability capabilities, mirrored from the Monitoring CR
+// by the DSCI controller, and reasons for overall monitoring readiness (see the
+// operator's internal/controller/status/status.go and dscinitialization controller).
+const (
+	conditionTypeMonitoringReady = "MonitoringReady"
+	reasonRemoved                = "Removed"
+
+	// Metrics-dependent capabilities.
+	conditionTypeMonitoringStackAvailable     = "MonitoringStackAvailable"
+	conditionTypeThanosQuerierAvailable       = "ThanosQuerierAvailable"
+	conditionTypeNodeMetricsEndpointAvailable = "NodeMetricsEndpointAvailable"
+	conditionTypePersesPrometheusDSAvailable  = "PersesPrometheusDataSourceAvailable"
+
+	// Traces-dependent capabilities.
+	conditionTypeTempoAvailable         = "TempoAvailable"
+	conditionTypePersesTempoDSAvailable = "PersesTempoDataSourceAvailable"
+
+	// Capabilities requiring at least one of metrics or traces.
+	conditionTypeOTelCollectorAvailable = "OpenTelemetryCollectorAvailable"
+	conditionTypePersesAvailable        = "PersesAvailable"
+
+	// Alerting capability.
+	conditionTypeAlertingAvailable = "AlertingAvailable"
+)
+
+// monitoringNotManagedExpr matches a DSCI spec where monitoring is not Managed (empty or
+// Removed): the operator deletes the Monitoring CR, making every capability condition
+// expected regardless of spec feature fields.
+const (
+	monitoringNotManagedExpr = `.spec.monitoring.managementState != "Managed"`
+)
+
+// Feature-unconfigured expressions. The operator treats metrics/traces as configured only
+// when storage or at least one exporter is set: bare feature blocks are projected away,
+// yielding NotConfigured conditions. Exporters-only configurations count as configured.
+const (
+	metricsUnconfiguredExpr = `.spec.monitoring.metrics.storage == null and (.spec.monitoring.metrics.exporters | length) == 0`
+	tracesUnconfiguredExpr  = `.spec.monitoring.traces.storage == null and (.spec.monitoring.traces.exporters | length) == 0`
+)
+
+// isExpectedUnconfiguredMonitoringFalse returns true when a False condition on an optional
+// observability capability is expected because the DSCI spec does not configure the
+// capability or monitoring is disabled entirely. The operator sets phase Ready alongside
+// such conditions, so they are healthy states.
+//
+// When monitoring is not Managed, the operator deletes the Monitoring CR entirely, making
+// every capability condition expected regardless of spec feature fields, as is
+// MonitoringReady=False with reason Removed ("Monitoring is not enabled"). When monitoring
+// is Managed, the spec must not configure the capability: a False condition on a
+// configured capability indicates a genuine reconcile failure and stays blocking. Any
+// other condition type is expected to be True.
+func isExpectedUnconfiguredMonitoringFalse(cond metav1.Condition, obj unstructured.Unstructured) bool { //nolint:cyclop // One case per condition type with an explicit body is intentional.
+	if cond.Status != metav1.ConditionFalse {
+		return false
+	}
+
+	//nolint:revive // identical-switch-branches: one case per condition type keeps the mapping explicit.
+	switch cond.Type {
+	// Metrics-dependent capabilities.
+	case conditionTypeMonitoringStackAvailable:
+		return jq.Matches(obj, monitoringNotManagedExpr) || jq.Matches(obj, metricsUnconfiguredExpr)
+	case conditionTypeThanosQuerierAvailable:
+		return jq.Matches(obj, monitoringNotManagedExpr) || jq.Matches(obj, metricsUnconfiguredExpr)
+	case conditionTypeNodeMetricsEndpointAvailable:
+		return jq.Matches(obj, monitoringNotManagedExpr) || jq.Matches(obj, metricsUnconfiguredExpr)
+	case conditionTypePersesPrometheusDSAvailable:
+		return jq.Matches(obj, monitoringNotManagedExpr) || jq.Matches(obj, metricsUnconfiguredExpr)
+	// Traces-dependent capabilities.
+	case conditionTypeTempoAvailable:
+		return jq.Matches(obj, monitoringNotManagedExpr) || jq.Matches(obj, tracesUnconfiguredExpr)
+	case conditionTypePersesTempoDSAvailable:
+		return jq.Matches(obj, monitoringNotManagedExpr) || jq.Matches(obj, tracesUnconfiguredExpr)
+	// Capabilities requiring at least one of metrics or traces.
+	case conditionTypeOTelCollectorAvailable:
+		return jq.Matches(obj, monitoringNotManagedExpr) ||
+			(jq.Matches(obj, metricsUnconfiguredExpr) && jq.Matches(obj, tracesUnconfiguredExpr))
+	case conditionTypePersesAvailable:
+		return jq.Matches(obj, monitoringNotManagedExpr) ||
+			(jq.Matches(obj, metricsUnconfiguredExpr) && jq.Matches(obj, tracesUnconfiguredExpr))
+	// Alerting capability.
+	case conditionTypeAlertingAvailable:
+		return jq.Matches(obj, monitoringNotManagedExpr) || jq.Matches(obj, `.spec.monitoring.alerting == null`)
+	case conditionTypeMonitoringReady:
+		return cond.Reason == reasonRemoved && jq.Matches(obj, monitoringNotManagedExpr)
+	default:
+		return false
+	}
 }
 
 // collectUnhappyDSCIConditionMessages returns messages from DSCI status conditions that
@@ -31,9 +111,13 @@ type dsciStatusCondition struct {
 //   - CapabilityServiceMeshAuthorization: only False with reason NotReady is a genuine
 //     problem; all other False reasons (Removed, Unmanaged, MissingOperator) are non-blocking.
 //
+// Observability capability conditions receive special handling: a False condition on an
+// optional monitoring capability is healthy when the DSCI spec does not configure that
+// capability or monitoring is disabled entirely.
+//
 // Returns nil if no conditions field exists or no conditions are unhappy.
 func collectUnhappyDSCIConditionMessages(obj *unstructured.Unstructured) ([]string, error) {
-	conditions, err := jq.Query[[]dsciStatusCondition](obj, ".status.conditions")
+	conditions, err := jq.Query[[]metav1.Condition](obj, ".status.conditions")
 	if errors.Is(err, jq.ErrNotFound) {
 		return nil, nil
 	}
@@ -48,10 +132,12 @@ func collectUnhappyDSCIConditionMessages(obj *unstructured.Unstructured) ([]stri
 		// Progressing and Degraded follow negative semantics: only False is healthy.
 		// All other conditions expect True. Any value other than the expected one is unhappy.
 		expectFalse := cond.Type == "Progressing" || cond.Type == "Degraded"
-		unhappy := (expectFalse && cond.Status != string(metav1.ConditionFalse)) ||
-			(!expectFalse && cond.Status != string(metav1.ConditionTrue))
+		unhappy := (expectFalse && cond.Status != metav1.ConditionFalse) ||
+			(!expectFalse && cond.Status != metav1.ConditionTrue)
 
-		if isExpectedCapabilityServiceMeshFalse(cond) || isExpectedCapabilityServiceMeshAuthFalse(cond) {
+		if isExpectedCapabilityServiceMeshFalse(cond) ||
+			isExpectedCapabilityServiceMeshAuthFalse(cond) ||
+			isExpectedUnconfiguredMonitoringFalse(cond, *obj) {
 			unhappy = false
 		}
 
@@ -66,10 +152,10 @@ func collectUnhappyDSCIConditionMessages(obj *unstructured.Unstructured) ([]stri
 // isExpectedCapabilityServiceMeshFalse returns true when the CapabilityServiceMesh condition
 // is False because the capability was explicitly removed or set to unmanaged, both of which
 // are intentional user choices and expected healthy states.
-func isExpectedCapabilityServiceMeshFalse(cond dsciStatusCondition) bool {
+func isExpectedCapabilityServiceMeshFalse(cond metav1.Condition) bool {
 	return cond.Type == "CapabilityServiceMesh" &&
-		cond.Status == string(metav1.ConditionFalse) &&
-		(cond.Reason == "Removed" || cond.Reason == "Unmanaged")
+		cond.Status == metav1.ConditionFalse &&
+		(cond.Reason == reasonRemoved || cond.Reason == "Unmanaged")
 }
 
 // isExpectedCapabilityServiceMeshAuthFalse returns true when the CapabilityServiceMeshAuthorization
@@ -79,9 +165,9 @@ func isExpectedCapabilityServiceMeshFalse(cond dsciStatusCondition) bool {
 //
 // A denylist (reason != NotReady) is used intentionally over an explicit allowlist so that new
 // benign reasons added upstream are automatically treated as non-blocking without a code change.
-func isExpectedCapabilityServiceMeshAuthFalse(cond dsciStatusCondition) bool {
+func isExpectedCapabilityServiceMeshAuthFalse(cond metav1.Condition) bool {
 	return cond.Type == "CapabilityServiceMeshAuthorization" &&
-		cond.Status == string(metav1.ConditionFalse) &&
+		cond.Status == metav1.ConditionFalse &&
 		cond.Reason != "NotReady"
 }
 

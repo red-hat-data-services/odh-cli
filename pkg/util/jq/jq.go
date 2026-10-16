@@ -127,6 +127,17 @@ func Query[T any](value any, jqQuery string) (T, error) {
 	return convertedResult, nil
 }
 
+// Matches returns true when the JQ expression matches the given unstructured object.
+// Query errors are treated as no match.
+func Matches(obj unstructured.Unstructured, expression string) bool {
+	matched, err := Query[bool](obj, expression)
+	if err != nil {
+		return false //nolint:nilerr // Query errors are treated as no match.
+	}
+
+	return matched
+}
+
 // Predicate returns a filter function that evaluates a JQ boolean expression against an
 // unstructured object. Returns true when the expression evaluates to true, false otherwise.
 // Field-not-found and type mismatch errors are treated as false (no match), not as errors.
