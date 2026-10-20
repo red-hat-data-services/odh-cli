@@ -1,5 +1,5 @@
 # Build stage - use native platform for builder to avoid emulation
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:60fd6fb2998c40ad0d6561c34e83588b986a0cf7771f64e5e5c295ba87101f9b AS builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:68d6b72cc3eb4c7975b2aca2451f6601c048c095d6b5fc2a310ce3df5ef2ada6 AS builder
 
 # Build arguments for cross-compilation
 ARG TARGETOS
@@ -37,9 +37,9 @@ RUN make build \
     DATE=${DATE}
 
 
-FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:13c5f16e7c053162007e96bcddaaa31f22c6e3d68dc991970219dcad36a346e5 AS ose-cli
+FROM registry.redhat.io/openshift4/ose-cli-rhel9@sha256:b53c02402f56fe6460a764c1d212022131d551f58d63936f1cc1cff6df5ac63c AS ose-cli
 
-FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:60fd6fb2998c40ad0d6561c34e83588b986a0cf7771f64e5e5c295ba87101f9b AS yq-builder
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi9/go-toolset:1.26@sha256:68d6b72cc3eb4c7975b2aca2451f6601c048c095d6b5fc2a310ce3df5ef2ada6 AS yq-builder
 
 WORKDIR /workspace
 
