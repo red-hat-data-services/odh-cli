@@ -21,10 +21,12 @@ import (
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/aigateway"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/dashboard"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/datasciencepipelines"
+	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/feastoperator"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/kserve"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/kueue"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/llamastack"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/modelmesh"
+	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/modelregistry"
 	raycomponent "github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/ray"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/components/trainingoperator"
 	"github.com/opendatahub-io/odh-cli/pkg/lint/checks/dependencies/certmanager"
@@ -109,11 +111,12 @@ func NewCommand(
 	registry := check.NewRegistry()
 
 	// Explicitly register all checks (no global state, full test isolation)
-	// Platform (2)
+	// Platform (3)
 	registry.MustRegister(dscinitialization.NewDSCInitializationReadinessCheck())
 	registry.MustRegister(datasciencecluster.NewDataScienceClusterReadinessCheck())
+	registry.MustRegister(datasciencecluster.NewStorageVersionCheck())
 
-	// Components (22)
+	// Components (23)
 	registry.MustRegister(aigateway.NewMaaSFieldMigrationCheck())
 	registry.MustRegister(raycomponent.NewCodeFlareRemovalCheck())
 	registry.MustRegister(dashboard.NewAcceleratorProfileMigrationCheck())
@@ -124,6 +127,7 @@ func NewCommand(
 	registry.MustRegister(dashboard.NewRolloutStrategyCheck())
 	registry.MustRegister(dashboard.NewConfigCompatibilityCheck())
 	registry.MustRegister(datasciencepipelines.NewRenamingCheck())
+	registry.MustRegister(feastoperator.NewRenamingCheck())
 	registry.MustRegister(kserve.NewServerlessRemovalCheck())
 	registry.MustRegister(kserve.NewWVARemovalCheck())
 	registry.MustRegister(kserve.NewKuadrantReadinessCheck())
@@ -134,6 +138,7 @@ func NewCommand(
 	registry.MustRegister(kueue.NewOperatorInstalledCheck())
 	registry.MustRegister(llamastack.NewRemovalCheck())
 	registry.MustRegister(modelmesh.NewRemovalCheck())
+	registry.MustRegister(modelregistry.NewRenamingCheck())
 	registry.MustRegister(trainingoperator.NewDeprecationCheck())
 	registry.MustRegister(trainingoperator.NewRemovalCheck())
 
