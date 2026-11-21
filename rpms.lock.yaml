@@ -11,6 +11,20 @@ arches:
     name: oniguruma
     evr: 6.9.6-1.el9.5
     sourcerpm: oniguruma-6.9.6-1.el9.5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/c/crypto-policies-20260714-1.git65b74f7.el9.noarch.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 98768
+    checksum: sha256:36426d67ff6c814283b1120bdaf96e2fbe0ce4e8b39b41e2235babc29403304c
+    name: crypto-policies
+    evr: 20260714-1.git65b74f7.el9
+    sourcerpm: crypto-policies-20260714-1.git65b74f7.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/c/crypto-policies-scripts-20260714-1.git65b74f7.el9.noarch.rpm
+    repoid: ubi-9-for-aarch64-baseos-rpms
+    size: 111222
+    checksum: sha256:7494c8f4877bbff1c4351c02dc25d6fde2bc0c6d4cbd99d035118b5585c4b59b
+    name: crypto-policies-scripts
+    evr: 20260714-1.git65b74f7.el9
+    sourcerpm: crypto-policies-20260714-1.git65b74f7.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/j/jq-1.6-21.el9_9.aarch64.rpm
     repoid: ubi-9-for-aarch64-baseos-rpms
     size: 191163
@@ -25,13 +39,6 @@ arches:
     name: make
     evr: 1:4.3-8.el9
     sourcerpm: make-4.3-8.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/os/Packages/c/crypto-policies-scripts-20260224-1.gitea0f072.el9_8.noarch.rpm
-    repoid: ubi-9-for-aarch64-baseos-rpms
-    size: 111065
-    checksum: sha256:cec44db94e9132008a7fe4e1aa764a29e9c125989c9ac2411f3cf6f8fb669dfd
-    name: crypto-policies-scripts
-    evr: 20260224-1.gitea0f072.el9_8
-    sourcerpm: crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
   source:
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/appstream/source/SRPMS/Packages/o/oniguruma-6.9.6-1.el9.5.src.rpm
     repoid: ubi-9-for-aarch64-appstream-source-rpms
@@ -39,6 +46,12 @@ arches:
     checksum: sha256:cba17754ccaffd886995aec7f152aadbc5d9932a2a2cdf1d983291c7b2838404
     name: oniguruma
     evr: 6.9.6-1.el9.5
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/source/SRPMS/Packages/c/crypto-policies-20260714-1.git65b74f7.el9.src.rpm
+    repoid: ubi-9-for-aarch64-baseos-source-rpms
+    size: 113164
+    checksum: sha256:13cf181788f4a15ae91dcc906f79c4f0f796c0534926b7938cf2a91f182e8b4f
+    name: crypto-policies
+    evr: 20260714-1.git65b74f7.el9
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/source/SRPMS/Packages/j/jq-1.6-21.el9_9.src.rpm
     repoid: ubi-9-for-aarch64-baseos-source-rpms
     size: 1512457
@@ -51,12 +64,6 @@ arches:
     checksum: sha256:a5cc45d6c158b255cda528c496dbb8bc7783acb9898b97a39a1811230e102d7c
     name: make
     evr: 1:4.3-8.el9
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/aarch64/baseos/source/SRPMS/Packages/c/crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
-    repoid: ubi-9-for-aarch64-baseos-source-rpms
-    size: 112905
-    checksum: sha256:775d926429179caeade6af8dc7dea15a0bea49102c2592d5b712f996a329ec38
-    name: crypto-policies
-    evr: 20260224-1.gitea0f072.el9_8
   module_metadata: []
 - arch: ppc64le
   packages:
@@ -67,6 +74,20 @@ arches:
     name: oniguruma
     evr: 6.9.6-1.el9.5
     sourcerpm: oniguruma-6.9.6-1.el9.5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/c/crypto-policies-20260714-1.git65b74f7.el9.noarch.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 98768
+    checksum: sha256:36426d67ff6c814283b1120bdaf96e2fbe0ce4e8b39b41e2235babc29403304c
+    name: crypto-policies
+    evr: 20260714-1.git65b74f7.el9
+    sourcerpm: crypto-policies-20260714-1.git65b74f7.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/c/crypto-policies-scripts-20260714-1.git65b74f7.el9.noarch.rpm
+    repoid: ubi-9-for-ppc64le-baseos-rpms
+    size: 111222
+    checksum: sha256:7494c8f4877bbff1c4351c02dc25d6fde2bc0c6d4cbd99d035118b5585c4b59b
+    name: crypto-policies-scripts
+    evr: 20260714-1.git65b74f7.el9
+    sourcerpm: crypto-policies-20260714-1.git65b74f7.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/j/jq-1.6-21.el9_9.ppc64le.rpm
     repoid: ubi-9-for-ppc64le-baseos-rpms
     size: 210520
@@ -81,13 +102,6 @@ arches:
     name: make
     evr: 1:4.3-8.el9
     sourcerpm: make-4.3-8.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/os/Packages/c/crypto-policies-scripts-20260224-1.gitea0f072.el9_8.noarch.rpm
-    repoid: ubi-9-for-ppc64le-baseos-rpms
-    size: 111065
-    checksum: sha256:cec44db94e9132008a7fe4e1aa764a29e9c125989c9ac2411f3cf6f8fb669dfd
-    name: crypto-policies-scripts
-    evr: 20260224-1.gitea0f072.el9_8
-    sourcerpm: crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
   source:
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/appstream/source/SRPMS/Packages/o/oniguruma-6.9.6-1.el9.5.src.rpm
     repoid: ubi-9-for-ppc64le-appstream-source-rpms
@@ -95,6 +109,12 @@ arches:
     checksum: sha256:cba17754ccaffd886995aec7f152aadbc5d9932a2a2cdf1d983291c7b2838404
     name: oniguruma
     evr: 6.9.6-1.el9.5
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/source/SRPMS/Packages/c/crypto-policies-20260714-1.git65b74f7.el9.src.rpm
+    repoid: ubi-9-for-ppc64le-baseos-source-rpms
+    size: 113164
+    checksum: sha256:13cf181788f4a15ae91dcc906f79c4f0f796c0534926b7938cf2a91f182e8b4f
+    name: crypto-policies
+    evr: 20260714-1.git65b74f7.el9
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/source/SRPMS/Packages/j/jq-1.6-21.el9_9.src.rpm
     repoid: ubi-9-for-ppc64le-baseos-source-rpms
     size: 1512457
@@ -107,12 +127,6 @@ arches:
     checksum: sha256:a5cc45d6c158b255cda528c496dbb8bc7783acb9898b97a39a1811230e102d7c
     name: make
     evr: 1:4.3-8.el9
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/ppc64le/baseos/source/SRPMS/Packages/c/crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
-    repoid: ubi-9-for-ppc64le-baseos-source-rpms
-    size: 112905
-    checksum: sha256:775d926429179caeade6af8dc7dea15a0bea49102c2592d5b712f996a329ec38
-    name: crypto-policies
-    evr: 20260224-1.gitea0f072.el9_8
   module_metadata: []
 - arch: x86_64
   packages:
@@ -123,6 +137,20 @@ arches:
     name: oniguruma
     evr: 6.9.6-1.el9.5
     sourcerpm: oniguruma-6.9.6-1.el9.5.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/c/crypto-policies-20260714-1.git65b74f7.el9.noarch.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 98768
+    checksum: sha256:36426d67ff6c814283b1120bdaf96e2fbe0ce4e8b39b41e2235babc29403304c
+    name: crypto-policies
+    evr: 20260714-1.git65b74f7.el9
+    sourcerpm: crypto-policies-20260714-1.git65b74f7.el9.src.rpm
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/c/crypto-policies-scripts-20260714-1.git65b74f7.el9.noarch.rpm
+    repoid: ubi-9-for-x86_64-baseos-rpms
+    size: 111222
+    checksum: sha256:7494c8f4877bbff1c4351c02dc25d6fde2bc0c6d4cbd99d035118b5585c4b59b
+    name: crypto-policies-scripts
+    evr: 20260714-1.git65b74f7.el9
+    sourcerpm: crypto-policies-20260714-1.git65b74f7.el9.src.rpm
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/j/jq-1.6-21.el9_9.x86_64.rpm
     repoid: ubi-9-for-x86_64-baseos-rpms
     size: 197415
@@ -137,13 +165,6 @@ arches:
     name: make
     evr: 1:4.3-8.el9
     sourcerpm: make-4.3-8.el9.src.rpm
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/os/Packages/c/crypto-policies-scripts-20260224-1.gitea0f072.el9_8.noarch.rpm
-    repoid: ubi-9-for-x86_64-baseos-rpms
-    size: 111065
-    checksum: sha256:cec44db94e9132008a7fe4e1aa764a29e9c125989c9ac2411f3cf6f8fb669dfd
-    name: crypto-policies-scripts
-    evr: 20260224-1.gitea0f072.el9_8
-    sourcerpm: crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
   source:
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/appstream/source/SRPMS/Packages/o/oniguruma-6.9.6-1.el9.5.src.rpm
     repoid: ubi-9-for-x86_64-appstream-source-rpms
@@ -151,6 +172,12 @@ arches:
     checksum: sha256:cba17754ccaffd886995aec7f152aadbc5d9932a2a2cdf1d983291c7b2838404
     name: oniguruma
     evr: 6.9.6-1.el9.5
+  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/c/crypto-policies-20260714-1.git65b74f7.el9.src.rpm
+    repoid: ubi-9-for-x86_64-baseos-source-rpms
+    size: 113164
+    checksum: sha256:13cf181788f4a15ae91dcc906f79c4f0f796c0534926b7938cf2a91f182e8b4f
+    name: crypto-policies
+    evr: 20260714-1.git65b74f7.el9
   - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/j/jq-1.6-21.el9_9.src.rpm
     repoid: ubi-9-for-x86_64-baseos-source-rpms
     size: 1512457
@@ -163,10 +190,4 @@ arches:
     checksum: sha256:a5cc45d6c158b255cda528c496dbb8bc7783acb9898b97a39a1811230e102d7c
     name: make
     evr: 1:4.3-8.el9
-  - url: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/x86_64/baseos/source/SRPMS/Packages/c/crypto-policies-20260224-1.gitea0f072.el9_8.src.rpm
-    repoid: ubi-9-for-x86_64-baseos-source-rpms
-    size: 112905
-    checksum: sha256:775d926429179caeade6af8dc7dea15a0bea49102c2592d5b712f996a329ec38
-    name: crypto-policies
-    evr: 20260224-1.gitea0f072.el9_8
   module_metadata: []
