@@ -28,4 +28,4 @@ packages:
   - crypto-policies-scripts
 context:
   containerfile:
-    file: Dockerfile
+    file: Dockerfile.konflux
